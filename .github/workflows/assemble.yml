@@ -167,12 +167,12 @@ jobs:
               "output/${CODE}/${{ steps.meta.outputs.human }}" \
               "output/${CODE}/${{ steps.meta.outputs.full }}"
             gh release edit "$LTAG" \
-              --title "CxDICT ${NAME} (latest ${DATE})" \
+              --title "CxDICT ${NAME} ${DATE}" \
               --notes-file "output/${CODE}/scope.md"
           else
             gh release create "$LTAG" \
               --target "$SHA" \
-              --title "CxDICT ${NAME} (latest ${DATE})" \
+              --title "CxDICT ${NAME} ${DATE}" \
               --notes-file "output/${CODE}/scope.md" \
               "output/${CODE}/${{ steps.meta.outputs.human }}" \
               "output/${CODE}/${{ steps.meta.outputs.full }}"
