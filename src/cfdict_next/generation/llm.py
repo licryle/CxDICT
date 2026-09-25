@@ -266,7 +266,8 @@ caller. A single-entry batch retries per-entry failures too, then raises.
     for item in items:
         if not item.glosses:
             raise GenerationError(f"entry {item.key}: no glosses to generate")
-    system, user = render_prompt(items)
+    # TODO(P4): thread --language from the CLI instead of hardcoding French.
+    system, user = render_prompt(items, "fr")
     attempts = config.max_retries + 1
     last_error: GenerationError | None = None
     for _ in range(attempts):

@@ -124,7 +124,7 @@ def test_environ_overrides_dotenv(tmp_path):
 
 
 def test_render_lists_whole_gloss_lists_per_entry():
-    system, user = render_prompt(make_items())
+    system, user = render_prompt(make_items(), "fr")
     assert "{example_lines}" not in system
     assert "lexicography" in system
     assert '[0] 中国 (中國, Zhong1 guo2) — senses:' in user
@@ -162,28 +162,38 @@ def test_few_shot_file_is_self_consistent():
 
     from cfdict_next.generation import prompt as prompt_module
     from cfdict_next.identity import compute_lexical_identity
+    from cfdict_next.languages import LANGUAGES
 
-    few_shot = (
-        Path(prompt_module.__file__).parent / "assets" / "few_shot_examples.json"
+    for code, cfg in LANGUAGES.items():
+        few_shot = Path(prompt_module.__file__).parent / "assets" / cfg.few_shot
+        assert few_shot.exists(), f"missing few-shot file for {code}"
+        raw = json.loads(few_shot.read_text(encoding="utf-8"))
+        assert len(raw) >= 1
+        for example in raw:
+            en = [s for s in example["english"].split("/") if s.strip()]
+            defs = [s for s in example["definition"].split("/") if s.strip()]
+            assert len(en) == len(defs) >= 1
+            assert "confidence" not in example
+        keys = [
+            compute_lexical_identity(e["traditional"], e["simplified"], e["pinyin"])
+            for e in raw
+        ]
+        assert len(set(keys)) == len(keys)  # no duplicate few-shot entries
+    # French set keeps its curated size (regression guard on the move).
+    fr_raw = json.loads(
+        (
+            Path(prompt_module.__file__).parent
+            / "assets"
+            / LANGUAGES["fr"].few_shot
+        ).read_text(encoding="utf-8")
     )
-    raw = json.loads(few_shot.read_text(encoding="utf-8"))
-    assert len(raw) >= 16
-    for example in raw:
-        en = [s for s in example["english"].split("/") if s.strip()]
-        defs = [s for s in example["definition"].split("/") if s.strip()]
-        assert len(en) == len(defs) >= 1
-        assert "confidence" not in example
-    keys = [
-        compute_lexical_identity(e["traditional"], e["simplified"], e["pinyin"])
-        for e in raw
-    ]
-    assert len(set(keys)) == len(keys)  # no duplicate few-shot entries
+    assert len(fr_raw) >= 16
 
 
 def test_prompt_states_label_abbreviation_rules():
     # Regression test for the 行 xing2 report: verbose calques such as
     # "(forme fermée)" / "(écriture littéraire)" instead of "lit.".
-    system, _ = render_prompt(make_items())
+    system, _ = render_prompt(make_items(), "fr")
     assert '(bound form)' in system
     assert 'DROP' in system
     assert '"lit. "' in system or "'lit." in system or 'lit.' in system
@@ -230,6 +240,50 @@ def test_few_shot_demonstrates_label_rules():
         # "(à Taïwan" with paren: the label expansion. Bare "à Taïwan" in
         # running text is legitimate (cf. 小朋友 usage note) and not banned.
         assert forbidden not in defs_all
+
+
+def test_every_language_template_exists_and_has_example_slot():
+    from cfdict_next.generation import prompt as prompt_module
+    from cfdict_next.languages import LANGUAGES
+
+    from pathlib import Path
+
+    for code, cfg in LANGUAGES.items():
+        template = Path(prompt_module.__file__).parent / "assets" / cfg.prompt_template
+        assert template.exists(), f"missing template for {code}"
+        assert "{example_lines}" in template.read_text(encoding="utf-8")
+
+
+def test_hsk3_prompt_renders_with_hsk3_voice():
+    system, user = render_prompt(make_items(), "zh-CN-HSK03")
+    assert "{example_lines}" not in system
+    assert "HSK 3" in system
+    assert "simplified Chinese only" in system
+    assert user.startswith("Explain the meanings")
+    assert '"China"' in user and '"Middle Kingdom"' in user
+
+
+def test_hsk3_few_shot_loads_with_gloss_parity():
+    from cfdict_next.generation.prompt import load_few_shot_for
+
+    items, outputs = load_few_shot_for("zh-CN-HSK03")
+    assert len(items) >= 3
+    for item, output in zip(items, outputs):
+        assert [s["gloss"] for s in output["senses"]] == list(item.glosses)
+        assert all(s["definition"].strip() for s in output["senses"])
+
+
+def test_french_render_is_unchanged_by_multilingual_support():
+    # The fr registry values reproduce the pre-multilingual prompt exactly.
+    system, user = render_prompt(make_items(), "fr")
+    assert "lexicography" in system
+    assert user.startswith("Translate the meanings")
+    assert '[0] 中国 (中國, Zhong1 guo2) — senses:' in user
+
+
+def test_unknown_language_fails_loudly():
+    with pytest.raises(ValueError, match="xx-unknown"):
+        render_prompt(make_items(), "xx-unknown")
 
 
 # --- llm client ---

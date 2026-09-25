@@ -39,6 +39,7 @@ class LanguageConfig:
     prompt_template: str  # asset path relative to generation/assets/
     few_shot: str  # asset path relative to generation/assets/
     prompt_version: str  # stamped on every generated record
+    prompt_user_intro: str  # user-message prefix for generation batches
     target_language_name: str  # used when rendering prompts ("French", ...)
     output_slug: str  # output/<code>/<slug>-next-{human,full}.u8
     description: str  # one-line description of the target dictionary
@@ -53,6 +54,10 @@ LANGUAGES: dict[str, LanguageConfig] = {
         prompt_template="fr/generate_fr_v6.txt",
         few_shot="fr/few_shot_examples.json",
         prompt_version="v6",
+        prompt_user_intro=(
+            "Translate the meanings of the Chinese entries below into French.\n"
+            "Entries to translate:\n"
+        ),
         target_language_name="French",
         output_slug="cfdict",
         description="French definitions (CFDICT authoritative base + LLM coverage).",
@@ -65,6 +70,11 @@ LANGUAGES: dict[str, LanguageConfig] = {
         prompt_template="zh-CN-HSK03/generate_hsk3_v1.txt",
         few_shot="zh-CN-HSK03/few_shot_examples.json",
         prompt_version="v1",
+        prompt_user_intro=(
+            "Explain the meanings of the Chinese entries below in simple "
+            "Chinese for an HSK 3 learner.\n"
+            "Entries to explain:\n"
+        ),
         target_language_name="HSK3-level Chinese",
         output_slug="hsk3",
         description=(
