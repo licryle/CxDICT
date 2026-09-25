@@ -70,7 +70,7 @@ def test_plan_counts_batches():
 
 
 def fake_post_factory(calls):
-    def fake_post(endpoint, model, system, user, timeout_s):
+    def fake_post(endpoint, model, system, user, timeout_s, api_key=None):
         calls.append(user)
         import json as _json
         import re
@@ -202,7 +202,7 @@ def test_poison_entry_isolated_rest_written_and_reported(tmp_path):
     base, cc, human_p, llm_p = dataset_files(tmp_path)
     good_post = fake_post_factory([])
 
-    def flaky_post(endpoint, model, system, user, timeout_s):
+    def flaky_post(endpoint, model, system, user, timeout_s, api_key=None):
         if "国" in user:  # simplified form of 國, poison in every attempt
             raise GenerationError("poison")
         return good_post(endpoint, model, system, user, timeout_s)
@@ -309,7 +309,7 @@ def test_progress_marks_failed_batches_and_retries():
 
     good_post = fake_post_factory([])
 
-    def poison_post(endpoint, model, system, user, timeout_s):
+    def poison_post(endpoint, model, system, user, timeout_s, api_key=None):
         if re.search(r"^\[\d+\] 行 \(", user, re.M):
             raise GenerationError("poison")
         return good_post(endpoint, model, system, user, timeout_s)
@@ -352,7 +352,7 @@ def test_retry_success_moves_entry_from_errors_to_done():
 
     good_post = fake_post_factory([])
 
-    def batch_only_post(endpoint, model, system, user, timeout_s):
+    def batch_only_post(endpoint, model, system, user, timeout_s, api_key=None):
         import re
 
         ids = re.findall(r"^\[\d+\]", user, re.M)
@@ -431,7 +431,7 @@ def test_partial_batch_writes_good_and_defers_bad(tmp_path):
 
     base, cc, human_p, llm_p = dataset_files(tmp_path)
 
-    def partial_post(endpoint, model, system, user, timeout_s):
+    def partial_post(endpoint, model, system, user, timeout_s, api_key=None):
         import json as _json
         import re
 

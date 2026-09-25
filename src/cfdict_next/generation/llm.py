@@ -45,9 +45,19 @@ class GenerationResult:
 
 
 def post_chat_completions(
-    endpoint: str, model: str, system: str, user: str, timeout_s: float
+    endpoint: str,
+    model: str,
+    system: str,
+    user: str,
+    timeout_s: float,
+    api_key: str | None = None,
 ) -> Any:
-    """POST one chat-completions request; return the decoded JSON body."""
+    """POST one chat-completions request; return the decoded JSON body.
+
+    When ``api_key`` is set, it is sent as an ``Authorization: Bearer``
+    header (OpenAI-compatible auth); local endpoints needing no auth
+    simply leave it unset.
+    """
     payload = json.dumps(
         {
             "model": model,
@@ -57,10 +67,13 @@ def post_chat_completions(
             ],
         }
     ).encode("utf-8")
+    headers = {"Content-Type": "application/json"}
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
     request = urllib.request.Request(
         endpoint,
         data=payload,
-        headers={"Content-Type": "application/json"},
+        headers=headers,
         method="POST",
     )
     try:
@@ -277,7 +290,8 @@ caller. A single-entry batch retries per-entry failures too, then raises.
     for _ in range(attempts):
         try:
             response = post(
-                config.endpoint, config.model, system, user, config.timeout_s
+                config.endpoint, config.model, system, user, config.timeout_s,
+                config.api_key,
             )
             content = _extract_content(response)
             raw = _parse_content(content)

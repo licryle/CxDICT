@@ -5,6 +5,7 @@ endpoint (e.g. LM Studio). Copy `.env.example` to `.env` and set values:
 
     LLM_API_ENDPOINT=http://192.168.2.147:1234/v1/chat/completions
     LLM_MODEL_NAME=qwen/qwen2.5-vl-7b
+    # LLM_API_KEY=sk-...  (optional: bearer token for providers that need auth)
 
 `.env` is gitignored (local machine configuration); `.env.example` is the
 committed template. Plain process environment variables take precedence
@@ -38,6 +39,7 @@ class LLMConfig:
     batch_size: int = DEFAULT_BATCH_SIZE   # entries per request
     max_retries: int = DEFAULT_MAX_RETRIES  # retries per batch on failure
     timeout_s: float = DEFAULT_TIMEOUT_S    # HTTP timeout per request
+    api_key: str | None = None  # optional bearer token (Authorization header)
 
 
 def parse_dotenv(text: str) -> dict[str, str]:
@@ -120,4 +122,5 @@ def load_config(
         batch_size=_get_int(values, "LLM_BATCH_SIZE", DEFAULT_BATCH_SIZE),
         max_retries=_get_int(values, "LLM_MAX_RETRIES", DEFAULT_MAX_RETRIES),
         timeout_s=_get_float(values, "LLM_TIMEOUT_S", DEFAULT_TIMEOUT_S),
+        api_key=(values.get("LLM_API_KEY") or "").strip() or None,
     )

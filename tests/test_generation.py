@@ -104,6 +104,119 @@ def test_config_rejects_bad_values(tmp_path):
         load_config(env_path=f, environ={})
 
 
+def test_api_key_defaults_to_none(tmp_path):
+    f = tmp_path / ".env"
+    f.write_text(
+        "LLM_API_ENDPOINT=http://x:1/y\nLLM_MODEL_NAME=m\n",
+        encoding="utf-8",
+    )
+    assert load_config(env_path=f, environ={}).api_key is None
+
+
+def test_api_key_loads_and_env_wins(tmp_path):
+    f = tmp_path / ".env"
+    f.write_text(
+        "LLM_API_ENDPOINT=http://x:1/y\nLLM_MODEL_NAME=m\nLLM_API_KEY=file-key\n",
+        encoding="utf-8",
+    )
+    assert load_config(env_path=f, environ={}).api_key == "file-key"
+    assert (
+        load_config(env_path=f, environ={"LLM_API_KEY": "env-key"}).api_key
+        == "env-key"
+    )
+    blank = tmp_path / "blank.env"
+    blank.write_text(
+        "LLM_API_ENDPOINT=http://x:1/y\nLLM_MODEL_NAME=m\nLLM_API_KEY=  \n",
+        encoding="utf-8",
+    )
+    assert load_config(env_path=blank, environ={}).api_key is None
+
+
+def test_post_sends_bearer_header_when_key_set(monkeypatch):
+    import json as _json
+    import urllib.request
+
+    from cfdict_next.generation.llm import post_chat_completions
+
+    seen = {}
+
+    class FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self):
+            return _json.dumps({"ok": True}).encode("utf-8")
+
+    def fake_urlopen(request, timeout=None):
+        seen["auth"] = request.get_header("Authorization")
+        seen["timeout"] = timeout
+        return FakeResponse()
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    body = post_chat_completions(
+        "http://x:1/y", "m", "sys", "usr", 5.0, api_key="sk-test"
+    )
+    assert body == {"ok": True}
+    assert seen["auth"] == "Bearer sk-test"
+    assert seen["timeout"] == 5.0
+
+
+def test_post_omits_auth_header_without_key(monkeypatch):
+    import urllib.request
+
+    from cfdict_next.generation.llm import post_chat_completions
+
+    seen = {}
+
+    class FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self):
+            return b"{}"
+
+    def fake_urlopen(request, timeout=None):
+        seen["auth"] = request.get_header("Authorization")
+        return FakeResponse()
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    post_chat_completions("http://x:1/y", "m", "sys", "usr", 5.0)
+    assert seen["auth"] is None
+
+
+def test_generate_batch_forwards_api_key():
+    def fake_post(endpoint, model, system, user, timeout_s, api_key=None):
+        assert api_key == "sk-test"
+        return chat_body(
+            [
+                {
+                    "id": 0,
+                    "word": "中国",
+                    "senses": [
+                        {"gloss": "China", "definition": "d"},
+                        {"gloss": "Middle Kingdom", "definition": "e"},
+                    ],
+                },
+                {
+                    "id": 1,
+                    "word": "行",
+                    "senses": [{"gloss": "to walk", "definition": "f"}],
+                },
+            ]
+        )
+
+    outcome = generate_batch(
+        make_items(), make_config(api_key="sk-test"), language="fr", post=fake_post
+    )
+    assert outcome.failed == []
+
+
 def test_config_missing_file_is_an_error(tmp_path):
     with pytest.raises(ConfigError, match="not found"):
         load_config(env_path=tmp_path / "nope.env", environ={})
@@ -137,7 +250,7 @@ def test_few_shot_examples_pass_the_real_validator():
     # response pairs — otherwise we teach the model our own mistakes.
     example_items, example_outputs = load_few_shot_for("fr")
 
-    def fake_post(endpoint, model, system, user, timeout_s):
+    def fake_post(endpoint, model, system, user, timeout_s, api_key=None):
         for item, output in zip(example_items, example_outputs):
             assert f"[{output['id']}] {item.simplified}" in user
         return chat_body(example_outputs)
@@ -276,7 +389,7 @@ def test_unknown_language_fails_loudly():
 
 
 def test_generate_batch_maps_entries_to_sense_lists():
-    def fake_post(endpoint, model, system, user, timeout_s):
+    def fake_post(endpoint, model, system, user, timeout_s, api_key=None):
         assert "chat/completions" in endpoint
         return chat_body(
             [
@@ -308,7 +421,7 @@ def test_generate_batch_maps_entries_to_sense_lists():
 
 
 def test_generate_batch_renders_hsk3_prompt():
-    def fake_post(endpoint, model, system, user, timeout_s):
+    def fake_post(endpoint, model, system, user, timeout_s, api_key=None):
         assert "HSK 3" in system
         assert "Explain the meanings" in user
         return chat_body(
