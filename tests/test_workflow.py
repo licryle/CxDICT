@@ -86,14 +86,27 @@ def test_release_assets_follow_naming_scheme():
     assert "release_name" in steps  # display name comes from dict.toml
 
 
-def test_floating_latest_releases_are_refreshed():
+def test_single_daily_release_per_language():
     steps = " ".join(str(step) for step in workflow()["jobs"]["release"]["steps"])
+    # One dated release per language per day, refreshed in place on re-runs.
+    assert 'tag=CxDICT-${NAME}-' in steps
     assert "--clobber" in steps  # in-place refresh, stable download URLs
     assert "gh release upload" in steps
-    # One rolling release per language holding both assets (not per-variant).
-    assert 'FTAG="cxdict-${SLUG}"' in steps
+    assert "gh release create" in steps
+    assert "gh release edit" in steps
+    # No per-second timestamp tags.
+    assert "%H%M%S" not in steps
+
+
+def test_latest_pointer_release_per_language():
+    steps = " ".join(str(step) for step in workflow()["jobs"]["release"]["steps"])
+    # Our own per-language `:latest` (GitHub's Latest badge is repo-wide,
+    # so it cannot mark one release per language): tag latest-<code> with
+    # stably-named assets, refreshed in place every run.
+    assert 'LTAG="latest-${CODE}"' in steps
     assert "/tmp/CxDICT-${NAME}-Human.u8" in steps
     assert "/tmp/CxDICT-${NAME}-Full.u8" in steps
+    assert "(latest)" in steps
 
 
 def test_workflow_requests_only_release_permissions():

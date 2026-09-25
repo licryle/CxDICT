@@ -113,8 +113,10 @@ def render_scope_markdown(
     `base_label` names the authoritative base row from the language
     registry; `release_name` names the `CxDICT-<Name>-Human/Full` output
     rows (defaults to `base_label` so older callers keep working).
+
+    Only Coverage / Outputs / Provenance are rendered — source versions
+    and generation timestamps are intentionally omitted from the notes.
     """
-    sources = info["sources"]
     coverage = info["coverage"]
     provenance = info["provenance"]
     name = release_name or base_label
@@ -124,21 +126,6 @@ def render_scope_markdown(
         return f"| {label} | {total} | {_in_cell(in_cc, ref_total)} | {total - in_cc} |"
 
     lines = [
-        "## Scope",
-        "",
-        f"Generated at {info['generated_at']}.",
-        "",
-        "| source | version | entries |",
-        "| --- | --- | --- |",
-        f"| CC-CEDICT (scope) | {sources['cc_cedict']['version']} "
-        f"| {sources['cc_cedict']['entries']} |",
-        f"| {base_label} (authoritative) | {sources['base']['version']} "
-        f"| {sources['base']['entries']} |",
-        f"| Human (curated) | {sources['human']['version']} "
-        f"| {sources['human']['entries']} |",
-        f"| LLM generated | {sources['llm_generated']['version']} "
-        f"| {sources['llm_generated']['entries']} |",
-        "",
         "## Coverage",
         "",
         "| Category | Total | In CC-CEDICT (% of Ref) | Out of CC-CEDICT |",

@@ -5,10 +5,13 @@ name: Assemble and release
 #   Tooling-only pushes run the tests but cut no release (use dispatch).
 # - manual dispatch ("Run workflow" button): rebuild all known languages,
 #   or a single language via the `language` input.
-# Each released language gets its own timestamped release:
-#   tag <code>-YYYYMMDD-HHMMSS,
-#   assets CxDICT-<Name>-YYYYMMDD-{Human,Full}.u8 (<Name> from dict.toml),
-#   notes = scope.md; plus one rolling per-language release (see below).
+# Each released language gets one release per day:
+#   tag CxDICT-<Name>-YYYYMMDD (<Name> from dict.toml),
+#   assets CxDICT-<Name>-YYYYMMDD-{Human,Full}.u8,
+#   notes = scope.md. Re-runs the same day refresh the release in place.
+# Plus one rolling per-language pointer (see step 6): tag latest-<code>
+#   (e.g. latest-fr) with stably-named assets — our own per-language
+#   `:latest`, since GitHub's "Latest" badge is repo-wide.
 on:
   push:
     branches: [main]
@@ -106,7 +109,7 @@ jobs:
           DATE="$(date -u +%Y%m%d)"
           {
             echo "relname=$NAME"
-            echo "tag=${CODE}-$(date -u +%Y%m%d-%H%M%S)"
+            echo "tag=CxDICT-${NAME}-$(date -u +%Y%m%d)"
             echo "human=CxDICT-${NAME}-${DATE}-Human.u8"
             echo "full=CxDICT-${NAME}-${DATE}-Full.u8"
           } >> "$GITHUB_OUTPUT"
@@ -142,39 +145,51 @@ jobs:
 
       # 5. Publish the release: both .u8 dictionaries as assets, scope
       #    information as the notes body. Generated files are release
-      #    outputs, never committed sources (spec §13).
+      #    outputs, never committed sources (spec §13). One release per
+      #    language per day — a same-day re-run refreshes it in place.
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create "${{ steps.meta.outputs.tag }}" \
-            --title "${{ steps.meta.outputs.relname }} dictionary ${{ steps.meta.outputs.tag }}" \
-            --notes-file "output/${{ matrix.code }}/scope.md" \
-            "output/${{ matrix.code }}/${{ steps.meta.outputs.human }}" \
-            "output/${{ matrix.code }}/${{ steps.meta.outputs.full }}"
+          TAG="${{ steps.meta.outputs.tag }}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload --clobber "$TAG" \
+              "output/${{ matrix.code }}/${{ steps.meta.outputs.human }}" \
+              "output/${{ matrix.code }}/${{ steps.meta.outputs.full }}"
+            gh release edit "$TAG" \
+              --title "$TAG" \
+              --notes-file "output/${{ matrix.code }}/scope.md"
+          else
+            gh release create "$TAG" \
+              --title "$TAG" \
+              --notes-file "output/${{ matrix.code }}/scope.md" \
+              "output/${{ matrix.code }}/${{ steps.meta.outputs.human }}" \
+              "output/${{ matrix.code }}/${{ steps.meta.outputs.full }}"
+          fi
 
-      # 6. Rolling latest release, Docker `:latest`-style: the timestamped
-      #    release above stays the immutable record; this single per-language
-      #    object is refreshed in place so its download URLs never move:
-      #    github/<owner>/<repo>/releases/download/cxdict-<name>/CxDICT-<Name>-<Variant>.u8
-      #    or: gh release download cxdict-<name> --pattern '*-Human.u8'
-      - name: Refresh floating latest release
+      # 6. Rolling `latest-<code>` pointer, Docker `:latest`-style: one
+      #    release object per language (e.g. `latest-fr`), refreshed in
+      #    place every run, holding stably-named assets (no date) so its
+      #    download URLs never move. GitHub's own "Latest" badge is
+      #    repo-wide and cannot mark one release per language, so this is
+      #    our own per-language latest:
+      #    github/<owner>/<repo>/releases/download/latest-fr/CxDICT-French-Full.u8
+      #    or: gh release download latest-fr --pattern '*-Full.u8'
+      - name: Refresh latest pointer release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           CODE="${{ matrix.code }}"
           NAME="${{ steps.meta.outputs.relname }}"
-          DATE="$(date -u +%Y%m%d)"
-          SLUG="$(echo "$NAME" | tr '[:upper:]' '[:lower:]' | tr ' ' '-')"
-          FTAG="cxdict-${SLUG}"
-          cp "output/${CODE}/CxDICT-${NAME}-${DATE}-Human.u8" "/tmp/CxDICT-${NAME}-Human.u8"
-          cp "output/${CODE}/CxDICT-${NAME}-${DATE}-Full.u8" "/tmp/CxDICT-${NAME}-Full.u8"
-          if gh release view "$FTAG" >/dev/null 2>&1; then
-            gh release upload --clobber "$FTAG" "/tmp/CxDICT-${NAME}-Human.u8" "/tmp/CxDICT-${NAME}-Full.u8"
-            gh release edit "$FTAG" --title "CxDICT ${NAME} ${DATE}" --notes-file "output/${CODE}/scope.md"
+          LTAG="latest-${CODE}"
+          cp "output/${CODE}/${{ steps.meta.outputs.human }}" "/tmp/CxDICT-${NAME}-Human.u8"
+          cp "output/${CODE}/${{ steps.meta.outputs.full }}" "/tmp/CxDICT-${NAME}-Full.u8"
+          if gh release view "$LTAG" >/dev/null 2>&1; then
+            gh release upload --clobber "$LTAG" "/tmp/CxDICT-${NAME}-Human.u8" "/tmp/CxDICT-${NAME}-Full.u8"
+            gh release edit "$LTAG" --title "CxDICT ${NAME} (latest)" --notes-file "output/${CODE}/scope.md"
           else
-            gh release create "$FTAG" \
-              --title "CxDICT ${NAME} ${DATE}" \
+            gh release create "$LTAG" \
+              --title "CxDICT ${NAME} (latest)" \
               --notes-file "output/${CODE}/scope.md" \
               "/tmp/CxDICT-${NAME}-Human.u8" "/tmp/CxDICT-${NAME}-Full.u8"
           fi

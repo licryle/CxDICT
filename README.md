@@ -12,11 +12,11 @@ All dictionaries use as base the CC-CEDICT (Chinese lexical scope), licensed und
 
 | Language | Inputs (one per line, with licenses) | Output license | Latest release |
 |---|---|---|---|
-| French (`fr`) — French definitions (CFDICT authoritative base + LLM coverage of the missing scope) | - CFDICT (`dictionaries/fr/data/cfdict.u8`, authoritative base) — CC BY-SA 3.0, David Houstin ([chine.in](https://chine.in/mandarin/dictionnaire/CFDICT/))<br>- Human curation (`dictionaries/fr/data/human.u8`) — CC BY-SA 4.0<br>LLM-generated definitions (`dictionaries/fr/data/llm_generated.json`, qwen models) — CC BY-SA 4.0 | CC BY-SA 4.0 | [cxdict-french](https://github.com/licryle/CFDICT-Next/releases/tag/cxdict-french) |
-| HSK3-level Chinese (`zh-CN-HSK03`) — explanations an HSK3 learner should understand; no authoritative base (human curation + LLM over CC-CEDICT scope) | CC-CEDICT (Chinese lexical scope) — CC BY-SA 4.0, MDBG ([mdbg.net](https://www.mdbg.net/chinese/dictionary?page=cedict))<br>Human curation (`dictionaries/zh-CN-HSK03/data/human.u8`) — CC BY-SA 4.0<br>LLM-generated definitions (`dictionaries/zh-CN-HSK03/data/llm_generated.json`) — CC BY-SA 4.0 | CC BY-SA 4.0 | [cxdict-hsk3](https://github.com/licryle/CFDICT-Next/releases/tag/cxdict-hsk3) |
+| French (`fr`) — French definitions (CFDICT authoritative base + LLM coverage of the missing scope) | - CFDICT (`dictionaries/fr/data/cfdict.u8`, authoritative base) — CC BY-SA 3.0, David Houstin ([chine.in](https://chine.in/mandarin/dictionnaire/CFDICT/))<br>- Human curation (`dictionaries/fr/data/human.u8`) — CC BY-SA 4.0<br>LLM-generated definitions (`dictionaries/fr/data/llm_generated.json`, qwen models) — CC BY-SA 4.0 | CC BY-SA 4.0 | [latest-fr](https://github.com/licryle/CFDICT-Next/releases/tag/latest-fr) |
+| HSK3-level Chinese (`zh-CN-HSK03`) — explanations an HSK3 learner should understand; no authoritative base (human curation + LLM over CC-CEDICT scope) | CC-CEDICT (Chinese lexical scope) — CC BY-SA 4.0, MDBG ([mdbg.net](https://www.mdbg.net/chinese/dictionary?page=cedict))<br>Human curation (`dictionaries/zh-CN-HSK03/data/human.u8`) — CC BY-SA 4.0<br>LLM-generated definitions (`dictionaries/zh-CN-HSK03/data/llm_generated.json`) — CC BY-SA 4.0 | CC BY-SA 4.0 | [latest-zh-CN-HSK03](https://github.com/licryle/CFDICT-Next/releases/tag/latest-zh-CN-HSK03) |
 
-(Latest-release links point at the rolling per-language releases, created
-or refreshed on every release run — see `docs/workflow.md`.)
+(Latest-release links point at the rolling per-language `latest-<code>`
+releases, created or refreshed on every release run — see `docs/workflow.md`.)
 
 ## Releases
 
@@ -29,7 +29,7 @@ rebuilt only when its inputs change. Every release publishes two dictionaries:
 | `CxDICT-<Language>-<YYYYMMDD>-Full.u8` | everything above + LLM-generated coverage (maximum coverage) |
 
 For a stable pointer that never moves, each language also has one rolling
-release refreshed every run (e.g. `cxdict-french` holding
+`latest-<code>` release refreshed every run (e.g. `latest-fr` holding
 `CxDICT-French-Human.u8` and `CxDICT-French-Full.u8` — see `docs/workflow.md`).
 
 ## License
@@ -100,8 +100,8 @@ traditional simplified [pinyin] /definition1/definition2/.../
 ```
 
 `#` lines are comments. Headwords may contain U+3000 (ideographic space)
-as part of the word. Each release's notes record the exact sources
-(content hashes) and coverage counts the file corresponds to.
+as part of the word. Each release's notes record the coverage counts
+the file corresponds to.
 
 ## For developers
 

@@ -47,8 +47,10 @@ def test_markdown_contains_figures_and_versions():
     markdown = render_scope_markdown(
         build_scope_info(sources(), generated_at="T"), "CFDICT", "French"
     )
+    # Source versions are intentionally omitted from the notes.
+    for absent in ("cc-v1", "base-v1", "human-v1", "llm-v1", "## Scope", "Generated at"):
+        assert absent not in markdown, absent
     for needle in (
-        "cc-v1", "base-v1", "human-v1", "llm-v1",
         "| CFDICT (authoritative) |",
         "| Category | Total | In CC-CEDICT (% of Ref) | Out of CC-CEDICT |",
         "| CC-CEDICT Reference | 4 | - | - |",
@@ -143,7 +145,8 @@ def test_cli_on_real_data(tmp_path):
     )
     assert rc == 0
     text = out.read_text(encoding="utf-8")
-    assert "sha256:" in text  # default content-hash versions
+    assert "sha256:" not in text  # versions omitted from notes by design
+    assert "## Scope" not in text
     assert "56300" in text or "56,300" in text or "56279" in text
     assert "| CFDICT (authoritative) |" in text
 

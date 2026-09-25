@@ -128,17 +128,6 @@ def test_scope_markdown_golden_text():
         build_scope_info(sources, generated_at="T"), "CFDICT"
     )
     assert markdown == (
-        "## Scope\n"
-        "\n"
-        "Generated at T.\n"
-        "\n"
-        "| source | version | entries |\n"
-        "| --- | --- | --- |\n"
-        "| CC-CEDICT (scope) | cc-v1 | 4 |\n"
-        "| CFDICT (authoritative) | base-v1 | 1 |\n"
-        "| Human (curated) | human-v1 | 1 |\n"
-        "| LLM generated | llm-v1 | 1 |\n"
-        "\n"
         "## Coverage\n"
         "\n"
         "| Category | Total | In CC-CEDICT (% of Ref) | Out of CC-CEDICT |\n"
