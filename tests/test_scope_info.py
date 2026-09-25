@@ -132,5 +132,4 @@ def test_cli_requires_language(tmp_path):
 
     with pytest.raises(SystemExit):
         cli_main(["--base", "data/cfdict.u8"])
-    with pytest.raises(SystemExit):
-        cli_main(["--language", "xx-unknown", "--base", "data/cfdict.u8"])
+    assert cli_main(["--language", "xx-unknown", "--base", "data/cfdict.u8"]) == 1

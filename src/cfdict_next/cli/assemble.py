@@ -18,13 +18,13 @@ from pathlib import Path
 
 
 from ..assembly import assemble_files
-from ..languages import LANGUAGES, resolve_paths
+from ..languages import resolve_paths
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--language", required=True, choices=sorted(LANGUAGES),
-                        help="target dictionary language")
+    parser.add_argument("--language", required=True,
+                        help="target dictionary language code (see assets/)")
     parser.add_argument("--base", default=None,
                         help="base dictionary file (default: data/<language>/…)")
     parser.add_argument("--human", default=None,
@@ -36,11 +36,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--out-full", default=None,
                         help="full dictionary output (default: output/<language>/…)")
     args = parser.parse_args(argv)
-    paths = resolve_paths(
-        args.language, base=args.base, human=args.human,
-        llm_generated=args.llm_generated, out_human=args.out_human,
-        out_full=args.out_full,
-    )
+    try:
+        paths = resolve_paths(
+            args.language, base=args.base, human=args.human,
+            llm_generated=args.llm_generated, out_human=args.out_human,
+            out_full=args.out_full,
+        )
+    except (ValueError, OSError) as exc:
+        print(f"assembly failed: {exc}", file=sys.stderr)
+        return 1
 
     try:
         human_n, full_n = assemble_files(

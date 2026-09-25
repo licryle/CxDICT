@@ -16,14 +16,14 @@ import sys
 from pathlib import Path
 
 
-from ..languages import LANGUAGES, resolve_paths
+from ..languages import resolve_paths
 from ..validation import check_outputs, validate_inputs
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--language", required=True, choices=sorted(LANGUAGES),
-                        help="target dictionary language")
+    parser.add_argument("--language", required=True,
+                        help="target dictionary language code (see assets/)")
     parser.add_argument("--base", default=None,
                         help="base dictionary file (default: data/<language>/…)")
     parser.add_argument("--cc-cedict", default=None,
@@ -35,10 +35,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--out-human", default=None)
     parser.add_argument("--out-full", default=None)
     args = parser.parse_args(argv)
-    paths = resolve_paths(
-        args.language, base=args.base, cc_cedict=args.cc_cedict,
-        human=args.human, llm_generated=args.llm_generated,
-    )
+    try:
+        paths = resolve_paths(
+            args.language, base=args.base, cc_cedict=args.cc_cedict,
+            human=args.human, llm_generated=args.llm_generated,
+        )
+    except (ValueError, OSError) as exc:
+        print(f"validation failed: {exc}", file=sys.stderr)
+        return 1
 
     report, data = validate_inputs(
         paths.base, paths.cc_cedict, paths.human, paths.llm_generated

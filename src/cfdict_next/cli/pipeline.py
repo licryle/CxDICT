@@ -23,7 +23,7 @@ from ..generation.config import LLMConfig
 from ..generation.llm import GenerationError
 from ..generation.orchestrator import generate_files
 from ..generation.llm import post_chat_completions
-from ..languages import LANGUAGES, get_language, resolve_paths
+from ..languages import get_language, resolve_paths
 from ..scope_info import (
     ReleaseSources,
     build_scope_info,
@@ -82,7 +82,10 @@ def run_pipeline(
     generation_date: str | None = None,
 ) -> PipelineReport:
     """Run the full local pipeline; raise PipelineError on any failure."""
-    base_label = get_language(language).base_label
+    try:
+        base_label = get_language(language).base_label
+    except ValueError as exc:
+        raise PipelineError("setup", str(exc)) from exc
     # None base_path means the language has no authoritative base.
     base_path = Path(base_path) if base_path is not None else None
     cc_cedict_path = Path(cc_cedict_path)
@@ -266,8 +269,8 @@ def main(argv: list[str] | None = None) -> int:
 
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--env", default=".env")
-    parser.add_argument("--language", required=True, choices=sorted(LANGUAGES),
-                        help="target dictionary language")
+    parser.add_argument("--language", required=True,
+                        help="target dictionary language code (see assets/)")
     parser.add_argument("--base", default=None,
                         help="base dictionary file (default: data/<language>/…)")
     parser.add_argument("--cc-cedict", default=None,
@@ -289,12 +292,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--scope-out", default=None,
                         help="scope notes output (default: output/<language>/scope.md)")
     args = parser.parse_args(argv)
-    paths = resolve_paths(
-        args.language, base=args.base, cc_cedict=args.cc_cedict,
-        human=args.human, llm_generated=args.llm_generated,
-        out_human=args.out_human, out_full=args.out_full,
-        scope_out=args.scope_out,
-    )
+    try:
+        paths = resolve_paths(
+            args.language, base=args.base, cc_cedict=args.cc_cedict,
+            human=args.human, llm_generated=args.llm_generated,
+            out_human=args.out_human, out_full=args.out_full,
+            scope_out=args.scope_out,
+        )
+    except (ValueError, OSError) as exc:
+        print(f"pipeline failed: {exc}")
+        return 1
 
     if args.limit < 0:
         print("pipeline failed: --limit must be >= 0 (0 = unlimited)")

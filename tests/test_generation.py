@@ -28,7 +28,7 @@ from cfdict_next.generation.output import (
     merge_records,
     write_llm_json,
 )
-from cfdict_next.generation.prompt import PROMPT_VERSION, render_prompt
+from cfdict_next.generation.prompt import load_few_shot_for, render_prompt
 from cfdict_next.parser.json import load_llm_json
 
 
@@ -132,22 +132,18 @@ def test_render_lists_whole_gloss_lists_per_entry():
     assert '[1] 行 (行, Xing2) — senses:' in user
 
 
-def test_prompt_version_is_pinned():
-    assert PROMPT_VERSION == "v6"
-
-
 def test_few_shot_examples_pass_the_real_validator():
     # The examples shown to the model must themselves be valid prompt /
     # response pairs — otherwise we teach the model our own mistakes.
-    from cfdict_next.generation.prompt import EXAMPLE_ITEMS, EXAMPLE_OUTPUTS
+    example_items, example_outputs = load_few_shot_for("fr")
 
     def fake_post(endpoint, model, system, user, timeout_s):
-        for item, output in zip(EXAMPLE_ITEMS, EXAMPLE_OUTPUTS):
+        for item, output in zip(example_items, example_outputs):
             assert f"[{output['id']}] {item.simplified}" in user
-        return chat_body(EXAMPLE_OUTPUTS)
+        return chat_body(example_outputs)
 
     outcome = generate_batch(
-        list(EXAMPLE_ITEMS), make_config(max_retries=0), language="fr", post=fake_post
+        list(example_items), make_config(max_retries=0), language="fr", post=fake_post
     )
     assert outcome.failed == []
     assert len(outcome.results) == 16
@@ -158,14 +154,13 @@ def test_few_shot_file_is_self_consistent():
     # Every curated example splits to equal gloss/definition segment counts
     # (checked at load), and identities match the file's own fields.
     import json
-    from pathlib import Path
 
-    from cfdict_next.generation import prompt as prompt_module
     from cfdict_next.identity import compute_lexical_identity
-    from cfdict_next.languages import LANGUAGES
+    from cfdict_next.languages import get_language
 
-    for code, cfg in LANGUAGES.items():
-        few_shot = Path(prompt_module.__file__).parent / "assets" / cfg.few_shot
+    for code in ("fr", "zh-CN-HSK03"):
+        cfg = get_language(code)
+        few_shot = cfg.few_shot
         assert few_shot.exists(), f"missing few-shot file for {code}"
         raw = json.loads(few_shot.read_text(encoding="utf-8"))
         assert len(raw) >= 1
@@ -180,13 +175,7 @@ def test_few_shot_file_is_self_consistent():
         ]
         assert len(set(keys)) == len(keys)  # no duplicate few-shot entries
     # French set keeps its curated size (regression guard on the move).
-    fr_raw = json.loads(
-        (
-            Path(prompt_module.__file__).parent
-            / "assets"
-            / LANGUAGES["fr"].few_shot
-        ).read_text(encoding="utf-8")
-    )
+    fr_raw = json.loads(get_language("fr").few_shot.read_text(encoding="utf-8"))
     assert len(fr_raw) >= 16
 
 
@@ -212,13 +201,13 @@ def test_prompt_states_label_abbreviation_rules():
 def test_few_shot_demonstrates_label_rules():
     # The model must see at least one bound-form drop, one lit. mapping,
     # and one Tw mapping in the examples it is shown.
-    from cfdict_next.generation.prompt import EXAMPLE_ITEMS, EXAMPLE_OUTPUTS
+    example_items, example_outputs = load_few_shot_for("fr")
 
     defs_all = " / ".join(
-        s["definition"] for out in EXAMPLE_OUTPUTS for s in out["senses"]
+        s["definition"] for out in example_outputs for s in out["senses"]
     )
     gloss_all = " / ".join(
-        s["gloss"] for out in EXAMPLE_OUTPUTS for s in out["senses"]
+        s["gloss"] for out in example_outputs for s in out["senses"]
     )
     assert "(bound form)" in gloss_all
     assert "(literary)" in gloss_all
@@ -243,13 +232,10 @@ def test_few_shot_demonstrates_label_rules():
 
 
 def test_every_language_template_exists_and_has_example_slot():
-    from cfdict_next.generation import prompt as prompt_module
-    from cfdict_next.languages import LANGUAGES
+    from cfdict_next.languages import get_language
 
-    from pathlib import Path
-
-    for code, cfg in LANGUAGES.items():
-        template = Path(prompt_module.__file__).parent / "assets" / cfg.prompt_template
+    for code in ("fr", "zh-CN-HSK03"):
+        template = get_language(code).prompt_template
         assert template.exists(), f"missing template for {code}"
         assert "{example_lines}" in template.read_text(encoding="utf-8")
 
@@ -603,7 +589,7 @@ def test_entry_without_glosses_is_rejected():
 
 def provenance():
     return Provenance(cc_cedict_version="mdbg-test", llm_model="test-model",
-                        prompt_version=PROMPT_VERSION)
+                        prompt_version="v6")
 
 
 def test_build_records_groups_single_mapping():
@@ -628,7 +614,7 @@ def test_build_records_groups_single_mapping():
     assert [s["source_gloss"] for s in record["senses"]] == ["China", "Middle Kingdom"]
     assert record["cc_cedict_version"] == "mdbg-test"
     assert record["llm_model"] == "test-model"
-    assert record["prompt_version"] == PROMPT_VERSION
+    assert record["prompt_version"] == "v6"
     assert record["generation_date"] == "2025-01-01T00:00:00+00:00"
     assert "confidence" not in record
 

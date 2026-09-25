@@ -237,8 +237,7 @@ def test_cli_requires_language(tmp_path):
     paths = fixture_files(tmp_path)
     with pytest.raises(SystemExit):
         cli_main(["--base", str(paths[0])])
-    with pytest.raises(SystemExit):
-        cli_main(["--language", "xx-unknown", "--base", str(paths[0])])
+    assert cli_main(["--language", "xx-unknown", "--base", str(paths[0])]) == 1
 
 
 def test_none_base_passes_with_empty_identities(tmp_path):
@@ -249,9 +248,12 @@ def test_none_base_passes_with_empty_identities(tmp_path):
 
 
 def _write_repo_layout(root):
-    """Minimal data/<lang>/ layout plus shared CC-CEDICT (gzipped)."""
+    """Minimal data/<lang>/ + assets/<lang>/ layout plus shared CC-CEDICT."""
     import gzip
+    import shutil
 
+    for code in ("fr", "zh-CN-HSK03"):
+        shutil.copytree(REPO / "assets" / code, root / "assets" / code)
     (root / "data" / "fr").mkdir(parents=True)
     (root / "data" / "fr" / "cfdict.u8").write_text(BASE_SAMPLE, encoding="utf-8")
     (root / "data" / "fr" / "human.u8").write_text("", encoding="utf-8")

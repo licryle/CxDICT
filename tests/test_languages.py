@@ -1,33 +1,36 @@
-"""Unit tests for the per-language registry (src/cfdict_next/languages.py, P0).
+"""Unit tests for the TOML-driven language registry (src/cfdict_next/languages.py).
 
-P0 is additive only: these tests pin the registry values and path
-resolution without touching any existing pipeline behavior.
+Language definitions live outside the package in assets/<code>/dict.toml;
+these tests pin the loader behavior and path resolution.
 """
 
 from pathlib import Path
 
 import pytest
 
-from cfdict_next.languages import (
-    DEFAULT_LANGUAGE,
-    LANGUAGES,
-    get_language,
-    resolve_paths,
-)
+from cfdict_next.languages import get_language, resolve_paths
 
-
-def test_default_language_is_french_for_backward_compat():
-    assert DEFAULT_LANGUAGE == "fr"
-    assert get_language(DEFAULT_LANGUAGE).code == "fr"
+REPO = Path(__file__).resolve().parent.parent
 
 
 def test_french_config_matches_current_pipeline_reality():
     fr = get_language("fr")
+    assert fr.code == "fr"
     assert fr.base_filename == "cfdict.u8"
     assert fr.base_label == "CFDICT"
-    assert "generate_fr_v6" in fr.prompt_template
+    assert fr.base_url == "https://chine.in/mandarin/dictionnaire/CFDICT/"
+    assert fr.prompt_template.name == "generate_fr_v6.txt"
+    assert fr.prompt_template.is_file()
+    assert fr.few_shot.name == "few_shot_examples.json"
+    assert fr.few_shot.is_file()
     assert fr.prompt_version == "v6"
+    assert fr.prompt_user_intro == (
+        "Translate the meanings of the Chinese entries below into French.\n"
+        "Entries to translate:\n"
+    )
+    assert fr.target_language_name == "French"
     assert fr.output_slug == "cfdict"
+    assert fr.config_dir == REPO / "assets" / "fr"
 
 
 def test_hsk3_config_has_no_base():
@@ -35,13 +38,59 @@ def test_hsk3_config_has_no_base():
     assert hsk.base_filename is None
     assert hsk.base_url is None
     assert hsk.prompt_version == "v1"
+    assert hsk.prompt_template.name == "generate_hsk3_v1.txt"
+    assert hsk.prompt_user_intro.startswith("Explain the meanings")
     assert "HSK3" in hsk.description
     assert "HSK3" in hsk.target_language_name
 
 
-def test_unknown_language_lists_available_codes():
-    with pytest.raises(ValueError, match="zh-CN-HSK03"):
+def test_unknown_language_fails_loudly():
+    with pytest.raises(ValueError, match="xx-unknown"):
         get_language("xx-unknown")
+
+
+def test_path_traversal_codes_are_rejected():
+    for bad in ("../fr", "..\\fr", "..", "", "fr/extra"):
+        with pytest.raises(ValueError, match="invalid|unknown"):
+            get_language(bad)
+
+
+def _write_minimal_toml(directory, code):
+    directory.mkdir(parents=True, exist_ok=True)
+    (directory / "template.txt").write_text("T {example_lines}\n", encoding="utf-8")
+    (directory / "shots.json").write_text(
+        '[{"simplified": "x", "traditional": "x", "pinyin": "Xx1", '
+        '"english": "g", "definition": "d"}]',
+        encoding="utf-8",
+    )
+    (directory / "dict.toml").write_text(
+        f"code = {code!r}\n"
+        'base_label = "B"\n'
+        'prompt_template = "template.txt"\n'
+        'few_shot = "shots.json"\n'
+        'prompt_version = "v0"\n'
+        'prompt_user_intro = "intro\\n"\n'
+        'target_language_name = "T"\n'
+        'output_slug = "s"\n'
+        'description = "D"\n',
+        encoding="utf-8",
+    )
+
+
+def test_code_mismatch_fails_loudly(tmp_path, monkeypatch):
+    _write_minimal_toml(tmp_path / "assets" / "fr", "es")
+    monkeypatch.chdir(tmp_path)
+    with pytest.raises(ValueError, match="requested"):
+        get_language("fr")
+
+
+def test_unknown_field_fails_loudly(tmp_path, monkeypatch):
+    _write_minimal_toml(tmp_path / "assets" / "fr", "fr")
+    monkeypatch.chdir(tmp_path)
+    with open(tmp_path / "assets" / "fr" / "dict.toml", "a", encoding="utf-8") as f:
+        f.write('bogus = "x"\n')
+    with pytest.raises(ValueError, match="unknown field"):
+        get_language("fr")
 
 
 def test_resolve_paths_uses_data_lang_layout():
@@ -88,8 +137,3 @@ def test_explicit_overrides_win_over_language_defaults(tmp_path):
     assert paths.human == tmp_path / "custom-human.u8"
     # Non-overridden paths still resolve under the given repo root.
     assert paths.llm_generated == tmp_path / "data" / "fr" / "llm_generated.json"
-
-
-def test_registry_codes_are_filesystem_safe():
-    for code in LANGUAGES:
-        assert code and "/" not in code and "\\" not in code

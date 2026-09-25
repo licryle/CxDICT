@@ -50,9 +50,8 @@ def test_workflow_triggers_on_source_data():
     on = workflow()[True]  # YAML parses unquoted `on` as boolean True
     paths = on["push"]["paths"]
     for watched in (
-        "data/fr/**",
-        "data/zh-CN-HSK03/**",
-        "data/cc-cedict/**",
+        "data/**",
+        "assets/**",
     ):
         assert watched in paths, watched
     assert on["push"]["branches"] == ["main"]

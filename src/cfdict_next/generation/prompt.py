@@ -4,31 +4,18 @@ Prompts are per entry, not per gloss: one entry (with its full gloss list)
 maps to one response object (with its full sense list). This keeps senses
 differentiated and makes gloss parity checkable on the response itself.
 
-Each target language owns its template + few-shot assets under
-`generation/assets/<code>/`, registered in `cfdict_next.languages`
-(spec §16: the prompt version is part of release provenance).
-`PROMPT_VERSION` below is the French version; other languages carry their
-own version from the registry (used by P4 generation wiring).
+Templates and few-shot examples live OUTSIDE this package, in
+child-owned ``<lang-dir>/<code>/`` directories (see
+``cfdict_next.languages``): the exact wording is versioned with the
+language data (spec §16: the prompt version is part of release
+provenance). Nothing here reads files at import time.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from pathlib import Path
 
 from ..languages import get_language
-
-ASSETS_DIR = Path(__file__).resolve().parent / "assets"
-
-# French defaults (backward compatible while P4 wires --language through).
-PROMPT_VERSION = "v6"
-TEMPLATE_NAME = "fr/generate_fr_v6.txt"
-
-# Few-shot examples live below (EXAMPLE_ITEMS / EXAMPLE_OUTPUTS), defined
-# after GenerationItem so the examples themselves are real items the
-# validator accepts — tests/test_generation.py runs them through it.
-# These module-level names are the French examples (backward compat);
-# other languages load via load_few_shot_for().
 
 
 @dataclass(frozen=True)
@@ -42,27 +29,23 @@ class GenerationItem:
     glosses: tuple[str, ...]
 
 
-# Few-shot examples: curated per-language pairs in
-# generation/assets/<code>/few_shot_examples.json ("english"/"definition"
-# split on "/" into glosses). The curated pairs must satisfy gloss parity
-# themselves — the model is shown nothing the validator would reject.
-# tests/test_generation.py enforces all this.
-FEW_SHOT_PATH = "fr/few_shot_examples.json"
-
-
 def _split_segments(text: str) -> tuple[str, ...]:
     """Split a '/'-separated gloss string (CEDICT segmentation)."""
     return tuple(s.strip() for s in text.split("/") if s.strip())
 
 
 def load_few_shot_for(code: str) -> tuple[list[GenerationItem], list[dict]]:
-    """Load curated examples for one language; enforce gloss parity."""
+    """Load curated examples for one language; enforce gloss parity.
+
+    The curated pairs must satisfy gloss parity themselves — the model is
+    shown nothing the validator would reject. tests/test_generation.py
+    enforces all this.
+    """
     import json
 
     from ..identity import compute_lexical_identity
 
-    cfg = get_language(code)
-    path = ASSETS_DIR / cfg.few_shot
+    path = get_language(code).few_shot
     raw = json.loads(path.read_text(encoding="utf-8"))
     items: list[GenerationItem] = []
     outputs: list[dict] = []
@@ -99,9 +82,6 @@ def load_few_shot_for(code: str) -> tuple[list[GenerationItem], list[dict]]:
     return items, outputs
 
 
-EXAMPLE_ITEMS, EXAMPLE_OUTPUTS = load_few_shot_for("fr")
-
-
 def _render_example_lines(
     items: list[GenerationItem], outputs: list[dict]
 ) -> str:
@@ -118,17 +98,9 @@ def _render_example_lines(
     return "\n".join(lines)
 
 
-EXAMPLE_LINES = _render_example_lines(EXAMPLE_ITEMS, EXAMPLE_OUTPUTS)
-
-
-def template_path_for(code: str) -> Path:
+def template_path_for(code: str):
     """Path of the versioned prompt template for one language."""
-    return ASSETS_DIR / get_language(code).prompt_template
-
-
-def prompt_template_path() -> Path:
-    """Path of the French versioned prompt template (backward compat)."""
-    return ASSETS_DIR / TEMPLATE_NAME
+    return get_language(code).prompt_template
 
 
 def render_prompt(items: list[GenerationItem], language: str) -> tuple[str, str]:

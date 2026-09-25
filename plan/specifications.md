@@ -213,8 +213,8 @@ The project should therefore operate within a reproducible Nix-based development
 The pipeline generalizes to further target dictionaries. Each language
 owns a `data/<code>/` directory (authoritative base if one exists,
 human.u8, llm_generated.json) over the shared CC-CEDICT scope, plus
-prompt assets under `generation/assets/<code>/` registered in
-`src/cfdict_next/languages.py`. Every command takes a required
+prompt assets under `assets/<code>/` described by `assets/<code>/dict.toml`
+(the engine ships zero language content). Every command takes a required
 `--language` (no default). The single sense field is `definition` for
 all languages; per-language prompt versions are stamped on each record.
 A language without an authoritative base (e.g. `zh-CN-HSK03`) runs the

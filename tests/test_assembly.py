@@ -12,7 +12,6 @@ from pathlib import Path
 import pytest
 
 from cfdict_next.assembly import (
-    BASE_SECTION_HEADER,
     HUMAN_SECTION_HEADER,
     LLM_SECTION_HEADER,
     assemble,
@@ -20,6 +19,7 @@ from cfdict_next.assembly import (
     assemble_sections,
     format_u8_entry,
     record_to_entry,
+    section_header_for,
     write_sectioned_u8_file,
     write_u8_file,
 )
@@ -225,11 +225,11 @@ def test_outputs_carry_section_headers_in_order(tmp_path):
     assemble_files(tmp_path / "cfdict.u8", tmp_path / "h.u8",
                      tmp_path / "l.json", c, f, "fr")
     c_lines = c.read_text(encoding="utf-8").splitlines()
-    assert c_lines[0] == BASE_SECTION_HEADER
+    assert c_lines[0] == section_header_for("fr")
     assert c_lines[2] == HUMAN_SECTION_HEADER
     assert LLM_SECTION_HEADER not in c_lines
     f_lines = f.read_text(encoding="utf-8").splitlines()
-    assert f_lines[0] == BASE_SECTION_HEADER
+    assert f_lines[0] == section_header_for("fr")
     assert f_lines[2] == HUMAN_SECTION_HEADER
     assert f_lines[4] == LLM_SECTION_HEADER
     # Headers parse as comments: entry content is unchanged.
@@ -243,19 +243,19 @@ def test_outputs_carry_section_headers_in_order(tmp_path):
 def test_empty_sections_omit_their_header(tmp_path):
     out = tmp_path / "o.u8"
     write_sectioned_u8_file(out, [
-        (BASE_SECTION_HEADER, [entry()]),
+        (section_header_for("fr"), [entry()]),
         (HUMAN_SECTION_HEADER, []),
         (LLM_SECTION_HEADER, []),
     ])
     lines = out.read_text(encoding="utf-8").splitlines()
-    assert lines == [BASE_SECTION_HEADER, format_u8_entry(entry()).strip()]
+    assert lines == [section_header_for("fr"), format_u8_entry(entry()).strip()]
 
 
 def test_section_header_comes_from_registry():
-    from cfdict_next.assembly import section_header_for
-
-    assert section_header_for("fr") == BASE_SECTION_HEADER
-    assert section_header_for("fr").startswith("# CFDICT Authoritative entries")
+    assert section_header_for("fr") == (
+        "# CFDICT Authoritative entries "
+        "(from https://chine.in/mandarin/dictionnaire/CFDICT/)"
+    )
     assert section_header_for("zh-CN-HSK03") == "# HSK3 base Authoritative entries"
 
 
@@ -279,8 +279,7 @@ def test_cli_requires_language(tmp_path):
 
     with pytest.raises(SystemExit):
         cli_main(["--base", str(tmp_path / "cfdict.u8")])
-    with pytest.raises(SystemExit):
-        cli_main(["--language", "xx-unknown", "--base", str(tmp_path / "cfdict.u8")])
+    assert cli_main(["--language", "xx-unknown", "--base", str(tmp_path / "cfdict.u8")]) == 1
 
 
 def test_sections_match_assemble_splits():

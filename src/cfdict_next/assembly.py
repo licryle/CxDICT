@@ -60,9 +60,6 @@ def section_header_for(code: str) -> str:
     if cfg.base_url:
         header += f" (from {cfg.base_url})"
     return header
-
-
-BASE_SECTION_HEADER = section_header_for("fr")
 # Human/LLM headers carry no paths: they are shared across languages and
 # land in the assembled artifacts, so any path would go stale on moves.
 HUMAN_SECTION_HEADER = "# Human-curated entries"

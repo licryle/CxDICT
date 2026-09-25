@@ -19,7 +19,7 @@ import sys
 from pathlib import Path
 
 
-from ..languages import LANGUAGES, get_language, resolve_paths
+from ..languages import get_language, resolve_paths
 from ..parser.json import load_llm_json
 from ..parser.u8 import parse_u8_file
 from ..scope_info import (
@@ -33,8 +33,8 @@ from ..scope_info import (
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--language", required=True, choices=sorted(LANGUAGES),
-                        help="target dictionary language")
+    parser.add_argument("--language", required=True,
+                        help="target dictionary language code (see assets/)")
     parser.add_argument("--base", default=None,
                         help="base dictionary file (default: data/<language>/…)")
     parser.add_argument("--human", default=None,
@@ -49,11 +49,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--llm-generated-version", default=None)
     parser.add_argument("--out", default=None)
     args = parser.parse_args(argv)
-    base_label = get_language(args.language).base_label
-    paths = resolve_paths(
-        args.language, base=args.base, human=args.human,
-        llm_generated=args.llm_generated, cc_cedict=args.cc_cedict,
-    )
+    try:
+        base_label = get_language(args.language).base_label
+        paths = resolve_paths(
+            args.language, base=args.base, human=args.human,
+            llm_generated=args.llm_generated, cc_cedict=args.cc_cedict,
+        )
+    except (ValueError, OSError) as exc:
+        print(f"scope info failed: {exc}", file=sys.stderr)
+        return 1
 
     try:
         if paths.base is None:

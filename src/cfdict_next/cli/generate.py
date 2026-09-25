@@ -25,15 +25,15 @@ from pathlib import Path
 from ..generation.config import load_config
 from ..generation.llm import GenerationError
 from ..generation.orchestrator import generate_files
-from ..languages import LANGUAGES, resolve_paths
+from ..languages import resolve_paths
 from ..scope_info import sha256_file
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--env", default=".env")
-    parser.add_argument("--language", required=True, choices=sorted(LANGUAGES),
-                        help="target dictionary language")
+    parser.add_argument("--language", required=True,
+                        help="target dictionary language code (see assets/)")
     parser.add_argument("--base", default=None,
                         help="base dictionary file (default: data/<language>/…)")
     parser.add_argument("--cc-cedict", default=None,
@@ -64,10 +64,14 @@ def main(argv: list[str] | None = None) -> int:
         import dataclasses
 
         config = dataclasses.replace(config, batch_size=args.batch_size)
-    paths = resolve_paths(
-        args.language, base=args.base, cc_cedict=args.cc_cedict,
-        human=args.human, llm_generated=args.llm_generated,
-    )
+    try:
+        paths = resolve_paths(
+            args.language, base=args.base, cc_cedict=args.cc_cedict,
+            human=args.human, llm_generated=args.llm_generated,
+        )
+    except (ValueError, OSError) as exc:
+        print(f"generate failed: {exc}", file=sys.stderr)
+        return 1
     try:
         cc_version = args.cc_version or sha256_file(paths.cc_cedict)
         report = generate_files(

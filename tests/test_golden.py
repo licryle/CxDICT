@@ -5,10 +5,10 @@ to ordering, headers, formatting, or scope text fails here first.
 """
 
 from cfdict_next.assembly import (
-    BASE_SECTION_HEADER,
     HUMAN_SECTION_HEADER,
     LLM_SECTION_HEADER,
     assemble_files,
+    section_header_for,
 )
 from cfdict_next.parser.u8 import DictionaryEntry
 from cfdict_next.scope_info import (
@@ -69,13 +69,13 @@ def test_fr_assembly_golden_bytes(tmp_path):
     out_c, out_f = tmp_path / "c.u8", tmp_path / "f.u8"
     assert assemble_files(base_p, human_p, llm_p, out_c, out_f, "fr") == (2, 3)
     assert out_c.read_text(encoding="utf-8") == (
-        BASE_SECTION_HEADER + "\n"
+        section_header_for("fr") + "\n"
         + _u8_line("中國", "中国", "Zhong1 guo2", ["Chine"])
         + HUMAN_SECTION_HEADER + "\n"
         + _u8_line("美", "美", "Mei3", ["beau"])
     )
     assert out_f.read_text(encoding="utf-8") == (
-        BASE_SECTION_HEADER + "\n"
+        section_header_for("fr") + "\n"
         + _u8_line("中國", "中国", "Zhong1 guo2", ["Chine"])
         + HUMAN_SECTION_HEADER + "\n"
         + _u8_line("美", "美", "Mei3", ["beau"])

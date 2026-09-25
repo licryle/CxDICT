@@ -1,0 +1,15 @@
+# Language definition: HSK3-level Chinese (CNDict target).
+# No authoritative base: base_filename/base_url stay absent (null).
+# Paths below are relative to this file's directory.
+
+code = "zh-CN-HSK03"
+base_label = "HSK3 base"
+prompt_template = "generate_hsk3_v1.txt"
+few_shot = "few_shot_examples.json"
+prompt_version = "v1"
+prompt_user_intro = """Explain the meanings of the Chinese entries below in simple Chinese for an HSK 3 learner.
+Entries to explain:
+"""
+target_language_name = "HSK3-level Chinese"
+output_slug = "hsk3"
+description = "HSK3-level definitions, LLM generated, that an HSK3 learner should understand, hence focused on using mostly HSK3 vocabulary."

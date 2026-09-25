@@ -16,13 +16,13 @@ from pathlib import Path
 
 
 from ..cleanup import cleanup_files
-from ..languages import LANGUAGES, resolve_paths
+from ..languages import resolve_paths
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--language", required=True, choices=sorted(LANGUAGES),
-                        help="target dictionary language")
+    parser.add_argument("--language", required=True,
+                        help="target dictionary language code (see assets/)")
     parser.add_argument("--base", default=None,
                         help="base dictionary file (default: data/<language>/…)")
     parser.add_argument("--human", default=None,
@@ -31,10 +31,14 @@ def main(argv: list[str] | None = None) -> int:
                         help="LLM dataset file (default: data/<language>/llm_generated.json)")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args(argv)
-    paths = resolve_paths(
-        args.language, base=args.base, human=args.human,
-        llm_generated=args.llm_generated,
-    )
+    try:
+        paths = resolve_paths(
+            args.language, base=args.base, human=args.human,
+            llm_generated=args.llm_generated,
+        )
+    except (ValueError, OSError) as exc:
+        print(f"cleanup failed: {exc}", file=sys.stderr)
+        return 1
 
     try:
         report = cleanup_files(

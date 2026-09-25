@@ -552,8 +552,7 @@ def test_cli_requires_language(tmp_path):
 
     with pytest.raises(SystemExit):
         cli_main(["--env", str(tmp_path / ".env")])
-    with pytest.raises(SystemExit):
-        cli_main(["--env", str(tmp_path / ".env"), "--language", "xx-unknown"])
+    assert cli_main(["--env", str(tmp_path / ".env"), "--language", "xx-unknown"]) == 1
 
 
 def test_prompt_version_comes_from_registry(tmp_path):

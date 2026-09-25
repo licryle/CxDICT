@@ -92,8 +92,7 @@ def test_cli_requires_language():
 
     with pytest.raises(SystemExit):
         cli_main(["--dry-run"])
-    with pytest.raises(SystemExit):
-        cli_main(["--language", "xx-unknown", "--dry-run"])
+    assert cli_main(["--language", "xx-unknown", "--dry-run"]) == 1
 
 
 def test_full_run_end_to_end(tmp_path):

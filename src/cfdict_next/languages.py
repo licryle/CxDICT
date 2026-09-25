@@ -1,92 +1,115 @@
-"""Per-language configuration registry (multilingual steps 1+2).
+"""Per-language configuration, loaded from ``dict.toml`` files (CXDict boundary).
 
-Centralizes everything that varies per target language so the engine
-(identity, parser, scope, cleanup, validation, assembly, orchestrator)
-stays language-agnostic and consumes a :class:`LanguageConfig`.
+Everything that varies per target language lives OUTSIDE this package, in
+``assets/<code>/dict.toml`` files (prompt template and few-shot paths
+inside are relative to the TOML file's directory, so language directories
+stay relocatable). The engine itself ships zero language content: adding
+a language means adding a directory, never editing engine code.
 
-P0 scope: additive only. Nothing else imports this module yet; later
-phases (CLI defaults, prompt assets, headers, scope labels) will resolve
-through :func:`get_language` / :func:`resolve_paths` instead of hardcoded
-French paths and names.
-
-Languages:
-- ``fr`` — French definitions (current pipeline, backward compatible).
-- ``zh-CN-HSK03`` — HSK3-level Chinese definitions: LLM-generated
-  definitions that an HSK3 learner should understand, focused on using
-  mostly HSK3 vocabulary. There is no authoritative upstream base, so
-  ``base_filename``/``base_url`` are None and the pipeline runs
-  human + LLM with the same precedence rules (base contributes nothing).
+Resolution is a plain CWD convention — ``./assets``, exactly like
+``./data`` — so checkouts and child repos work with no extra flags.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import tomllib
+from dataclasses import dataclass, field
 from pathlib import Path
 
 # CC-CEDICT is the shared Chinese lexical scope for every language —
 # it lives outside any ``data/<lang>/`` directory.
 CC_CEDICT_REL = Path("data/cc-cedict/cedict_1_0_ts_utf-8_mdbg.txt.gz")
 
+#: Language directory (CWD-relative, mirroring ``data/``).
+ASSETS_DIR = Path("assets")
+
+#: Fields every dict.toml must define (besides the optional base pair).
+_REQUIRED_FIELDS = (
+    "code",
+    "base_label",
+    "prompt_template",
+    "few_shot",
+    "prompt_version",
+    "prompt_user_intro",
+    "target_language_name",
+    "output_slug",
+    "description",
+)
+
 
 @dataclass(frozen=True)
 class LanguageConfig:
-    """Everything that varies per target language."""
+    """Everything that varies per target language, loaded from dict.toml."""
 
     code: str  # directory key: "fr", "zh-CN-HSK03" (data/<code>/, output/<code>/)
     base_filename: str | None  # authoritative base filename in data/<code>/ (None = no base)
     base_label: str  # human label rendered in scope info / section headers
     base_url: str | None  # provenance URL for the base (None when there is no upstream)
-    prompt_template: str  # asset path relative to generation/assets/
-    few_shot: str  # asset path relative to generation/assets/
+    prompt_template: Path  # absolute path of the versioned prompt template
+    few_shot: Path  # absolute path of the curated few-shot examples
     prompt_version: str  # stamped on every generated record
     prompt_user_intro: str  # user-message prefix for generation batches
     target_language_name: str  # used when rendering prompts ("French", ...)
     output_slug: str  # output/<code>/<slug>-next-{human,full}.u8
     description: str  # one-line description of the target dictionary
+    config_dir: Path = field(compare=False)  # directory holding dict.toml
 
 
-LANGUAGES: dict[str, LanguageConfig] = {
-    "fr": LanguageConfig(
-        code="fr",
-        base_filename="cfdict.u8",
-        base_label="CFDICT",
-        base_url="https://chine.in/mandarin/dictionnaire/CFDICT/",
-        prompt_template="fr/generate_fr_v6.txt",
-        few_shot="fr/few_shot_examples.json",
-        prompt_version="v6",
-        prompt_user_intro=(
-            "Translate the meanings of the Chinese entries below into French.\n"
-            "Entries to translate:\n"
-        ),
-        target_language_name="French",
-        output_slug="cfdict",
-        description="French definitions (CFDICT authoritative base + LLM coverage).",
-    ),
-    "zh-CN-HSK03": LanguageConfig(
-        code="zh-CN-HSK03",
-        base_filename=None,
-        base_label="HSK3 base",
-        base_url=None,
-        prompt_template="zh-CN-HSK03/generate_hsk3_v1.txt",
-        few_shot="zh-CN-HSK03/few_shot_examples.json",
-        prompt_version="v1",
-        prompt_user_intro=(
-            "Explain the meanings of the Chinese entries below in simple "
-            "Chinese for an HSK 3 learner.\n"
-            "Entries to explain:\n"
-        ),
-        target_language_name="HSK3-level Chinese",
-        output_slug="hsk3",
-        description=(
-            "HSK3-level definitions, LLM generated, that an HSK3 learner should understand, "
-            "hence focused on using mostly HSK3 vocabulary."
-        ),
-    ),
-}
+def _lang_toml_path(code: str) -> Path:
+    return ASSETS_DIR / code / "dict.toml"
 
-#: Backward-compatible default: the current pipeline behaves as ``fr``
-#: unless ``--language`` says otherwise (P4 wires this into the CLIs).
-DEFAULT_LANGUAGE = "fr"
+
+def get_language(code: str) -> LanguageConfig:
+    """Load and validate one language definition; fail loud on any problem."""
+    if not code or "/" in code or "\\" in code or code in (".", ".."):
+        raise ValueError(f"invalid language code {code!r}")
+    toml_path = _lang_toml_path(code)
+    try:
+        with open(toml_path, "rb") as f:
+            raw = tomllib.load(f)
+    except FileNotFoundError:
+        raise ValueError(
+            f"unknown language {code!r} (no {toml_path}; "
+            "run from a tree holding assets/<code>/dict.toml)"
+        ) from None
+    except (OSError, tomllib.TOMLDecodeError) as exc:
+        raise ValueError(f"{toml_path}: cannot load language definition: {exc}") from exc
+    if not isinstance(raw, dict):
+        raise ValueError(f"{toml_path}: top level must be a TOML table")
+    unknown = sorted(set(raw) - set(_REQUIRED_FIELDS) - {"base_filename", "base_url"})
+    if unknown:
+        raise ValueError(f"{toml_path}: unknown field(s): {', '.join(unknown)}")
+    missing = [name for name in _REQUIRED_FIELDS if name not in raw]
+    if missing:
+        raise ValueError(f"{toml_path}: missing field(s): {', '.join(missing)}")
+    for name in (*_REQUIRED_FIELDS, "base_filename", "base_url"):
+        value = raw.get(name)
+        if value is not None and not isinstance(value, str):
+            raise ValueError(f"{toml_path}: {name!r} must be a string")
+    if raw["code"] != code:
+        raise ValueError(
+            f"{toml_path}: code is {raw['code']!r} but {code!r} was requested"
+        )
+    config_dir = toml_path.parent.absolute()
+    template = config_dir / raw["prompt_template"]
+    few_shot = config_dir / raw["few_shot"]
+    for label, path in (("prompt_template", template), ("few_shot", few_shot)):
+        if not path.is_file():
+            raise ValueError(f"{toml_path}: {label} not found: {path}")
+    return LanguageConfig(
+        code=raw["code"],
+        base_filename=raw.get("base_filename"),
+        base_url=raw.get("base_url"),
+        base_label=raw["base_label"],
+        prompt_template=template,
+        few_shot=few_shot,
+        prompt_version=raw["prompt_version"],
+        prompt_user_intro=raw["prompt_user_intro"],
+        target_language_name=raw["target_language_name"],
+        output_slug=raw["output_slug"],
+        description=raw["description"],
+        config_dir=config_dir,
+    )
 
 
 @dataclass(frozen=True)
@@ -100,15 +123,6 @@ class ResolvedPaths:
     out_human: Path
     out_full: Path
     scope_out: Path
-
-
-def get_language(code: str) -> LanguageConfig:
-    """Return the config for ``code``; raise ValueError listing available codes."""
-    try:
-        return LANGUAGES[code]
-    except KeyError:
-        available = ", ".join(sorted(LANGUAGES))
-        raise ValueError(f"unknown language {code!r} (available: {available})") from None
 
 
 def resolve_paths(
@@ -128,6 +142,9 @@ def resolve_paths(
     Explicit arguments win over language defaults, so every CLI can accept
     ``--base/--human/...`` overrides while ``--language`` supplies the rest.
     ``repo_root`` anchors all relative defaults (tests pass ``tmp_path``).
+    The language definition itself always comes from ``./assets`` (CWD
+    convention) — pass an absolute ``repo_root`` and matching overrides
+    when driving another tree.
     Languages without an authoritative base (``base_filename is None``)
     resolve ``base`` to None unless an explicit ``base=`` override is given;
     downstream stages treat None as "no base identities" (empty set).

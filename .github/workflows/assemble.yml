@@ -5,9 +5,8 @@ on:
   push:
     branches: [main]
     paths:
-      - "data/fr/**"
-      - "data/zh-CN-HSK03/**"
-      - "data/cc-cedict/**"
+      - "data/**"
+      - "assets/**"
       - "src/**"
       - "scripts/**"
       - "flake.nix"

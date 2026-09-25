@@ -1,0 +1,16 @@
+# Language definition: French (CFDICT-Next target).
+# Paths below are relative to this file's directory.
+
+code = "fr"
+base_filename = "cfdict.u8"
+base_label = "CFDICT"
+base_url = "https://chine.in/mandarin/dictionnaire/CFDICT/"
+prompt_template = "generate_fr_v6.txt"
+few_shot = "few_shot_examples.json"
+prompt_version = "v6"
+prompt_user_intro = """Translate the meanings of the Chinese entries below into French.
+Entries to translate:
+"""
+target_language_name = "French"
+output_slug = "cfdict"
+description = "French definitions (CFDICT authoritative base + LLM coverage)."

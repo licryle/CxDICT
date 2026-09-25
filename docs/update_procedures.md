@@ -30,15 +30,12 @@ next `generate` run picks up exactly the new entries.
 - New records always carry `llm_model`, `prompt_version`,
   `cc_cedict_version`, and `generation_date` (spec §8, §16) — stamped by
   the orchestrator, never hand-written.
-- A new prompt template means a new file under
-  `src/cfdict_next/generation/assets/<code>/` (e.g.
+- A new prompt template means a new file under `assets/<code>/` (e.g.
   `fr/generate_fr_vN.txt`), a bumped prompt version for that language in
-  `src/cfdict_next/languages.py`, and re-validation of anything it
-  produced. Never rewrite history: old records keep their original
-  prompt version.
-- Few-shot examples live in `src/cfdict_next/generation/assets/<code>/`
-  and are machine-checked by the suite — editing them runs the same
-  tests as code.
+  `assets/<code>/dict.toml`, and re-validation of anything it produced.
+  Never rewrite history: old records keep their original prompt version.
+- Few-shot examples live in `assets/<code>/` and are machine-checked by
+  the suite — editing them runs the same tests as code.
 
 ## Release cycle and versioning
 
