@@ -11,8 +11,9 @@ The identity key MUST equal the identity computed from the record's own
 `traditional`/`simplified`/`pinyin` fields; `src/cfdict_next/parser/json.py` rejects
 any mismatch instead of guessing (spec §14).
 
-Human curation lives separately in `data/human.u8` (raw .u8, free-form
-French). The model is never asked to rate its own confidence.
+Human curation lives separately in `data/<lang>/human.u8` (raw .u8,
+free-form target language). The model is never asked to rate its own
+confidence.
 
 ## Record layout: one record per entry, one sense per gloss
 
@@ -45,7 +46,7 @@ around it.
 
 ## Gloss parity — accept/reject criterion
 
-The French dictionary must carry the **same number of glosses per
+Each target dictionary must carry the **same number of glosses per
 entry as the English source**: the set of `source_gloss` values in a
 record must **exactly equal** the CC-CEDICT gloss set for that entry.
 A record that drops a gloss, or invents one absent from CC-CEDICT, is

@@ -1,7 +1,7 @@
 # LLM generation — input specification (spec §5, §6)
 
 The LLM generation process is **offline**. For each item in the missing scope
-(`CC-CEDICT − CFDICT − CFDICT-LLM`, see `src/cfdict_next/scope.py`), the CEDICT entry is
+(`CC-CEDICT − base − human − LLM`, see `src/cfdict_next/scope.py`), the CEDICT entry is
 processed **at the gloss/sense level**, not at the entry level.
 
 Example (spec §5): the entry
@@ -92,3 +92,12 @@ sends one prompt per entry carrying its full gloss list, and the outputs for
 one entry are grouped into a single record whose senses must cover all of
 the entry's
 glosses (gloss parity — see the output spec).
+
+## Other languages
+
+The worked example above is the French instantiation (templates in
+`generation/assets/fr/`; the HSK3 templates live in
+`generation/assets/zh-CN-HSK03/`). Every language follows the same
+contract — Chinese + pinyin as the primary source, English glosses as
+disambiguation anchors, one `definition` per gloss — differing only in
+the target voice (French dictionary style vs. HSK3-level Chinese).

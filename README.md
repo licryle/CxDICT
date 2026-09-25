@@ -94,7 +94,7 @@ Assembly refuses overlapping inputs instead of overriding them:
 
 ```
 CFDICT-Next/
-├── data/                 # cfdict.u8, human.u8, llm_generated.json, cc-cedict/ + README provenance
+├── data/                 # per-language dirs (fr/, zh-CN-HSK03/) + shared cc-cedict/ + README provenance
 ├── src/cfdict_next/      # importable package (parser, generation, cli, assembly, validation, ...)
 ├── scripts/              # thin shims resolving to src/cfdict_next/cli/* (same names)
 ├── schemas/              # single normative LLM record schema + thin file wrapper
@@ -105,8 +105,8 @@ CFDICT-Next/
 └── README.md
 ```
 
-Generated dictionaries (`output/`) and release notes (`scope.md`) are
-build artifacts, never committed sources.
+Generated dictionaries (`output/<lang>/`) and release notes
+(`output/<lang>/scope.md`) are build artifacts, never committed sources.
 
 Further reading: `plan/specifications.md` (the spec),
 `docs/llm_input_spec.md` + `docs/llm_output_spec.md` (generation

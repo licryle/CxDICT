@@ -63,8 +63,10 @@ def section_header_for(code: str) -> str:
 
 
 BASE_SECTION_HEADER = section_header_for("fr")
-HUMAN_SECTION_HEADER = "# Human-curated entries (data/human.u8)"
-LLM_SECTION_HEADER = "# LLM-Generated entries (data/llm_generated.json)"
+# Human/LLM headers carry no paths: they are shared across languages and
+# land in the assembled artifacts, so any path would go stale on moves.
+HUMAN_SECTION_HEADER = "# Human-curated entries"
+LLM_SECTION_HEADER = "# LLM-Generated entries"
 
 
 def assemble_sections(

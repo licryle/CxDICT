@@ -209,3 +209,13 @@ Nix;
 a Nix shell;
 direnv.
 The project should therefore operate within a reproducible Nix-based development environment rather than depending on an unmanaged system Python installation.
+18. Multilingual addendum
+The pipeline generalizes to further target dictionaries. Each language
+owns a `data/<code>/` directory (authoritative base if one exists,
+human.u8, llm_generated.json) over the shared CC-CEDICT scope, plus
+prompt assets under `generation/assets/<code>/` registered in
+`src/cfdict_next/languages.py`. Every command takes a required
+`--language` (no default). The single sense field is `definition` for
+all languages; per-language prompt versions are stamped on each record.
+A language without an authoritative base (e.g. `zh-CN-HSK03`) runs the
+same precedence pipeline with an empty base set.
