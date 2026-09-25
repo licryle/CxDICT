@@ -162,10 +162,27 @@ jobs:
           SHA="$(git rev-parse HEAD)"
           LTAG="latest-${CODE}"
           DTAG="CxDICT-${NAME}-${DATE}"
+          ASSETS=()
+  
+          for f in \
+            "output/${CODE}/${{ steps.meta.outputs.human }}" \
+            "output/${CODE}/${{ steps.meta.outputs.full }}"
+          do
+            if [ -s "$f" ]; then
+              ASSETS+=("$f")
+            else
+              echo "Skipping empty release asset: $f"
+            fi
+          done
+          
+          if [ "${#ASSETS[@]}" -eq 0 ]; then
+            echo "Error: no non-empty release assets to publish"
+            exit 1
+          fi
+
           if gh release view "$LTAG" >/dev/null 2>&1; then
             gh release upload --clobber "$LTAG" \
-              "output/${CODE}/${{ steps.meta.outputs.human }}" \
-              "output/${CODE}/${{ steps.meta.outputs.full }}"
+              "${ASSETS[@]}"
             gh release edit "$LTAG" \
               --title "CxDICT ${NAME} ${DATE}" \
               --notes-file "output/${CODE}/scope.md"
@@ -174,8 +191,7 @@ jobs:
               --target "$SHA" \
               --title "CxDICT ${NAME} ${DATE}" \
               --notes-file "output/${CODE}/scope.md" \
-              "output/${CODE}/${{ steps.meta.outputs.human }}" \
-              "output/${CODE}/${{ steps.meta.outputs.full }}"
+              "${ASSETS[@]}"
           fi
           git tag -f "$LTAG" "$SHA"
           git push --force origin "$LTAG"

@@ -65,7 +65,7 @@ def test_workflow_has_test_then_release_jobs():
     steps = " ".join(
         str(step) for step in jobs["release"]["steps"]
     )
-    for stage in ("validate", "ssemble", "cope", "release"):
+    for stage in ("validate", "assemble", "scope", "release"):
         assert stage in steps, stage
 
 
@@ -255,3 +255,23 @@ def test_pipeline_fails_fast_on_overlap(pipeline_data):
     )
     assert r.returncode == 1
     assert "overlap" in (r.stdout + r.stderr).lower()
+
+def test_empty_release_assets_are_skipped():
+    steps = " ".join(
+        str(step) for step in workflow()["jobs"]["release"]["steps"]
+    )
+
+    assert "ASSETS=()" in steps
+    assert 'if [ -s "$f" ]; then' in steps
+    assert 'ASSETS+=("$f")' in steps
+    assert 'echo "Skipping empty release asset: $f"' in steps
+    assert '"${ASSETS[@]}"' in steps
+
+def test_release_fails_if_all_assets_are_empty():
+    steps = " ".join(
+        str(step) for step in workflow()["jobs"]["release"]["steps"]
+    )
+
+    assert 'if [ "${#ASSETS[@]}" -eq 0 ]; then' in steps
+    assert 'echo "Error: no non-empty release assets to publish"' in steps
+    assert "exit 1" in steps
