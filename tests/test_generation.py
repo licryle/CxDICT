@@ -420,6 +420,132 @@ def test_generate_batch_maps_entries_to_sense_lists():
     assert len(results) == 2
 
 
+def test_generate_batch_accepts_string_ids():
+    # Regression: qwen3.5-9b-mtp returns string ids ("0", "1") while the
+    # few-shot examples show JSON numbers — both spell the same index.
+    def fake_post(endpoint, model, system, user, timeout_s, api_key=None):
+        return chat_body(
+            [
+                {
+                    "id": "0",
+                    "word": "中国",
+                    "senses": [
+                        {"gloss": "China", "definition": "pays d'Asie"},
+                        {"gloss": "Middle Kingdom", "definition": "Empire du Milieu"},
+                    ],
+                },
+                {
+                    "id": "1",
+                    "word": "行",
+                    "senses": [{"gloss": "to walk", "definition": "marcher"}],
+                },
+            ]
+        )
+
+    outcome = generate_batch(make_items(), make_config(), language="fr", post=fake_post)
+    assert outcome.failed == []
+    assert [r.key for r in outcome.results] == ["中國|中国|Zhong1 guo2", "行|行|Xing2"]
+
+
+def test_generate_batch_accepts_mixed_int_and_string_ids():
+    def fake_post(*args):
+        return chat_body(
+            [
+                {
+                    "id": 0,
+                    "word": "中国",
+                    "senses": [
+                        {"gloss": "China", "definition": "pays"},
+                        {"gloss": "Middle Kingdom", "definition": "Empire"},
+                    ],
+                },
+                {
+                    "id": "1",
+                    "word": "行",
+                    "senses": [{"gloss": "to walk", "definition": "marcher"}],
+                },
+            ]
+        )
+
+    outcome = generate_batch(make_items(), make_config(), language="fr", post=fake_post)
+    assert outcome.failed == []
+    assert len(outcome.results) == 2
+
+
+def test_string_id_duplicate_is_rejected():
+    # 0 and "0" are the same index: a response carrying both repeats it.
+    def fake_post(*args):
+        return chat_body(
+            [
+                {
+                    "id": 0,
+                    "word": "中国",
+                    "senses": [
+                        {"gloss": "China", "definition": "pays"},
+                        {"gloss": "Middle Kingdom", "definition": "Empire"},
+                    ],
+                },
+                {
+                    "id": "0",
+                    "word": "行",
+                    "senses": [{"gloss": "to walk", "definition": "marcher"}],
+                },
+            ]
+        )
+
+    with pytest.raises(GenerationError, match="repeats id"):
+        generate_batch(make_items(), make_config(), language="fr", post=fake_post)
+
+
+def test_non_numeric_string_id_is_rejected():
+    def fake_post(*args):
+        return chat_body(
+            [
+                {
+                    "id": "foo",
+                    "word": "中国",
+                    "senses": [
+                        {"gloss": "China", "definition": "pays"},
+                        {"gloss": "Middle Kingdom", "definition": "Empire"},
+                    ],
+                },
+                {
+                    "id": 1,
+                    "word": "行",
+                    "senses": [{"gloss": "to walk", "definition": "marcher"}],
+                },
+            ]
+        )
+
+    with pytest.raises(GenerationError, match="unknown ids"):
+        generate_batch(make_items(), make_config(), language="fr", post=fake_post)
+
+
+def test_bool_id_is_rejected_not_mapped_to_entry_one():
+    # True == 1 in Python: a bool id must not silently map onto entry 1.
+    def fake_post(*args):
+        return chat_body(
+            [
+                {
+                    "id": True,
+                    "word": "中国",
+                    "senses": [
+                        {"gloss": "China", "definition": "pays"},
+                        {"gloss": "Middle Kingdom", "definition": "Empire"},
+                    ],
+                },
+                {
+                    "id": 1,
+                    "word": "行",
+                    "senses": [{"gloss": "to walk", "definition": "marcher"}],
+                },
+            ]
+        )
+
+    with pytest.raises(GenerationError, match="unknown ids"):
+        generate_batch(make_items(), make_config(), language="fr", post=fake_post)
+
+
 def test_generate_batch_renders_hsk3_prompt():
     def fake_post(endpoint, model, system, user, timeout_s, api_key=None):
         assert "HSK 3" in system

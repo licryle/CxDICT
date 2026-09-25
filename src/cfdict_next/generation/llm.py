@@ -189,6 +189,31 @@ class BatchOutcome:
     causes: dict[str, str]
 
 
+def _normalize_id(raw_id: Any) -> int | None:
+    """Coerce a response id to its entry index; None when not coercible.
+
+    The prompt shows entries as ``[0]``, ``[1]``, ... and the few-shot
+    examples use JSON numbers — but real models (e.g. qwen3.5-9b-mtp)
+    return string ids (``"0"``, ``"1"``). Both spell the same index, so
+    both are accepted. Anything else (non-numeric strings, floats,
+    bools — ``bool`` is an ``int`` subclass — objects) is left to the
+    caller, which reports it as an unknown id. Whitespace around digit
+    strings is tolerated.
+    """
+    if isinstance(raw_id, bool):
+        return None
+    if isinstance(raw_id, int):
+        return raw_id
+    if isinstance(raw_id, str):
+        text = raw_id.strip()
+        if text and (text.lstrip("+-").isdigit()):
+            try:
+                return int(text)
+            except ValueError:
+                return None
+    return None
+
+
 def _check_envelope(raw: Any, n: int) -> dict[Any, Any]:
     """Validate the response envelope; return objects keyed by id.
 
@@ -201,15 +226,34 @@ def _check_envelope(raw: Any, n: int) -> dict[Any, Any]:
             f"got {type(raw).__name__}: {str(raw)[:200]!r}"
         )
     by_id: dict[Any, Any] = {}
+    unknown: list[Any] = []
+    seen_unknown: set[str] = set()
     for obj in raw:
         if not isinstance(obj, dict) or "id" not in obj:
             raise GenerationError(f"LLM response object has no 'id': {obj!r}")
-        if obj["id"] in by_id:
+        key = _normalize_id(obj["id"])
+        if key is None:
+            # Non-coercible (non-numeric string, bool, float, ...): never
+            # let it share the int-keyed dict — e.g. True == 1 in Python,
+            # so storing raw True would false-collide with entry 1.
+            tag = repr(obj["id"])
+            if tag in seen_unknown:
+                raise GenerationError(f"LLM response repeats id {obj['id']!r}")
+            seen_unknown.add(tag)
+            unknown.append(obj["id"])
+            continue
+        if key in by_id:
             raise GenerationError(f"LLM response repeats id {obj['id']!r}")
-        by_id[obj["id"]] = obj
+        by_id[key] = obj
+    if unknown:
+        raise GenerationError(
+            f"LLM response has unknown ids: {sorted(unknown, key=repr)}"
+        )
     extra = set(by_id) - set(range(n))
     if extra:
-        raise GenerationError(f"LLM response has unknown ids: {sorted(extra)}")
+        raise GenerationError(
+            f"LLM response has unknown ids: {sorted(extra, key=repr)}"
+        )
     return by_id
 
 
