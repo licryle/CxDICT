@@ -63,7 +63,7 @@ def section_header_for(code: str) -> str:
 # Human/LLM headers carry no paths: they are shared across languages and
 # land in the assembled artifacts, so any path would go stale on moves.
 HUMAN_SECTION_HEADER = "# Human-curated entries"
-LLM_SECTION_HEADER = "# LLM-Generated entries"
+LLM_SECTION_HEADER = "# LLM-Generated entries using CC-CEDICT (Under license CC BY-SA 4.0) as lexical scope (from https://www.mdbg.net/chinese/dictionary?page=cc-cedict)"
 
 
 def assemble_sections(

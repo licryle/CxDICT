@@ -164,7 +164,7 @@ def render_scope_markdown(
             coverage["full_dictionary_covers_cc_cedict"],
         ),
         "",
-        "## Provenance",
+        "## LLM Generation details",
         "",
         f"- LLM models: {', '.join(provenance['llm_models']) or 'n/a'}",
         f"- Prompt versions: {', '.join(provenance['prompt_versions']) or 'n/a'}",

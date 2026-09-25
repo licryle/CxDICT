@@ -18,7 +18,7 @@ def test_french_config_matches_current_pipeline_reality():
     fr = get_language("fr")
     assert fr.code == "fr"
     assert fr.base_filename == "cfdict.u8"
-    assert fr.base_label == "CFDICT"
+    assert fr.base_label == "CFDICT (Under license CC BY-SA 3.0)"
     assert fr.base_url == "https://chine.in/mandarin/dictionnaire/CFDICT/"
     assert fr.prompt_template.name == "generate_fr_v6.txt"
     assert fr.prompt_template.is_file()

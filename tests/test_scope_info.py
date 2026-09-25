@@ -148,7 +148,7 @@ def test_cli_on_real_data(tmp_path):
     assert "sha256:" not in text  # versions omitted from notes by design
     assert "## Scope" not in text
     assert "56300" in text or "56,300" in text or "56279" in text
-    assert "| CFDICT (authoritative) |" in text
+    assert "| CFDICT (Under license CC BY-SA 3.0) (authoritative) |" in text
 
 
 def test_cli_requires_language(tmp_path):

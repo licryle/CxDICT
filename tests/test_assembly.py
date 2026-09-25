@@ -255,7 +255,7 @@ def test_empty_sections_omit_their_header(tmp_path):
 
 def test_section_header_comes_from_registry():
     assert section_header_for("fr") == (
-        "# CFDICT Authoritative entries "
+        "# CFDICT (Under license CC BY-SA 3.0) Authoritative entries "
         "(from https://chine.in/mandarin/dictionnaire/CFDICT/)"
     )
     assert section_header_for("zh-CN-HSK03") == "# HSK3 base Authoritative entries"

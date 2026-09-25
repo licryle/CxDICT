@@ -3,7 +3,7 @@
 
 code = "fr"
 base_filename = "cfdict.u8"
-base_label = "CFDICT"
+base_label = "CFDICT (Under license CC BY-SA 3.0)"
 base_url = "https://chine.in/mandarin/dictionnaire/CFDICT/"
 prompt_template = "assets/generate_fr_v6.txt"
 few_shot = "assets/few_shot_examples.json"

@@ -146,7 +146,7 @@ def test_scope_markdown_golden_text():
         "| CxDICT-CFDICT-Human | 2 | 2 (50.0%) | 0 |\n"
         "| CxDICT-CFDICT-Full | 3 | 3 (75.0%) | 0 |\n"
         "\n"
-        "## Provenance\n"
+        "## LLM Generation details\n"
         "\n"
         "- LLM models: m1\n"
         "- Prompt versions: p1\n"
