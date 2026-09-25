@@ -5,9 +5,8 @@ on:
   push:
     branches: [main]
     paths:
-      - "data/cfdict.u8"
-      - "data/human.u8"
-      - "data/llm_generated.json"
+      - "data/fr/**"
+      - "data/zh-CN-HSK03/**"
       - "data/cc-cedict/**"
       - "src/**"
       - "scripts/**"
@@ -48,7 +47,7 @@ jobs:
 
       # 2. Assemble both dictionaries (spec §10): CC-CEDICT scope is an
       #    input to assembly via --cc-cedict for provenance; precedence
-      #    CFDICT > human > llm_generated is enforced, overlaps fail (spec §14).
+      #    base > human > llm_generated is enforced, overlaps fail (spec §14).
       - name: Assemble dictionaries
         run: nix develop --command python scripts/assemble.py --language fr
 
@@ -56,11 +55,11 @@ jobs:
       - name: Validate outputs
         run: >-
           nix develop --command python scripts/validate.py --language fr
-          --out-human output/cfdict-next-human.u8 --out-full output/cfdict-next-full.u8
+          --out-human output/fr/cfdict-next-human.u8 --out-full output/fr/cfdict-next-full.u8
 
       # 4. Scope information for the release notes (spec §12, §16).
       - name: Scope information
-        run: nix develop --command python scripts/scope_info.py --language fr --out scope.md
+        run: nix develop --command python scripts/scope_info.py --language fr --out output/fr/scope.md
 
       # 5. Publish the release: both .u8 dictionaries as assets, scope
       #    information as the notes body. Generated files are release
@@ -72,6 +71,6 @@ jobs:
           TAG="cfdict-$(date -u +%Y%m%d-%H%M%S)"
           gh release create "$TAG" \
             --title "CFDICT-Next $TAG" \
-            --notes-file scope.md \
-            output/cfdict-next-human.u8 \
-            output/cfdict-next-full.u8
+            --notes-file output/fr/scope.md \
+            output/fr/cfdict-next-human.u8 \
+            output/fr/cfdict-next-full.u8
