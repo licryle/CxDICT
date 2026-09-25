@@ -39,7 +39,6 @@ class LanguageConfig:
     prompt_template: str  # asset path relative to generation/assets/
     few_shot: str  # asset path relative to generation/assets/
     prompt_version: str  # stamped on every generated record
-    definition_field: str  # sense-dict key holding the generated definition
     target_language_name: str  # used when rendering prompts ("French", ...)
     output_slug: str  # output/<code>/<slug>-next-{human,full}.u8
     description: str  # one-line description of the target dictionary
@@ -51,10 +50,9 @@ LANGUAGES: dict[str, LanguageConfig] = {
         base_filename="cfdict.u8",
         base_label="CFDICT",
         base_url="https://chine.in/mandarin/dictionnaire/CFDICT/",
-        prompt_template="fr/generate_fr_v5.txt",
+        prompt_template="fr/generate_fr_v6.txt",
         few_shot="fr/few_shot_examples.json",
-        prompt_version="v5",
-        definition_field="french_definition",
+        prompt_version="v6",
         target_language_name="French",
         output_slug="cfdict",
         description="French definitions (CFDICT authoritative base + LLM coverage).",
@@ -67,7 +65,6 @@ LANGUAGES: dict[str, LanguageConfig] = {
         prompt_template="zh-CN-HSK03/generate_hsk3_v1.txt",
         few_shot="zh-CN-HSK03/few_shot_examples.json",
         prompt_version="v1",
-        definition_field="hsk3_definition",
         target_language_name="HSK3-level Chinese",
         output_slug="hsk3",
         description=(

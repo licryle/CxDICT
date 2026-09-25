@@ -44,7 +44,7 @@ def build_records(
     records: dict[str, dict[str, Any]] = {}
     for result in results:
         senses = [
-            {"source_gloss": s.gloss, "french_definition": s.french_definition}
+            {"source_gloss": s.gloss, "definition": s.definition}
             for s in result.senses
         ]
         records[result.key] = {

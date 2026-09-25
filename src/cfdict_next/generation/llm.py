@@ -1,4 +1,4 @@
-"""OpenAI-compatible LLM client for batch French-definition generation.
+"""OpenAI-compatible LLM client for batch definition generation.
 
 Sends batches of entries (each with its full gloss list), validates the
 JSON-array response, and maps each object back onto its entry via the
@@ -27,10 +27,10 @@ class GenerationError(Exception):
 
 @dataclass(frozen=True)
 class Sense:
-    """One validated French definition for one gloss."""
+    """One validated definition for one gloss, in the target language."""
 
     gloss: str
-    french_definition: str
+    definition: str
 
 
 @dataclass(frozen=True)
@@ -132,20 +132,20 @@ def _validate_senses(item: GenerationItem, obj: Any, entry_id: int) -> tuple[Sen
                 f"LLM response id {entry_id}: sense must be an object, got {sense!r}"
             )
         gloss = sense.get("gloss")
-        french = sense.get("fr")
+        definition = sense.get("definition")
         if not isinstance(gloss, str) or not gloss.strip():
             raise GenerationError(
                 f"LLM response id {entry_id}: sense has empty 'gloss'"
             )
-        if not isinstance(french, str) or not french.strip():
+        if not isinstance(definition, str) or not definition.strip():
             raise GenerationError(
-                f"LLM response id {entry_id}: sense {gloss!r} has empty 'fr'"
+                f"LLM response id {entry_id}: sense {gloss!r} has empty 'definition'"
             )
         if gloss in seen:
             raise GenerationError(
                 f"LLM response id {entry_id}: duplicate sense for {gloss!r}"
             )
-        seen[gloss] = french.strip()
+        seen[gloss] = definition.strip()
     expected = set(item.glosses)
     missing = expected - set(seen)
     extra = set(seen) - expected
@@ -159,7 +159,7 @@ def _validate_senses(item: GenerationItem, obj: Any, entry_id: int) -> tuple[Sen
             f"LLM response id {entry_id} ({item.simplified}): gloss parity failure — "
             + "; ".join(details)
         )
-    return tuple(Sense(gloss=gloss, french_definition=seen[gloss]) for gloss in item.glosses)
+    return tuple(Sense(gloss=gloss, definition=seen[gloss]) for gloss in item.glosses)
 
 
 @dataclass(frozen=True)
@@ -251,7 +251,7 @@ def generate_batch(
     config: LLMConfig,
     post: Callable[..., Any] = post_chat_completions,
 ) -> BatchOutcome:
-    """Generate French definitions for one batch of entries, with retries.
+    """Generate definitions for one batch of entries, with retries.
 
     `post` is injectable so tests run without a network. Transport and
 envelope failures retry the whole batch up to `max_retries`, then raise

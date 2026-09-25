@@ -61,7 +61,7 @@ def fake_post(endpoint, model, system, user, timeout_s):
             objects.append(current)
         g = re.match(r'^\s+-\s+"(.*)"$', line)
         if g and current is not None:
-            current["senses"].append({"gloss": g[1], "fr": f"fr-{g[1]}"})
+            current["senses"].append({"gloss": g[1], "definition": f"fr-{g[1]}"})
     return {"choices": [{"message": {"content": _json.dumps(objects)}}]}
 
 
@@ -120,7 +120,7 @@ def test_validation_failure_stops_before_assembly(tmp_path):
     bad_llm = {
         "美|美|Mei3": {
             "traditional": "美", "simplified": "美", "pinyin": "Mei3",
-            "senses": [{"source_gloss": "pretty", "french_definition": "joli"}],
+            "senses": [{"source_gloss": "pretty", "definition": "joli"}],
             "cc_cedict_version": "v",
             "llm_model": "m", "prompt_version": "p",
             "generation_date": "2025-01-01T00:00:00+00:00",

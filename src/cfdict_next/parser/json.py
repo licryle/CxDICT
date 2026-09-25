@@ -51,9 +51,9 @@ def record_glosses(record: dict[str, Any]) -> set[str]:
 def assert_gloss_coverage(record: dict[str, Any], expected_glosses: set[str]) -> None:
     """Accept/reject a record against the CC-CEDICT gloss set for its entry.
 
-    The French output must define every English gloss of the entry — no
-    fewer, no others. Raises LLMDataError naming the missing and/or extra
-    glosses.
+    The generated definition must cover every English gloss of the entry —
+    no fewer, no others. Raises LLMDataError naming the missing and/or
+    extra glosses.
     """
     covered = record_glosses(record)
     expected = set(expected_glosses)
@@ -62,7 +62,7 @@ def assert_gloss_coverage(record: dict[str, Any], expected_glosses: set[str]) ->
     if missing or extra:
         details = []
         if missing:
-            details.append(f"missing French for gloss(es): {sorted(missing)}")
+            details.append(f"missing definition for gloss(es): {sorted(missing)}")
         if extra:
             details.append(f"gloss(es) not in CC-CEDICT: {sorted(extra)}")
         raise LLMDataError(

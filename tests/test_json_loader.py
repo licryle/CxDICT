@@ -13,10 +13,10 @@ def make_record(**overrides):
         "simplified": "中国",
         "pinyin": "Zhong1 guo2",
         "senses": [
-            {"source_gloss": "China", "french_definition": "pays d'Asie de l'Est"},
+            {"source_gloss": "China", "definition": "pays d'Asie de l'Est"},
             {
                 "source_gloss": "Middle Kingdom",
-                "french_definition": "nom historique de la Chine",
+                "definition": "nom historique de la Chine",
             },
         ],
         "cc_cedict_version": "mdbg-2025-09-12",
@@ -111,7 +111,7 @@ def test_sense_missing_field_rejected(tmp_path):
         tmp_path,
         {"中國|中国|Zhong1 guo2": make_record(senses=[{"source_gloss": "China"}])},
     )
-    with pytest.raises(LLMDataError, match="french_definition"):
+    with pytest.raises(LLMDataError, match="definition"):
         load_llm_json(f)
 
 
@@ -121,8 +121,8 @@ def test_duplicate_gloss_within_record_rejected(tmp_path):
         {
             "中國|中国|Zhong1 guo2": make_record(
                 senses=[
-                    {"source_gloss": "China", "french_definition": "pays"},
-                    {"source_gloss": "China", "french_definition": "pays (bis)"},
+                    {"source_gloss": "China", "definition": "pays"},
+                    {"source_gloss": "China", "definition": "pays (bis)"},
                 ]
             )
         },
@@ -142,7 +142,7 @@ def test_single_unified_dataset_loads(tmp_path):
                 senses=[
                     {
                         "source_gloss": "to walk",
-                        "french_definition": "marcher",
+                        "definition": "marcher",
                     }
                 ],
             )
@@ -159,7 +159,7 @@ def test_gloss_coverage_exact_match_accepted():
 
 def test_gloss_coverage_missing_gloss_rejected():
     record = make_record()
-    with pytest.raises(LLMDataError, match="missing French.*Cathay"):
+    with pytest.raises(LLMDataError, match="missing definition.*Cathay"):
         assert_gloss_coverage(record, {"China", "Middle Kingdom", "Cathay"})
 
 

@@ -86,7 +86,7 @@ def fake_post_factory(calls):
                 objects.append(current)
             g = re.match(r'^\s+-\s+"(.*)"$', line)
             if g and current is not None:
-                current["senses"].append({"gloss": g[1], "fr": f"fr-{g[1]}"})
+                current["senses"].append({"gloss": g[1], "definition": f"fr-{g[1]}"})
         assert sorted(o["id"] for o in objects) == sorted(ids)
         return {"choices": [{"message": {"content": _json.dumps(objects)}}]}
 
@@ -434,7 +434,7 @@ def test_partial_batch_writes_good_and_defers_bad(tmp_path):
                 objects.append(current)
             g = re.match(r'^\s+-\s+"(.*)"$', line)
             if g and current is not None and current["word"] != "国":
-                current["senses"].append({"gloss": g[1], "fr": f"fr-{g[1]}"})
+                current["senses"].append({"gloss": g[1], "definition": f"fr-{g[1]}"})
         return {"choices": [{"message": {"content": _json.dumps(objects)}}]}
 
     stream = io.StringIO()

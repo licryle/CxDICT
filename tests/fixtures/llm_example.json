@@ -21,11 +21,11 @@
       "senses": [
         {
           "source_gloss": "China",
-          "french_definition": "Chine, pays d'Asie de l'Est"
+          "definition": "Chine, pays d'Asie de l'Est"
         },
         {
           "source_gloss": "Middle Kingdom",
-          "french_definition": "nom historique de la Chine, l'« Empire du Milieu »"
+          "definition": "nom historique de la Chine, l'« Empire du Milieu »"
         }
       ],
       "cc_cedict_version": "mdbg-2025-09-12",
@@ -40,7 +40,7 @@
       "senses": [
         {
           "source_gloss": "to walk",
-          "french_definition": "marcher, se déplacer à pied"
+          "definition": "marcher, se déplacer à pied"
         }
       ],
       "cc_cedict_version": "mdbg-2025-09-12",

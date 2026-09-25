@@ -2,7 +2,7 @@
     "$schema": "http://json-schema.org/draft-07/schema#",
     "$id": "https://cfdict-next.example/schemas/llm_entry.json",
     "title": "LLM Entry (normative record schema)",
-    "description": "Schema for LLM-generated French dictionary entries: one record per lexical entry with one sense per CEDICT gloss (used for llm_generated.json)",
+    "description": "Schema for LLM-generated dictionary entries: one record per lexical entry with one sense per CEDICT gloss (used for llm_generated.json)",
     "type": "object",
     "required": ["traditional", "simplified", "pinyin", "senses", "cc_cedict_version", "llm_model", "prompt_version", "generation_date"],
     "properties": {
@@ -28,16 +28,16 @@
             "minItems": 1,
             "items": {
                 "type": "object",
-                "required": ["source_gloss", "french_definition"],
+                "required": ["source_gloss", "definition"],
                 "properties": {
                     "source_gloss": {
                         "type": "string",
-                        "description": "The individual CEDICT English gloss this French definition was generated for",
+                        "description": "The individual CEDICT English gloss this definition was generated for",
                         "minLength": 1
                     },
-                    "french_definition": {
+                    "definition": {
                         "type": "string",
-                        "description": "Generated French definition for this gloss",
+                        "description": "Generated definition for this gloss, in the target language",
                         "minLength": 1
                     }
                 },

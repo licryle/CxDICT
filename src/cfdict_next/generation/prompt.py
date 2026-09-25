@@ -14,8 +14,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-PROMPT_VERSION = "v5"
-TEMPLATE_NAME = "generate_fr_v5.txt"
+PROMPT_VERSION = "v6"
+TEMPLATE_NAME = "generate_fr_v6.txt"
 
 # Few-shot examples live below (EXAMPLE_ITEMS / EXAMPLE_OUTPUTS), defined
 # after GenerationItem so the examples themselves are real items the
@@ -58,11 +58,11 @@ def _load_few_shot() -> tuple[list[GenerationItem], list[dict]]:
     outputs: list[dict] = []
     for n, example in enumerate(raw):
         glosses = _split_segments(example["english"])
-        frs = _split_segments(example["fr"])
-        if len(glosses) != len(frs):
+        defs = _split_segments(example["definition"])
+        if len(glosses) != len(defs):
             raise ValueError(
                 f"few-shot example {n} ({example['simplified']}): "
-                f"{len(glosses)} English vs {len(frs)} French segments"
+                f"{len(glosses)} gloss vs {len(defs)} definition segments"
             )
         key = compute_lexical_identity(
             example["traditional"], example["simplified"], example["pinyin"]
@@ -81,8 +81,8 @@ def _load_few_shot() -> tuple[list[GenerationItem], list[dict]]:
                 "id": n,
                 "word": example["simplified"],
                 "senses": [
-                    {"gloss": gloss, "fr": fr}
-                    for gloss, fr in zip(glosses, frs)
+                    {"gloss": gloss, "definition": definition}
+                    for gloss, definition in zip(glosses, defs)
                 ],
             }
         )

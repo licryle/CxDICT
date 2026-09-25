@@ -43,7 +43,7 @@ def record_for(key, glosses):
         "traditional": trad,
         "simplified": simp,
         "pinyin": pin,
-        "senses": [{"source_gloss": g, "french_definition": f"fr-{g}"} for g in glosses],
+        "senses": [{"source_gloss": g, "definition": f"fr-{g}"} for g in glosses],
         "cc_cedict_version": "v",
         "llm_model": "m",
         "prompt_version": "p",

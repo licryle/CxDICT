@@ -28,7 +28,7 @@ def record_for(key):
         "traditional": trad,
         "simplified": simp,
         "pinyin": pin,
-        "senses": [{"source_gloss": "g", "french_definition": "d"}],
+        "senses": [{"source_gloss": "g", "definition": "d"}],
         "cc_cedict_version": "v",
         "llm_model": "m",
         "prompt_version": "p",

@@ -48,7 +48,7 @@ def record_to_entry(key: str, record: dict[str, Any]) -> DictionaryEntry:
         traditional=record["traditional"],
         simplified=record["simplified"],
         pinyin=record["pinyin"],
-        definitions=tuple(s["french_definition"] for s in record["senses"]),
+        definitions=tuple(s["definition"] for s in record["senses"]),
     )
 
 

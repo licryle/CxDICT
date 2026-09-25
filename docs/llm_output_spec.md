@@ -18,7 +18,7 @@ French). The model is never asked to rate its own confidence.
 
 Generation happens per gloss (see `docs/llm_input_spec.md`), but records
 are grouped per lexical entry: each record carries a `senses` list with
-one `{source_gloss, french_definition}` pair per CEDICT gloss. There is
+one `{source_gloss, definition}` pair per CEDICT gloss. There is
 no separate record per gloss — the identity key alone cannot distinguish
 glosses, so per-gloss records would collide and could silently overwrite
 each other.
@@ -32,7 +32,7 @@ Every record MUST carry all of these fields:
 | `traditional`       | Traditional Chinese form                             |
 | `simplified`        | Simplified Chinese form                              |
 | `pinyin`            | Pinyin with tone numbers                             |
-| `senses`            | List of `{source_gloss, french_definition}` — one sense per CEDICT gloss (see gloss parity below) |
+| `senses`            | List of `{source_gloss, definition}` — one sense per CEDICT gloss (see gloss parity below) |
 | `cc_cedict_version` | CC-CEDICT snapshot the gloss came from (e.g. SHA-256 + date in `data/README.md`) |
 | `llm_model`         | LLM model **and version** used                       |
 | `prompt_version`    | Prompt template version used                         |

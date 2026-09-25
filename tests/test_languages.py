@@ -25,17 +25,15 @@ def test_french_config_matches_current_pipeline_reality():
     fr = get_language("fr")
     assert fr.base_filename == "cfdict.u8"
     assert fr.base_label == "CFDICT"
-    assert "generate_fr_v5" in fr.prompt_template
-    assert fr.prompt_version == "v5"
-    assert fr.definition_field == "french_definition"
+    assert "generate_fr_v6" in fr.prompt_template
+    assert fr.prompt_version == "v6"
     assert fr.output_slug == "cfdict"
 
 
-def test_hsk3_config_has_no_base_and_own_definition_field():
+def test_hsk3_config_has_no_base():
     hsk = get_language("zh-CN-HSK03")
     assert hsk.base_filename is None
     assert hsk.base_url is None
-    assert hsk.definition_field == "hsk3_definition"
     assert hsk.prompt_version == "v1"
     assert "HSK3" in hsk.description
     assert "HSK3" in hsk.target_language_name

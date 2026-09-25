@@ -133,7 +133,7 @@ def test_render_lists_whole_gloss_lists_per_entry():
 
 
 def test_prompt_version_is_pinned():
-    assert PROMPT_VERSION == "v5"
+    assert PROMPT_VERSION == "v6"
 
 
 def test_few_shot_examples_pass_the_real_validator():
@@ -155,7 +155,7 @@ def test_few_shot_examples_pass_the_real_validator():
 
 
 def test_few_shot_file_is_self_consistent():
-    # Every curated example splits to equal English/French segment counts
+    # Every curated example splits to equal gloss/definition segment counts
     # (checked at load), and identities match the file's own fields.
     import json
     from pathlib import Path
@@ -170,8 +170,8 @@ def test_few_shot_file_is_self_consistent():
     assert len(raw) >= 16
     for example in raw:
         en = [s for s in example["english"].split("/") if s.strip()]
-        fr = [s for s in example["fr"].split("/") if s.strip()]
-        assert len(en) == len(fr) >= 1
+        defs = [s for s in example["definition"].split("/") if s.strip()]
+        assert len(en) == len(defs) >= 1
         assert "confidence" not in example
     keys = [
         compute_lexical_identity(e["traditional"], e["simplified"], e["pinyin"])
@@ -204,8 +204,8 @@ def test_few_shot_demonstrates_label_rules():
     # and one Tw mapping in the examples it is shown.
     from cfdict_next.generation.prompt import EXAMPLE_ITEMS, EXAMPLE_OUTPUTS
 
-    fr_all = " / ".join(
-        s["fr"] for out in EXAMPLE_OUTPUTS for s in out["senses"]
+    defs_all = " / ".join(
+        s["definition"] for out in EXAMPLE_OUTPUTS for s in out["senses"]
     )
     gloss_all = " / ".join(
         s["gloss"] for out in EXAMPLE_OUTPUTS for s in out["senses"]
@@ -214,22 +214,22 @@ def test_few_shot_demonstrates_label_rules():
     assert "(literary)" in gloss_all
     assert "(Taiwan pr." in gloss_all
     assert "(Tw) band-aid" in gloss_all  # OK绷: bare (Tw) preservation case
-    assert "lit." in fr_all
-    assert "(Tw [" in fr_all
-    assert "(Tw) pansement adhésif" in fr_all  # kept verbatim, never expanded
+    assert "lit." in defs_all
+    assert "(Tw [" in defs_all
+    assert "(Tw) pansement adhésif" in defs_all  # kept verbatim, never expanded
     assert "old variant of" in gloss_all
-    assert "forme ancienne de 帽[mao4]" in fr_all  # reference kept, not translated
-    assert "de la casquette" not in fr_all
+    assert "forme ancienne de 帽[mao4]" in defs_all  # reference kept, not translated
+    assert "de la casquette" not in defs_all
     # 3C: bare definitions, inner (CCC) kept, no outer wrap.
     assert "computers, communications, and consumer electronics" in gloss_all
-    assert "ordinateurs, communications et électronique grand public" in fr_all
-    assert "certification obligatoire chinoise (CCC)" in fr_all
-    assert "(imprimante 3D)" not in fr_all
-    assert "(impression en trois dimensions)" not in fr_all
+    assert "ordinateurs, communications et électronique grand public" in defs_all
+    assert "certification obligatoire chinoise (CCC)" in defs_all
+    assert "(imprimante 3D)" not in defs_all
+    assert "(impression en trois dimensions)" not in defs_all
     for forbidden in ("forme fermée", "écriture littéraire", "prononcé en", "(à Taïwan"):
         # "(à Taïwan" with paren: the label expansion. Bare "à Taïwan" in
         # running text is legitimate (cf. 小朋友 usage note) and not banned.
-        assert forbidden not in fr_all
+        assert forbidden not in defs_all
 
 
 # --- llm client ---
@@ -243,14 +243,14 @@ def test_generate_batch_maps_entries_to_sense_lists():
                 {
                     "id": 1,
                     "word": "行",
-                    "senses": [{"gloss": "to walk", "fr": "marcher"}],
+                    "senses": [{"gloss": "to walk", "definition": "marcher"}],
                 },
                 {
                     "id": 0,
                     "word": "中国",
                     "senses": [
-                        {"gloss": "China", "fr": "pays d'Asie"},
-                        {"gloss": "Middle Kingdom", "fr": "Empire du Milieu"},
+                        {"gloss": "China", "definition": "pays d'Asie"},
+                        {"gloss": "Middle Kingdom", "definition": "Empire du Milieu"},
                     ],
                 },
             ]
@@ -260,7 +260,7 @@ def test_generate_batch_maps_entries_to_sense_lists():
     assert outcome.failed == []
     results = outcome.results
     assert [r.key for r in results] == ["中國|中国|Zhong1 guo2", "行|行|Xing2"]
-    assert [(s.gloss, s.french_definition) for s in results[0].senses] == [
+    assert [(s.gloss, s.definition) for s in results[0].senses] == [
         ("China", "pays d'Asie"),
         ("Middle Kingdom", "Empire du Milieu"),
     ]
@@ -274,7 +274,7 @@ def test_dropped_sense_fails_the_batch():
                 {
                     "id": 0,
                     "word": "中国",
-                    "senses": [{"gloss": "China", "fr": "pays"}],
+                    "senses": [{"gloss": "China", "definition": "pays"}],
                 }
             ]
         )
@@ -291,9 +291,9 @@ def test_invented_sense_fails_the_batch():
                     "id": 0,
                     "word": "中国",
                     "senses": [
-                        {"gloss": "China", "fr": "pays"},
-                        {"gloss": "Middle Kingdom", "fr": "Empire"},
-                        {"gloss": "Cathay", "fr": "Cathay"},
+                        {"gloss": "China", "definition": "pays"},
+                        {"gloss": "Middle Kingdom", "definition": "Empire"},
+                        {"gloss": "Cathay", "definition": "Cathay"},
                     ],
                 }
             ]
@@ -311,8 +311,8 @@ def test_extra_confidence_field_is_ignored():
                     "id": 0,
                     "word": "中国",
                     "senses": [
-                        {"gloss": "China", "fr": "pays"},
-                        {"gloss": "Middle Kingdom", "fr": "Empire"},
+                        {"gloss": "China", "definition": "pays"},
+                        {"gloss": "Middle Kingdom", "definition": "Empire"},
                     ],
                     "confidence": "confident",
                 }
@@ -336,8 +336,8 @@ def test_missing_id_retries_then_raises():
                     "id": 0,
                     "word": "中国",
                     "senses": [
-                        {"gloss": "China", "fr": "pays"},
-                        {"gloss": "Middle Kingdom", "fr": "Empire"},
+                        {"gloss": "China", "definition": "pays"},
+                        {"gloss": "Middle Kingdom", "definition": "Empire"},
                     ],
                 }
             ]
@@ -357,7 +357,7 @@ def test_word_mismatch_is_rejected():
                 {
                     "id": 0,
                     "word": "美国",
-                    "senses": [{"gloss": "China", "fr": "pays"}],
+                    "senses": [{"gloss": "China", "definition": "pays"}],
                 }
             ]
         )
@@ -396,8 +396,8 @@ def test_generate_batch_accepts_fenced_content():
                     "id": 0,
                     "word": "中国",
                     "senses": [
-                        {"gloss": "China", "fr": "pays"},
-                        {"gloss": "Middle Kingdom", "fr": "Empire"},
+                        {"gloss": "China", "definition": "pays"},
+                        {"gloss": "Middle Kingdom", "definition": "Empire"},
                     ],
                 }
             ]
@@ -427,8 +427,8 @@ def test_partial_salvage_returns_good_and_defers_bad():
                     "id": 0,
                     "word": "中国",
                     "senses": [
-                        {"gloss": "China", "fr": "pays"},
-                        {"gloss": "Middle Kingdom", "fr": "Empire"},
+                        {"gloss": "China", "definition": "pays"},
+                        {"gloss": "Middle Kingdom", "definition": "Empire"},
                     ],
                 },
                 {
@@ -466,8 +466,8 @@ def test_single_transient_failure_recovers_on_retry():
                 "id": 0,
                 "word": "中国",
                 "senses": [
-                    {"gloss": "China", "fr": "pays"},
-                    {"gloss": "Middle Kingdom", "fr": "Empire"},
+                    {"gloss": "China", "definition": "pays"},
+                    {"gloss": "Middle Kingdom", "definition": "Empire"},
                 ],
             }
         ]
@@ -481,7 +481,7 @@ def test_single_transient_failure_recovers_on_retry():
                     {
                         "id": 0,
                         "word": "中国",
-                        "senses": [{"gloss": "China", "fr": "pays"}],
+                        "senses": [{"gloss": "China", "definition": "pays"}],
                     }
                 ]
             )

@@ -42,7 +42,7 @@ def llm_record_for(key, senses=(("China", "Chine"),)):
         "simplified": simp,
         "pinyin": pin,
         "senses": [
-            {"source_gloss": g, "french_definition": d} for g, d in senses
+            {"source_gloss": g, "definition": d} for g, d in senses
         ],
         "cc_cedict_version": "v",
         "llm_model": "m",
