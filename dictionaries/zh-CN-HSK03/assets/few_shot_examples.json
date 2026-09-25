@@ -3,21 +3,42 @@
     "simplified": "学校",
     "traditional": "學校",
     "pinyin": "xue2 xiao4",
-    "english": "school; educational institution",
-    "definition": "学生学习的地方; 学生上课的地方"
+    "english": "school/educational institution",
+    "definition": "学生学习的地方/学生上课的地方"
   },
   {
     "simplified": "喜欢",
     "traditional": "喜歡",
     "pinyin": "xi3 huan5",
-    "english": "to like; to be fond of",
-    "definition": "觉得很好; 见了很高兴"
+    "english": "to like/to be fond of",
+    "definition": "觉得很好/见了很高兴"
   },
   {
     "simplified": "中国",
     "traditional": "中國",
     "pinyin": "Zhong1 guo2",
-    "english": "China; Middle Kingdom",
-    "definition": "一个很大的国家; 中国以前的名字"
+    "english": "China/Middle Kingdom",
+    "definition": "一个很大的国家/中国以前的名字"
+  },
+  {
+    "simplified": "行",
+    "traditional": "行",
+    "pinyin": "Xing2",
+    "english": "to walk",
+    "definition": "用脚走路"
+  },
+  {
+    "simplified": "健美运动",
+    "traditional": "健美運動",
+    "pinyin": "jian4 mei3 yun4 dong4",
+    "english": "bodybuilding",
+    "definition": "让身体很好的运动"
+  },
+  {
+    "simplified": "城阳",
+    "traditional": "城陽",
+    "pinyin": "Cheng2 yang2",
+    "english": "Chengyang district of Qingdao city 青島市|青岛市, Shandong",
+    "definition": "山东青岛市的一个区"
   }
 ]
