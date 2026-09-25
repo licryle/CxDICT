@@ -1,10 +1,15 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
 [project]
-name = "cfdict-next"
-version = "0.1.0"
-description = "CFDICT-Next — CFDICT (authoritative French) extended to CC-CEDICT scope with LLM-generated French"
+name = "cxdict"
+version = "0.2.0"
+description = "CxDICT — LLM-generate CC-CEDICT in other languages, allowing for authoritative sources to take priority."
+readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "jsonschema>=4.0",  # LLM record validation against schemas/llm_entry.json
+    "jsonschema>=4.0",  # LLM record validation against src/cfdict_next/schemas/llm_entry.json
 ]
 
 [dependency-groups]
@@ -14,11 +19,21 @@ dev = [
 ]
 
 [project.scripts]
-cfdict-validate = "cfdict_next.cli.validate:main"
-cfdict-assemble = "cfdict_next.cli.assemble:main"
-cfdict-cleanup = "cfdict_next.cli.cleanup:main"
-cfdict-generate = "cfdict_next.cli.generate:main"
-cfdict-scope-info = "cfdict_next.cli.scope_info:main"
+cxdict-validate = "cfdict_next.cli.validate:main"
+cxdict-assemble = "cfdict_next.cli.assemble:main"
+cxdict-cleanup = "cfdict_next.cli.cleanup:main"
+cxdict-generate = "cfdict_next.cli.generate:main"
+cxdict-scope-info = "cfdict_next.cli.scope_info:main"
+
+# Explicit file selection: the project name (cxdict) no longer matches the
+# package directory (src/cfdict_next), so hatchling's auto-detection cannot
+# apply. This also keeps data/, output/ and assets/ out of both artifacts.
+[tool.hatch.build.targets.wheel]
+packages = ["src/cfdict_next"]
+
+[tool.hatch.build.targets.sdist]
+packages = ["src/cfdict_next"]
+include = ["pyproject.toml", "README.md"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

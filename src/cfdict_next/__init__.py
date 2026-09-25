@@ -1,3 +1,9 @@
 """CFDICT-Next — Chinese-French dictionary tooling."""
 
-__version__ = "0.1.0"
+from importlib.metadata import PackageNotFoundError, version
+
+try:
+    # Installed wheel/sdist: single source of truth is pyproject version.
+    __version__ = version("cxdict")
+except PackageNotFoundError:  # dev checkout (PYTHONPATH=src, not installed)
+    __version__ = "0.0.0+unknown"

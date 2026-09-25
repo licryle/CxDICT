@@ -95,9 +95,8 @@ Assembly refuses overlapping inputs instead of overriding them:
 ```
 CFDICT-Next/
 ├── data/                 # per-language dirs (fr/, zh-CN-HSK03/) + shared cc-cedict/ + README provenance
-├── src/cfdict_next/      # importable package (parser, generation, cli, assembly, validation, ...)
+├── src/cfdict_next/      # importable package (parser, generation, cli, assembly, validation, schemas, ...)
 ├── scripts/              # thin shims resolving to src/cfdict_next/cli/* (same names)
-├── schemas/              # single normative LLM record schema + thin file wrapper
 ├── docs/                 # specs, workflow, update procedures, maintenance checklist
 ├── plan/                 # implementation plan + specification source (specifications.md)
 ├── tests/                # test files + fixtures

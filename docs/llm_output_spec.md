@@ -39,10 +39,11 @@ Every record MUST carry all of these fields:
 | `prompt_version`    | Prompt template version used                         |
 | `generation_date`   | ISO 8601 timestamp of generation                     |
 
-The formal schema is `schemas/llm_entry.json` — the single normative
-source enforced by `src/cfdict_next/parser/json.py` (spec §14). The file
-schema `schemas/llm_generated_schema.json` is a thin `$ref` wrapper
-around it.
+The formal schema is `src/cfdict_next/schemas/llm_entry.json` — the
+single normative source enforced by `src/cfdict_next/parser/json.py`
+(spec §14), shipped inside the package so installed wheels resolve it
+too. The file schema `src/cfdict_next/schemas/llm_generated_schema.json`
+is a thin `$ref` wrapper around it.
 
 ## Gloss parity — accept/reject criterion
 

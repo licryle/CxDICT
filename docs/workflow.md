@@ -41,6 +41,22 @@ default). CI builds French; the HSK3 dictionary runs the same commands
 with `--language zh-CN-HSK03` against `data/zh-CN-HSK03/` (which has no
 authoritative base: generation starts from human curation + LLM output).
 
+## Library releases (engine)
+
+Dictionary releases above ship `.u8` files. Separately, `publish.yml`
+ships the engine itself as a Python library: push a tag `vX.Y.Z`
+(matching `version` in `pyproject.toml` — anything else fails fast) and
+CI builds the wheel+sdist, smoke-tests a fresh install (including the
+packaged schema file), and attaches both to the GitHub release. No PyPI
+involved; children pin a version with a release-asset URL:
+
+```
+pip install https://github.com/<owner>/<repo>/releases/download/v0.1.0/<wheel>
+```
+
+Keep `version` in `pyproject.toml`, the tag, and the release notes in
+agreement: bump, commit, tag, push.
+
 ## Cutting a release manually
 
 Push a source-data change to `main`, or use *Run workflow* (workflow

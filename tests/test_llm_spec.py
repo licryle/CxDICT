@@ -8,13 +8,18 @@ the loader enforces.
 """
 
 import json
+from importlib import resources
 from pathlib import Path
 
 from cfdict_next.parser.json import REQUIRED_FIELDS, assert_gloss_coverage, validate_record
 
 REPO = Path(__file__).resolve().parent.parent
 EXAMPLE = REPO / "tests" / "fixtures" / "llm_example.json"
-SCHEMA = REPO / "schemas" / "llm_entry.json"
+
+# Packaged schema (same file the loader enforces at runtime).
+SCHEMA = (
+    resources.files("cfdict_next") / "schemas" / "llm_entry.json"
+)
 
 
 def _example():
@@ -73,7 +78,11 @@ def test_generated_file_schema_shares_the_record_shape():
         "llm_entry.json", Resource.from_contents(entry_schema, default_specification=DRAFT7)
     )
     generated_schema = json.loads(
-        (REPO / "schemas" / "llm_generated_schema.json").read_text(encoding="utf-8")
+        (
+            resources.files("cfdict_next")
+            / "schemas"
+            / "llm_generated_schema.json"
+        ).read_text(encoding="utf-8")
     )
     outputs = _example()["outputs"]
     record = next(iter(outputs.values()))
