@@ -4,14 +4,14 @@ These lock the release artifacts end to end on tiny fixtures: any change
 to ordering, headers, formatting, or scope text fails here first.
 """
 
-from cfdict_next.assembly import (
+from cxdict.assembly import (
     HUMAN_SECTION_HEADER,
     LLM_SECTION_HEADER,
     assemble_files,
     section_header_for,
 )
-from cfdict_next.parser.u8 import DictionaryEntry
-from cfdict_next.scope_info import (
+from cxdict.parser.u8 import DictionaryEntry
+from cxdict.scope_info import (
     ReleaseSources,
     build_scope_info,
     render_scope_markdown,

@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from cfdict_next.parser.u8 import parse_u8_file
+from cxdict.parser.u8 import parse_u8_file
 
 CEDICT_GZ = Path(__file__).resolve().parent.parent / "data" / "cc-cedict" / "cedict_1_0_ts_utf-8_mdbg.txt.gz"
 

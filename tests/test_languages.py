@@ -1,4 +1,4 @@
-"""Unit tests for the TOML-driven language registry (src/cfdict_next/languages.py).
+"""Unit tests for the TOML-driven language registry (src/cxdict/languages.py).
 
 Language definitions live outside the package in assets/<code>/dict.toml;
 these tests pin the loader behavior and path resolution.
@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from cfdict_next.languages import get_language, resolve_paths
+from cxdict.languages import get_language, resolve_paths
 
 REPO = Path(__file__).resolve().parent.parent
 

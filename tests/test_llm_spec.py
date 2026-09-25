@@ -11,14 +11,14 @@ import json
 from importlib import resources
 from pathlib import Path
 
-from cfdict_next.parser.json import REQUIRED_FIELDS, assert_gloss_coverage, validate_record
+from cxdict.parser.json import REQUIRED_FIELDS, assert_gloss_coverage, validate_record
 
 REPO = Path(__file__).resolve().parent.parent
 EXAMPLE = REPO / "tests" / "fixtures" / "llm_example.json"
 
 # Packaged schema (same file the loader enforces at runtime).
 SCHEMA = (
-    resources.files("cfdict_next") / "schemas" / "llm_entry.json"
+    resources.files("cxdict") / "schemas" / "llm_entry.json"
 )
 
 
@@ -79,7 +79,7 @@ def test_generated_file_schema_shares_the_record_shape():
     )
     generated_schema = json.loads(
         (
-            resources.files("cfdict_next")
+            resources.files("cxdict")
             / "schemas"
             / "llm_generated_schema.json"
         ).read_text(encoding="utf-8")

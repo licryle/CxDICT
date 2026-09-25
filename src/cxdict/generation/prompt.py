@@ -6,7 +6,7 @@ differentiated and makes gloss parity checkable on the response itself.
 
 Templates and few-shot examples live OUTSIDE this package, in
 child-owned ``<lang-dir>/<code>/`` directories (see
-``cfdict_next.languages``): the exact wording is versioned with the
+``cxdict.languages``): the exact wording is versioned with the
 language data (spec §16: the prompt version is part of release
 provenance). Nothing here reads files at import time.
 """

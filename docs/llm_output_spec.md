@@ -8,7 +8,7 @@ One JSON file mapping **lexical identity → record** (spec §15):
   dictionary (§10.2).
 
 The identity key MUST equal the identity computed from the record's own
-`traditional`/`simplified`/`pinyin` fields; `src/cfdict_next/parser/json.py` rejects
+`traditional`/`simplified`/`pinyin` fields; `src/cxdict/parser/json.py` rejects
 any mismatch instead of guessing (spec §14).
 
 Human curation lives separately in `data/<lang>/human.u8` (raw .u8,
@@ -39,10 +39,10 @@ Every record MUST carry all of these fields:
 | `prompt_version`    | Prompt template version used                         |
 | `generation_date`   | ISO 8601 timestamp of generation                     |
 
-The formal schema is `src/cfdict_next/schemas/llm_entry.json` — the
-single normative source enforced by `src/cfdict_next/parser/json.py`
+The formal schema is `src/cxdict/schemas/llm_entry.json` — the
+single normative source enforced by `src/cxdict/parser/json.py`
 (spec §14), shipped inside the package so installed wheels resolve it
-too. The file schema `src/cfdict_next/schemas/llm_generated_schema.json`
+too. The file schema `src/cxdict/schemas/llm_generated_schema.json`
 is a thin `$ref` wrapper around it.
 
 ## Gloss parity — accept/reject criterion
@@ -53,7 +53,7 @@ record must **exactly equal** the CC-CEDICT gloss set for that entry.
 A record that drops a gloss, or invents one absent from CC-CEDICT, is
 **rejected** — never silently repaired (spec §14).
 
-Enforced by `src/cfdict_next/parser/json.py::assert_gloss_coverage`, which names the
+Enforced by `src/cxdict/parser/json.py::assert_gloss_coverage`, which names the
 missing and/or extra glosses. The loader itself cannot run this check
 (it sees only the JSON file, not CC-CEDICT); Phase 9 wires the two
 datasets together using this single shared implementation.

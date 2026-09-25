@@ -16,7 +16,7 @@ touches release-relevant inputs, and on manual dispatch:
 2. **Validate inputs** — all §14 data relationships are gated before
    anything is produced. A failure names the violated check.
 3. **Assemble** — `scripts/assemble.py --language fr` writes
-   `output/fr/cfdict-next-human.u8` and `output/fr/cfdict-next-full.u8`
+   `output/fr/cxdict-human.u8` and `output/fr/cxdict-full.u8`
    (gitignored build artifacts, never committed).
 4. **Validate outputs** — assembled files are checked against the inputs
    (exact identity sets, no duplicate lines).

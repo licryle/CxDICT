@@ -8,8 +8,6 @@ name: Publish library
 # Usage: bump `version` in pyproject.toml, commit, then
 #   git tag v0.1.0 && git push origin v0.1.0
 # The tag MUST equal v<pyproject version>; anything else fails fast below.
-# NOTE: package/module/entry-point names are pre-rename (cfdict_next);
-# rename them before any child pins a release.
 
 on:
   push:
@@ -61,8 +59,8 @@ jobs:
           # Exercises the packaged schema file: fails if schemas/ data
           # files ever go missing from the wheel.
           /tmp/wheeltest/bin/python - <<'EOF'
-          import cfdict_next
-          from cfdict_next.parser.json import validate_record
+          import cxdict
+          from cxdict.parser.json import validate_record
           record = {
               "traditional": "行", "simplified": "行", "pinyin": "Xing2",
               "senses": [{"source_gloss": "to walk", "definition": "marcher"}],
@@ -71,7 +69,7 @@ jobs:
               "generation_date": "2025-01-01T00:00:00+00:00",
           }
           assert validate_record("行|行|Xing2", record) == "行|行|Xing2"
-          print("wheel ok:", cfdict_next.__version__)
+          print("wheel ok:", cxdict.__version__)
           EOF
 
       - name: Publish to GitHub release

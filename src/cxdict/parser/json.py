@@ -35,7 +35,7 @@ from ..identity import compute_lexical_identity
 # in code. importlib.resources (not a repo-relative path) so installed
 # wheels resolve it too.
 ENTRY_SCHEMA: dict[str, Any] = json.loads(
-    (resources.files("cfdict_next") / "schemas" / "llm_entry.json").read_text(
+    (resources.files("cxdict") / "schemas" / "llm_entry.json").read_text(
         encoding="utf-8"
     )
 )

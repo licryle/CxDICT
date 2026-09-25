@@ -1,4 +1,4 @@
-"""CFDICT-Next — Chinese-French dictionary tooling."""
+"""CxDICT — Chinese-French dictionary tooling."""
 
 from importlib.metadata import PackageNotFoundError, version
 

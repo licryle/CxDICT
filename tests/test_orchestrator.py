@@ -9,16 +9,16 @@ import json
 
 import pytest
 
-from cfdict_next.generation.config import LLMConfig
-from cfdict_next.generation.orchestrator import (
+from cxdict.generation.config import LLMConfig
+from cxdict.generation.orchestrator import (
     compute_missing_items,
     generate_all,
     generate_files,
     plan_generation,
 )
-from cfdict_next.generation.llm import GenerationError
-from cfdict_next.generation.output import Provenance
-from cfdict_next.parser.u8 import DictionaryEntry
+from cxdict.generation.llm import GenerationError
+from cxdict.generation.output import Provenance
+from cxdict.parser.u8 import DictionaryEntry
 
 
 def entry(trad, simp, pin, defs):
@@ -507,8 +507,8 @@ def test_on_batch_fires_per_successful_batch():
 
 
 def test_cli_reports_generation_error_without_traceback(tmp_path, capsys, monkeypatch):
-    import cfdict_next.cli.generate as cli_mod
-    from cfdict_next.cli.generate import main as cli_main
+    import cxdict.cli.generate as cli_mod
+    from cxdict.cli.generate import main as cli_main
 
     base, cc, human_p, llm_p = dataset_files(tmp_path)
     env = tmp_path / ".env"
@@ -530,7 +530,7 @@ def test_cli_reports_generation_error_without_traceback(tmp_path, capsys, monkey
 
 
 def test_cli_dry_run(tmp_path, capsys):
-    from cfdict_next.cli.generate import main as cli_main
+    from cxdict.cli.generate import main as cli_main
 
     base, cc, human_p, llm_p = dataset_files(tmp_path)
     env = tmp_path / ".env"
@@ -548,7 +548,7 @@ def test_cli_dry_run(tmp_path, capsys):
 
 
 def test_cli_requires_language(tmp_path):
-    from cfdict_next.cli.generate import main as cli_main
+    from cxdict.cli.generate import main as cli_main
 
     with pytest.raises(SystemExit):
         cli_main(["--env", str(tmp_path / ".env")])

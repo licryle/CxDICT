@@ -31,7 +31,7 @@
           doCheck = false; # suite runs separately in CI (needs data fixtures)
           # Importing parser.json executes the schema load: this fails the
           # build if schemas/ data files ever go missing from the wheel.
-          pythonImportsCheck = [ "cfdict_next" "cfdict_next.parser.json" ];
+          pythonImportsCheck = [ "cxdict" "cxdict.parser.json" ];
         };
       });
 

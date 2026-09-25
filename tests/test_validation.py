@@ -8,9 +8,9 @@ from pathlib import Path
 
 import pytest
 
-from cfdict_next.assembly import assemble, write_u8_file
-from cfdict_next.scope_info import ReleaseSources, build_scope_info
-from cfdict_next.validation import (
+from cxdict.assembly import assemble, write_u8_file
+from cxdict.scope_info import ReleaseSources, build_scope_info
+from cxdict.validation import (
     ValidationReport,
     check_no_overlap,
     check_outputs,
@@ -180,7 +180,7 @@ def test_outputs_content_checked(tmp_path):
     report, data = validate_inputs(base_p, cc_p, human_p, llm_p)
     assert report.passed
     # Assemble empty-human/LLM outputs and validate them end to end.
-    from cfdict_next.parser.u8 import parse_u8_file
+    from cxdict.parser.u8 import parse_u8_file
 
     entries, _ = parse_u8_file(base_p)
     human_entries, full_entries = assemble(entries, [], {})
@@ -212,7 +212,7 @@ def test_output_duplicates_fail(tmp_path):
 
 
 def test_cli_exit_codes(tmp_path, capsys):
-    from cfdict_next.cli.validate import main as cli_main
+    from cxdict.cli.validate import main as cli_main
 
     paths = fixture_files(
         tmp_path, llm_generated={BEAUTY: record_for(BEAUTY, ["beautiful"])}
@@ -232,7 +232,7 @@ def test_cli_exit_codes(tmp_path, capsys):
 
 
 def test_cli_requires_language(tmp_path):
-    from cfdict_next.cli.validate import main as cli_main
+    from cxdict.cli.validate import main as cli_main
 
     paths = fixture_files(tmp_path)
     with pytest.raises(SystemExit):
@@ -271,7 +271,7 @@ def _write_repo_layout(root):
 
 
 def test_cli_defaults_resolve_to_repo_layout(tmp_path, monkeypatch, capsys):
-    from cfdict_next.cli.validate import main as cli_main
+    from cxdict.cli.validate import main as cli_main
 
     _write_repo_layout(tmp_path)
     monkeypatch.chdir(tmp_path)
@@ -280,7 +280,7 @@ def test_cli_defaults_resolve_to_repo_layout(tmp_path, monkeypatch, capsys):
 
 
 def test_cli_hsk3_skeleton_validates_without_base(tmp_path, monkeypatch, capsys):
-    from cfdict_next.cli.validate import main as cli_main
+    from cxdict.cli.validate import main as cli_main
 
     _write_repo_layout(tmp_path)
     monkeypatch.chdir(tmp_path)

@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from cfdict_next.scope_info import (
+from cxdict.scope_info import (
     ReleaseSources,
     build_scope_info,
     collect_llm_provenance,
@@ -103,7 +103,7 @@ def test_sha256_file_pins_exact_bytes(tmp_path):
 
 
 def test_cli_on_real_data(tmp_path):
-    from cfdict_next.cli.scope_info import main as cli_main
+    from cxdict.cli.scope_info import main as cli_main
 
     (tmp_path / "llm.json").write_text("{}", encoding="utf-8")
     (tmp_path / "human.u8").write_text("", encoding="utf-8")
@@ -128,8 +128,8 @@ def test_cli_on_real_data(tmp_path):
 def test_cli_requires_language(tmp_path):
     import pytest
 
-    from cfdict_next.cli.scope_info import main as cli_main
+    from cxdict.cli.scope_info import main as cli_main
 
     with pytest.raises(SystemExit):
-        cli_main(["--base", "data/cfdict.u8"])
-    assert cli_main(["--language", "xx-unknown", "--base", "data/cfdict.u8"]) == 1
+        cli_main(["--base", "data/fr/cfdict.u8"])
+    assert cli_main(["--language", "xx-unknown", "--base", "data/fr/cfdict.u8"]) == 1

@@ -1,6 +1,6 @@
 {
     "$schema": "http://json-schema.org/draft-07/schema#",
-    "$id": "https://cfdict-next.example/schemas/llm_generated_schema.json",
+    "$id": "https://cxdict.example/schemas/llm_generated_schema.json",
     "title": "LLM Generated Dictionary",
     "description": "Schema for llm_generated.json. The record shape is defined once in llm_entry.json (the single normative source).",
     "type": "object",

@@ -12,7 +12,7 @@
 
 ## On demand
 
-- [ ] CFDICT upstream fix → `data/fr/cfdict.u8` → `cleanup --language fr`
+- [ ] CFDICT upstream fix → `data/fr/cxdict.u8` → `cleanup --language fr`
       → review diff → `validate --language fr` → commit.
 - [ ] New prompt version → template file under `assets/<code>/` + version
       bump for that language → trial generations → suite green → commit.

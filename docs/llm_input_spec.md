@@ -1,7 +1,7 @@
 # LLM generation — input specification (spec §5, §6)
 
 The LLM generation process is **offline**. For each item in the missing scope
-(`CC-CEDICT − base − human − LLM`, see `src/cfdict_next/scope.py`), the CEDICT entry is
+(`CC-CEDICT − base − human − LLM`, see `src/cxdict/scope.py`), the CEDICT entry is
 processed **at the gloss/sense level**, not at the entry level.
 
 Example (spec §5): the entry

@@ -22,8 +22,8 @@ be traceable to exact source versions).
 
 ## CFDICT (authoritative French definitions, `fr` only)
 
-- File: `fr/cfdict.u8`
-- Source URL: https://chine.in/assets/cfdict/cfdict.u8 (provided by maintainer)
+- File: `fr/cxdict.u8`
+- Source URL: https://chine.in/assets/cxdict/cxdict.u8 (provided by maintainer)
 - Downloaded (UTC): 2025-09-12
 - SHA-256: `124d87f0fc2aed305e42ec3794584fa62bf00df9ed0aac45b950aba518795e75`
 - Size: 56,326 lines (3,522,011 bytes)
@@ -59,7 +59,7 @@ be traceable to exact source versions).
   `confident.json` + `review.json`; per-record `confidence` field dropped
   2026-09-18 — the model is no longer asked to rate itself).
 - Format: JSON object mapping `traditional|simplified|pinyin` identity →
-  record (schema `src/cfdict_next/schemas/llm_entry.json`); one sense per CC-CEDICT gloss.
+  record (schema `src/cxdict/schemas/llm_entry.json`); one sense per CC-CEDICT gloss.
 - Precedence: lowest. Entries overlapping CFDICT or human.u8 are removed
   by `scripts/cleanup.py`.
 - Validation: every record must cover exactly its CC-CEDICT gloss set and

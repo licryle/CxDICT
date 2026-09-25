@@ -6,7 +6,7 @@ Full dictionary:           base + human.u8 + llm_generated.json
 
 CC-CEDICT, base and human.u8 arrive as parsed lists of DictionaryEntry;
 the LLM dataset arrives as a mapping of lexical identity -> record (see
-cfdict_next.parser.json.load_llm_json). All sources meet at the same
+cxdict.parser.json.load_llm_json). All sources meet at the same
 lexical identity (spec §15), which is what makes the set arithmetic valid.
 """
 

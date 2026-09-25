@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from cfdict_next.parser.u8 import parse_u8_file
+from cxdict.parser.u8 import parse_u8_file
 
 CFDICT = Path(__file__).resolve().parent.parent / "data" / "fr" / "cfdict.u8"
 

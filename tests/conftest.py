@@ -1,6 +1,6 @@
 """Shared test fixtures: make the packaged CLI shims runnable as subprocesses.
 
-The suite imports `cfdict_next` via pytest's `pythonpath` setting, but
+The suite imports `cxdict` via pytest's `pythonpath` setting, but
 subprocess runs of `scripts/*.py` inherit only the OS environment — so the
 package root is exported here for every child process.
 """

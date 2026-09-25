@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from cfdict_next.assembly import (
+from cxdict.assembly import (
     HUMAN_SECTION_HEADER,
     LLM_SECTION_HEADER,
     assemble,
@@ -23,7 +23,7 @@ from cfdict_next.assembly import (
     write_sectioned_u8_file,
     write_u8_file,
 )
-from cfdict_next.parser.u8 import DictionaryEntry, iter_u8_lines, parse_u8_line, parse_u8_file
+from cxdict.parser.u8 import DictionaryEntry, iter_u8_lines, parse_u8_line, parse_u8_file
 
 REPO = Path(__file__).resolve().parent.parent
 BASE = REPO / "data" / "fr" / "cfdict.u8"
@@ -275,7 +275,7 @@ def test_assemble_files_without_base_omits_base_section(tmp_path):
 def test_cli_requires_language(tmp_path):
     import pytest
 
-    from cfdict_next.cli.assemble import main as cli_main
+    from cxdict.cli.assemble import main as cli_main
 
     with pytest.raises(SystemExit):
         cli_main(["--base", str(tmp_path / "cfdict.u8")])
@@ -295,7 +295,7 @@ def test_sections_match_assemble_splits():
 
 
 def test_cli_smoke(tmp_path, capsys):
-    from cfdict_next.cli.assemble import main as cli_main
+    from cxdict.cli.assemble import main as cli_main
 
     c = tmp_path / "cfdict.u8"
     c.write_text("中國 中国 [Zhong1 guo2] /Chine/\n", encoding="utf-8")

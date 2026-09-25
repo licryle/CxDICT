@@ -2,7 +2,7 @@
 
 import pytest
 
-from cfdict_next.identity import compute_lexical_identity, parse_lexical_identity
+from cxdict.identity import compute_lexical_identity, parse_lexical_identity
 
 
 def test_identity_combines_three_parts():

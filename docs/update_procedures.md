@@ -15,9 +15,9 @@
 The missing scope recomputes automatically from the new snapshot, so the
 next `generate` run picks up exactly the new entries.
 
-## CFDICT fork (`data/fr/cfdict.u8`)
+## CFDICT fork (`data/fr/cxdict.u8`)
 
-1. Pull the upstream fix into `data/fr/cfdict.u8` (source URL in
+1. Pull the upstream fix into `data/fr/cxdict.u8` (source URL in
    `data/README.md`).
 2. Run `python scripts/cleanup.py --language fr` (no `--dry-run`) —
    entries now covered by CFDICT leave `human.u8` and the LLM dataset.

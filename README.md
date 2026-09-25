@@ -1,4 +1,4 @@
-# CFDICT-Next
+# CxDICT
 
 An actively maintained Chinese–French dictionary. CFDICT stays the
 authoritative source for French definitions; coverage is expanded to
@@ -6,7 +6,7 @@ CC-CEDICT scope with human-curated and LLM-generated French for the
 missing entries.
 Precedence throughout: CFDICT > human.u8 > llm_generated.json.
 
-Each [release](https://github.com/licryle/CFDICT-Next/releases) publishes
+Each [release](https://github.com/licryle/CxDICT/releases) publishes
 two dictionaries:
 
 | file | contains |
@@ -73,8 +73,8 @@ as part of the word. Each release's notes record the exact sources
 Setup:
 
 ```bash
-git clone https://github.com/licryle/CFDICT-Next.git
-cd CFDICT-Next
+git clone https://github.com/licryle/CxDICT.git
+cd CxDICT
 direnv allow        # Nix flake env (spec §17); fallback: venv + pip install -e .
 python -m pytest -q # full suite first, always
 ```
@@ -93,10 +93,10 @@ an HSK3 learner should understand, using mostly HSK3 vocabulary).
 Assembly refuses overlapping inputs instead of overriding them:
 
 ```
-CFDICT-Next/
+CxDICT/
 ├── data/                 # per-language dirs (fr/, zh-CN-HSK03/) + shared cc-cedict/ + README provenance
-├── src/cfdict_next/      # importable package (parser, generation, cli, assembly, validation, schemas, ...)
-├── scripts/              # thin shims resolving to src/cfdict_next/cli/* (same names)
+├── src/cxdict/      # importable package (parser, generation, cli, assembly, validation, schemas, ...)
+├── scripts/              # thin shims resolving to src/cxdict/cli/* (same names)
 ├── docs/                 # specs, workflow, update procedures, maintenance checklist
 ├── plan/                 # implementation plan + specification source (specifications.md)
 ├── tests/                # test files + fixtures

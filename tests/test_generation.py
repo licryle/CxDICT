@@ -11,25 +11,25 @@ import json
 
 import pytest
 
-from cfdict_next.generation.config import (
+from cxdict.generation.config import (
     ConfigError,
     LLMConfig,
     load_config,
 )
-from cfdict_next.generation.llm import (
+from cxdict.generation.llm import (
     GenerationError,
     GenerationItem,
     Sense,
     generate_batch,
 )
-from cfdict_next.generation.output import (
+from cxdict.generation.output import (
     Provenance,
     build_records,
     merge_records,
     write_llm_json,
 )
-from cfdict_next.generation.prompt import load_few_shot_for, render_prompt
-from cfdict_next.parser.json import load_llm_json
+from cxdict.generation.prompt import load_few_shot_for, render_prompt
+from cxdict.parser.json import load_llm_json
 
 
 def make_config(**overrides):
@@ -136,7 +136,7 @@ def test_post_sends_bearer_header_when_key_set(monkeypatch):
     import json as _json
     import urllib.request
 
-    from cfdict_next.generation.llm import post_chat_completions
+    from cxdict.generation.llm import post_chat_completions
 
     seen = {}
 
@@ -167,7 +167,7 @@ def test_post_sends_bearer_header_when_key_set(monkeypatch):
 def test_post_omits_auth_header_without_key(monkeypatch):
     import urllib.request
 
-    from cfdict_next.generation.llm import post_chat_completions
+    from cxdict.generation.llm import post_chat_completions
 
     seen = {}
 
@@ -268,8 +268,8 @@ def test_few_shot_file_is_self_consistent():
     # (checked at load), and identities match the file's own fields.
     import json
 
-    from cfdict_next.identity import compute_lexical_identity
-    from cfdict_next.languages import get_language
+    from cxdict.identity import compute_lexical_identity
+    from cxdict.languages import get_language
 
     for code in ("fr", "zh-CN-HSK03"):
         cfg = get_language(code)
@@ -345,7 +345,7 @@ def test_few_shot_demonstrates_label_rules():
 
 
 def test_every_language_template_exists_and_has_example_slot():
-    from cfdict_next.languages import get_language
+    from cxdict.languages import get_language
 
     for code in ("fr", "zh-CN-HSK03"):
         template = get_language(code).prompt_template
@@ -363,7 +363,7 @@ def test_hsk3_prompt_renders_with_hsk3_voice():
 
 
 def test_hsk3_few_shot_loads_with_gloss_parity():
-    from cfdict_next.generation.prompt import load_few_shot_for
+    from cxdict.generation.prompt import load_few_shot_for
 
     items, outputs = load_few_shot_for("zh-CN-HSK03")
     assert len(items) >= 3
@@ -693,7 +693,7 @@ def test_non_array_response_is_rejected():
 
 def test_fenced_json_content_is_accepted():
     # Real LLMs wrap the array in ```json fences despite 'No markdown'.
-    from cfdict_next.generation.llm import _parse_content
+    from cxdict.generation.llm import _parse_content
 
     payload = json.dumps(
         [{"id": 0, "word": "x", "senses": []}]
@@ -832,7 +832,7 @@ def provenance():
 
 
 def test_build_records_groups_single_mapping():
-    from cfdict_next.generation.llm import GenerationResult
+    from cxdict.generation.llm import GenerationResult
 
     results = [
         GenerationResult(
@@ -866,7 +866,7 @@ def test_merge_refuses_overwrites():
 
 
 def test_write_round_trips_through_loader(tmp_path):
-    from cfdict_next.generation.llm import GenerationResult
+    from cxdict.generation.llm import GenerationResult
 
     results = [
         GenerationResult(

@@ -8,7 +8,7 @@ import json
 
 import pytest
 
-from cfdict_next.cleanup import (
+from cxdict.cleanup import (
     base_identities,
     cleanup_datasets,
     cleanup_files,
@@ -112,7 +112,7 @@ def test_cleanup_files_end_to_end(tmp_path):
     # FOURTH survives in LLM (nowhere else).
     assert report.human_after == 1
     assert report.llm_after == 1
-    from cfdict_next.parser.u8 import parse_u8_file
+    from cxdict.parser.u8 import parse_u8_file
 
     human_entries, _ = parse_u8_file(human_p)
     assert {e.lexical_id() for e in human_entries} == {OTHER}
@@ -158,7 +158,7 @@ def test_no_base_means_empty_identity_set():
 
 
 def test_cli_requires_language(tmp_path):
-    from cfdict_next.cli.cleanup import main as cli_main
+    from cxdict.cli.cleanup import main as cli_main
 
     base = write(tmp_path / "cfdict.u8", BASE_SAMPLE)
     with pytest.raises(SystemExit):

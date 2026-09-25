@@ -8,8 +8,8 @@ import json
 
 import pytest
 
-from cfdict_next.cli.pipeline import PipelineError, main, run_pipeline
-from cfdict_next.generation.config import LLMConfig
+from cxdict.cli.pipeline import PipelineError, main, run_pipeline
+from cxdict.generation.config import LLMConfig
 
 
 def config(**overrides):
@@ -88,7 +88,7 @@ def base_kwargs(tmp_paths, **overrides):
 def test_cli_requires_language():
     import pytest
 
-    from cfdict_next.cli.pipeline import main as cli_main
+    from cxdict.cli.pipeline import main as cli_main
 
     with pytest.raises(SystemExit):
         cli_main(["--dry-run"])
@@ -199,8 +199,8 @@ def test_cli_dry_run(tmp_path, capsys):
 
 
 def test_cli_limit_defaults_to_unlimited(tmp_path, monkeypatch):
-    import cfdict_next.cli.pipeline as pipeline_mod
-    from cfdict_next.cli.pipeline import PipelineReport
+    import cxdict.cli.pipeline as pipeline_mod
+    from cxdict.cli.pipeline import PipelineReport
 
     base, cc, human_p, llm_p = fixture(tmp_path)
     env = tmp_path / ".env"
@@ -238,7 +238,7 @@ def test_cli_limit_defaults_to_unlimited(tmp_path, monkeypatch):
 
 
 def test_cli_reports_generation_error_with_stage(tmp_path, capsys, monkeypatch):
-    import cfdict_next.cli.pipeline as pipeline_mod
+    import cxdict.cli.pipeline as pipeline_mod
 
     base, cc, human_p, llm_p = fixture(tmp_path)
     env = tmp_path / ".env"

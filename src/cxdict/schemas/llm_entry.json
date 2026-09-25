@@ -1,6 +1,6 @@
 {
     "$schema": "http://json-schema.org/draft-07/schema#",
-    "$id": "https://cfdict-next.example/schemas/llm_entry.json",
+    "$id": "https://cxdict.example/schemas/llm_entry.json",
     "title": "LLM Entry (normative record schema)",
     "description": "Schema for LLM-generated dictionary entries: one record per lexical entry with one sense per CEDICT gloss (used for llm_generated.json)",
     "type": "object",

@@ -1,6 +1,6 @@
 {
     "$schema": "http://json-schema.org/draft-07/schema#",
-    "$id": "https://cfdict-next.example/schemas/u8_entry.json",
+    "$id": "https://cxdict.example/schemas/u8_entry.json",
     "title": "u8 Dictionary Entry",
     "description": "Schema for a .u8 dictionary entry",
     "type": "object",

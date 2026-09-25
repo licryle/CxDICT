@@ -2,7 +2,7 @@
 
 import pytest
 
-from cfdict_next.parser.u8 import parse_u8_file, parse_u8_line, DictionaryEntry
+from cxdict.parser.u8 import parse_u8_file, parse_u8_line, DictionaryEntry
 
 
 def test_canonical_entry():
@@ -67,7 +67,7 @@ def test_parse_u8_file_reports_errors_and_entries(tmp_path):
 
 
 def test_lexical_id_round_trip():
-    from cfdict_next.identity import parse_lexical_identity
+    from cxdict.identity import parse_lexical_identity
 
     e = parse_u8_line("中國 中国 [Zhong1 guo2] /China/")
     trad, simp, pin = parse_lexical_identity(e.lexical_id())

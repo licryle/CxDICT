@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from cfdict_next.parser.json import LLMDataError, assert_gloss_coverage, load_llm_json
+from cxdict.parser.json import LLMDataError, assert_gloss_coverage, load_llm_json
 
 
 def make_record(**overrides):
