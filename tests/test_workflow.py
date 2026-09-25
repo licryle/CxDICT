@@ -90,7 +90,10 @@ def test_floating_latest_releases_are_refreshed():
     steps = " ".join(str(step) for step in workflow()["jobs"]["release"]["steps"])
     assert "--clobber" in steps  # in-place refresh, stable download URLs
     assert "gh release upload" in steps
-    assert "(latest)" in steps
+    # One rolling release per language holding both assets (not per-variant).
+    assert 'FTAG="cxdict-${SLUG}"' in steps
+    assert "/tmp/CxDICT-${NAME}-Human.u8" in steps
+    assert "/tmp/CxDICT-${NAME}-Full.u8" in steps
 
 
 def test_workflow_requests_only_release_permissions():
@@ -211,8 +214,8 @@ def test_pipeline_end_to_end(pipeline_data, tmp_path):
     )
     assert r.returncode == 0, r.stderr or r.stdout
     text = scope.read_text(encoding="utf-8")
-    assert "Human dictionary: 2 entries" in text  # base + human
-    assert "Full dictionary: 3 entries" in text  # + llm
+    assert "| CxDICT-French-Human | 2 | 2 (50.0%) | 0 |" in text  # base + human
+    assert "| CxDICT-French-Full | 3 | 3 (75.0%) | 0 |" in text  # + llm
     assert "Missing scope (still to generate): 1" in text  # 學 only
     # 5. assembled content is exactly what was validated
     assert "美 美 [Mei3] /beau/" in out_c.read_text(encoding="utf-8")

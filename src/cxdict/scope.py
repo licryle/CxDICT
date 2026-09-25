@@ -60,6 +60,11 @@ def compute_scope_statistics(
     human_scope = compute_human_scope(base_ids, human_ids)
     full_scope = compute_full_scope(base_ids, human_ids, llm_ids)
     in_cc = set(cc_cedict_ids)
+    base_in_cc = len(set(base_ids) & in_cc)
+    human_in_cc = len(set(human_ids) & in_cc)
+    llm_in_cc = len(set(llm_ids) & in_cc)
+    human_dict_in_cc = len(human_scope & in_cc)
+    full_dict_in_cc = len(full_scope & in_cc)
     return {
         "cc_cedict_total": len(cc_cedict_ids),
         "base_total": len(base_ids),
@@ -68,7 +73,9 @@ def compute_scope_statistics(
         "missing_scope_total": len(missing),
         "human_dictionary_total": len(human_scope),
         "full_dictionary_total": len(full_scope),
-        "base_covers_cc_cedict": len(set(base_ids) & in_cc),
-        "human_covers_cc_cedict": len(set(human_ids) & in_cc),
-        "llm_covers_cc_cedict": len(set(llm_ids) & in_cc),
+        "base_covers_cc_cedict": base_in_cc,
+        "human_covers_cc_cedict": human_in_cc,
+        "llm_covers_cc_cedict": llm_in_cc,
+        "human_dictionary_covers_cc_cedict": human_dict_in_cc,
+        "full_dictionary_covers_cc_cedict": full_dict_in_cc,
     }

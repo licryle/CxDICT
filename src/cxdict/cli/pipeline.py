@@ -83,7 +83,9 @@ def run_pipeline(
 ) -> PipelineReport:
     """Run the full local pipeline; raise PipelineError on any failure."""
     try:
-        base_label = get_language(language).base_label
+        cfg = get_language(language)
+        base_label = cfg.base_label
+        release_name = cfg.release_name
     except ValueError as exc:
         raise PipelineError("setup", str(exc)) from exc
     # None base_path means the language has no authoritative base.
@@ -238,7 +240,9 @@ def run_pipeline(
         llm_models=models,
         prompt_versions=prompts,
     )
-    markdown = render_scope_markdown(build_scope_info(sources), base_label)
+    markdown = render_scope_markdown(
+        build_scope_info(sources), base_label, release_name
+    )
     if scope_out is not None:
         try:
             Path(scope_out).write_text(markdown, encoding="utf-8")

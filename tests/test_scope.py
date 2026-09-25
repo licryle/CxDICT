@@ -67,3 +67,16 @@ def test_scope_statistics_are_consistent():
     assert stats["human_dictionary_total"] == 2  # A + B
     assert stats["full_dictionary_total"] == 3  # A + B + C
     assert stats["base_covers_cc_cedict"] == 1
+    assert stats["human_dictionary_covers_cc_cedict"] == 2  # A + B
+    assert stats["full_dictionary_covers_cc_cedict"] == 3  # A + B + C
+
+
+def test_scope_statistics_track_out_of_cc_entries():
+    outside = _id("外", "外", "Wai4")
+    stats = compute_scope_statistics({A, B}, {A, outside}, {outside}, set())
+    assert stats["base_total"] == 2
+    assert stats["base_covers_cc_cedict"] == 1
+    assert stats["human_dictionary_total"] == 2  # base + human overlap
+    assert stats["human_dictionary_covers_cc_cedict"] == 1
+    assert stats["full_dictionary_total"] == 2
+    assert stats["full_dictionary_covers_cc_cedict"] == 1

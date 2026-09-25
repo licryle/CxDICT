@@ -106,7 +106,7 @@ def test_full_run_end_to_end(tmp_path):
     assert report.human_n == 1 and report.full_n == 3
     assert (tmp_path / "c.u8").exists() and (tmp_path / "f.u8").exists()
     text = out_scope.read_text(encoding="utf-8")
-    assert "Human dictionary: 1 entries" in text
+    assert "| CxDICT-French-Human | 1 | 1 (33.3%) | 0 |" in text
     llm_generated = json.loads((tmp_path / "llm_generated.json").read_text(encoding="utf-8"))
     assert set(llm_generated) == {"美|美|Mei3", "行|行|Xing2"}
 

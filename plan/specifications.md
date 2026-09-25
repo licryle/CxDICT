@@ -223,6 +223,7 @@ language: pushes touching a language's inputs rebuild only it (any other
 path under `data/`/`assets/` rebuilds all; tooling-only pushes cut no
 release). Each release is tagged `<code>-YYYYMMDD-HHMMSS` with assets
 `CxDICT-<Name>-YYYYMMDD-{Human,Full}.u8` (`<Name>` from `release_name`),
-plus rolling per-variant releases (`cxdict-<name>-<variant>`, refreshed
-in place) as stable download pointers. Manual dispatch rebuilds all
+plus rolling per-language releases (`cxdict-<name>`, refreshed
+in place, holding both `CxDICT-<Name>-Human.u8` and `CxDICT-<Name>-Full.u8`)
+as stable download pointers. Manual dispatch rebuilds all
 discovered languages or one named language.

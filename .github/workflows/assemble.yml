@@ -8,7 +8,7 @@ name: Assemble and release
 # Each released language gets its own timestamped release:
 #   tag <code>-YYYYMMDD-HHMMSS,
 #   assets CxDICT-<Name>-YYYYMMDD-{Human,Full}.u8 (<Name> from dict.toml),
-#   notes = scope.md; plus rolling per-variant releases (see below).
+#   notes = scope.md; plus one rolling per-language release (see below).
 on:
   push:
     branches: [main]
@@ -153,12 +153,12 @@ jobs:
             "output/${{ matrix.code }}/${{ steps.meta.outputs.human }}" \
             "output/${{ matrix.code }}/${{ steps.meta.outputs.full }}"
 
-      # 6. Rolling latest releases, Docker `:latest`-style: the timestamped
-      #    release above stays the immutable record; these per-variant
-      #    objects are refreshed in place so their download URLs never move:
-      #    github/<owner>/<repo>/releases/download/cxdict-<name>-<variant>/CxDICT-<Name>-<Variant>.u8
-      #    or: gh release download cxdict-<name>-<variant> --pattern '*-<Variant>.u8'
-      - name: Refresh floating latest releases
+      # 6. Rolling latest release, Docker `:latest`-style: the timestamped
+      #    release above stays the immutable record; this single per-language
+      #    object is refreshed in place so its download URLs never move:
+      #    github/<owner>/<repo>/releases/download/cxdict-<name>/CxDICT-<Name>-<Variant>.u8
+      #    or: gh release download cxdict-<name> --pattern '*-Human.u8'
+      - name: Refresh floating latest release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -166,17 +166,15 @@ jobs:
           NAME="${{ steps.meta.outputs.relname }}"
           DATE="$(date -u +%Y%m%d)"
           SLUG="$(echo "$NAME" | tr '[:upper:]' '[:lower:]' | tr ' ' '-')"
-          for variant in human full; do
-            Variant="$(tr '[:lower:]' '[:upper:]' <<< "${variant:0:1}")${variant:1}"
-            cp "output/${CODE}/CxDICT-${NAME}-${DATE}-${Variant}.u8" "/tmp/CxDICT-${NAME}-${Variant}.u8"
-            FTAG="cxdict-${SLUG}-${variant}"
-            if gh release view "$FTAG" >/dev/null 2>&1; then
-              gh release upload --clobber "$FTAG" "/tmp/CxDICT-${NAME}-${Variant}.u8"
-              gh release edit "$FTAG" --notes-file "output/${CODE}/scope.md"
-            else
-              gh release create "$FTAG" \
-                --title "CxDICT ${NAME} ${Variant} (latest)" \
-                --notes-file "output/${CODE}/scope.md" \
-                "/tmp/CxDICT-${NAME}-${Variant}.u8"
-            fi
-          done
+          FTAG="cxdict-${SLUG}"
+          cp "output/${CODE}/CxDICT-${NAME}-${DATE}-Human.u8" "/tmp/CxDICT-${NAME}-Human.u8"
+          cp "output/${CODE}/CxDICT-${NAME}-${DATE}-Full.u8" "/tmp/CxDICT-${NAME}-Full.u8"
+          if gh release view "$FTAG" >/dev/null 2>&1; then
+            gh release upload --clobber "$FTAG" "/tmp/CxDICT-${NAME}-Human.u8" "/tmp/CxDICT-${NAME}-Full.u8"
+            gh release edit "$FTAG" --title "CxDICT ${NAME} ${DATE}" --notes-file "output/${CODE}/scope.md"
+          else
+            gh release create "$FTAG" \
+              --title "CxDICT ${NAME} ${DATE}" \
+              --notes-file "output/${CODE}/scope.md" \
+              "/tmp/CxDICT-${NAME}-Human.u8" "/tmp/CxDICT-${NAME}-Full.u8"
+          fi

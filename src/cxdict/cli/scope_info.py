@@ -50,7 +50,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--out", default=None)
     args = parser.parse_args(argv)
     try:
-        base_label = get_language(args.language).base_label
+        cfg = get_language(args.language)
+        base_label = cfg.base_label
+        release_name = cfg.release_name
         paths = resolve_paths(
             args.language, base=args.base, human=args.human,
             llm_generated=args.llm_generated, cc_cedict=args.cc_cedict,
@@ -96,7 +98,9 @@ def main(argv: list[str] | None = None) -> int:
         llm_models=models,
         prompt_versions=prompts,
     )
-    markdown = render_scope_markdown(build_scope_info(sources), base_label)
+    markdown = render_scope_markdown(
+        build_scope_info(sources), base_label, release_name
+    )
     if args.out:
         Path(args.out).write_text(markdown, encoding="utf-8")
     else:

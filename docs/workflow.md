@@ -37,17 +37,17 @@ Release titles read `<Name> dictionary <tag>` with the scope notes as
 body. Output paths stay `output/<code>/` internally; only the published
 asset names carry the scheme.
 
-## Floating latest releases
+## Floating latest release
 
-Next to each timestamped (immutable) release, two rolling release
-objects per language are refreshed in place — `cxdict-<name>-human` and
-`cxdict-<name>-full` (lowercase `<Name>`, e.g. `cxdict-french-full`) —
-each holding one stably-named asset (`CxDICT-<Name>-<Variant>.u8`, no
-date). Their download URLs never move, Docker-`:latest`-style:
+Next to each timestamped (immutable) release, one rolling release object
+per language is refreshed in place — `cxdict-<name>` (lowercase `<Name>`,
+e.g. `cxdict-french`) titled `CxDICT <Name> YYYYMMDD` — holding both
+stably-named assets (`CxDICT-<Name>-Human.u8` and `CxDICT-<Name>-Full.u8`,
+no date). Its download URLs never move, Docker-`:latest`-style:
 
 ```
-gh release download cxdict-french-full --pattern '*-Full.u8'
-https://github.com/<owner>/<repo>/releases/download/cxdict-french-full/CxDICT-French-Full.u8
+gh release download cxdict-french --pattern '*-Full.u8'
+https://github.com/<owner>/<repo>/releases/download/cxdict-french/CxDICT-French-Full.u8
 ```
 
 Keep `release_name` short, ASCII, no spaces: it lands in tags, asset

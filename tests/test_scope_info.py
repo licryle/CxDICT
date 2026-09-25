@@ -45,14 +45,19 @@ def test_scope_info_matches_exact_inputs():
 
 def test_markdown_contains_figures_and_versions():
     markdown = render_scope_markdown(
-        build_scope_info(sources(), generated_at="T"), "CFDICT"
+        build_scope_info(sources(), generated_at="T"), "CFDICT", "French"
     )
     for needle in (
         "cc-v1", "base-v1", "human-v1", "llm-v1",
         "| CFDICT (authoritative) |",
-        "CFDICT covers 1 CC-CEDICT entries",
-        "Human dictionary: 2 entries",
-        "Full dictionary: 3 entries",
+        "| Category | Total | In CC-CEDICT (% of Ref) | Out of CC-CEDICT |",
+        "| CC-CEDICT Reference | 4 | - | - |",
+        "| CFDICT (authoritative) | 1 | 1 (25.0%) | 0 |",
+        "| Human (curated) | 1 | 1 (25.0%) | 0 |",
+        "| LLM generated | 1 | 1 (25.0%) | 0 |",
+        "| Output | Total | In CC-CEDICT (% of Ref) | Out of CC-CEDICT |",
+        "| CxDICT-French-Human | 2 | 2 (50.0%) | 0 |",
+        "| CxDICT-French-Full | 3 | 3 (75.0%) | 0 |",
         "Missing scope (still to generate): 1",
         "LLM models: m1",
         "Prompt versions: p1",
@@ -62,10 +67,28 @@ def test_markdown_contains_figures_and_versions():
 
 def test_markdown_uses_base_label():
     markdown = render_scope_markdown(
-        build_scope_info(sources(), generated_at="T"), "Base"
+        build_scope_info(sources(), generated_at="T"), "Base", "French"
     )
     assert "| Base (authoritative) |" in markdown
-    assert "Base covers 1 CC-CEDICT entries" in markdown
+    assert "| Base (authoritative) | 1 | 1 (25.0%) | 0 |" in markdown
+    assert "| CxDICT-French-Human | 2 | 2 (50.0%) | 0 |" in markdown
+
+
+def test_markdown_reports_out_of_cc_entries():
+    info = build_scope_info(
+        sources(
+            cc_cedict_ids={"A"},
+            base_ids={"A", "OUT-BASE"},
+            human_ids={"OUT-HUMAN"},
+            llm_generated_ids=set(),
+        ),
+        generated_at="T",
+    )
+    markdown = render_scope_markdown(info, "CFDICT", "French")
+    assert "| CFDICT (authoritative) | 2 | 1 (100.0%) | 1 |" in markdown
+    assert "| Human (curated) | 1 | 0 (0.0%) | 1 |" in markdown
+    assert "| CxDICT-French-Human | 3 | 1 (100.0%) | 2 |" in markdown
+    assert "| CxDICT-French-Full | 3 | 1 (100.0%) | 2 |" in markdown
 
 
 def test_empty_llm_data_renders_na_provenance():

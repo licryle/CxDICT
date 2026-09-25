@@ -98,15 +98,31 @@ def build_scope_info(
     }
 
 
-def render_scope_markdown(info: dict[str, Any], base_label: str) -> str:
+def _in_cell(in_count: int, ref_total: int) -> str:
+    """Format an 'In CC-CEDICT' cell as `N (P%)`, guarding div-by-zero."""
+    if ref_total > 0:
+        return f"{in_count} ({in_count / ref_total * 100:.1f}%)"
+    return f"{in_count} (n/a)"
+
+
+def render_scope_markdown(
+    info: dict[str, Any], base_label: str, release_name: str | None = None
+) -> str:
     """Render scope information as the release-notes body.
 
-    `base_label` is required (no default): it names the authoritative base
-    row from the language registry.
+    `base_label` names the authoritative base row from the language
+    registry; `release_name` names the `CxDICT-<Name>-Human/Full` output
+    rows (defaults to `base_label` so older callers keep working).
     """
     sources = info["sources"]
     coverage = info["coverage"]
     provenance = info["provenance"]
+    name = release_name or base_label
+    ref_total = coverage["cc_cedict_total"]
+
+    def _row(label: str, total: int, in_cc: int) -> str:
+        return f"| {label} | {total} | {_in_cell(in_cc, ref_total)} | {total - in_cc} |"
+
     lines = [
         "## Scope",
         "",
@@ -125,12 +141,41 @@ def render_scope_markdown(info: dict[str, Any], base_label: str) -> str:
         "",
         "## Coverage",
         "",
+        "| Category | Total | In CC-CEDICT (% of Ref) | Out of CC-CEDICT |",
+        "| --- | --- | --- | --- |",
+        f"| CC-CEDICT Reference | {ref_total} | - | - |",
+        _row(
+            f"{base_label} (authoritative)",
+            coverage["base_total"],
+            coverage["base_covers_cc_cedict"],
+        ),
+        _row(
+            "Human (curated)",
+            coverage["human_total"],
+            coverage["human_covers_cc_cedict"],
+        ),
+        _row(
+            "LLM generated",
+            coverage["llm_generated_total"],
+            coverage["llm_covers_cc_cedict"],
+        ),
+        "",
         f"- Missing scope (still to generate): {coverage['missing_scope_total']}",
-        f"- Human dictionary: {coverage['human_dictionary_total']} entries",
-        f"- Full dictionary: {coverage['full_dictionary_total']} entries",
-        f"- {base_label} covers {coverage['base_covers_cc_cedict']} CC-CEDICT entries",
-        f"- Human covers {coverage['human_covers_cc_cedict']} CC-CEDICT entries",
-        f"- LLM covers {coverage['llm_covers_cc_cedict']} CC-CEDICT entries",
+        "",
+        "## Outputs",
+        "",
+        "| Output | Total | In CC-CEDICT (% of Ref) | Out of CC-CEDICT |",
+        "| --- | --- | --- | --- |",
+        _row(
+            f"CxDICT-{name}-Human",
+            coverage["human_dictionary_total"],
+            coverage["human_dictionary_covers_cc_cedict"],
+        ),
+        _row(
+            f"CxDICT-{name}-Full",
+            coverage["full_dictionary_total"],
+            coverage["full_dictionary_covers_cc_cedict"],
+        ),
         "",
         "## Provenance",
         "",
