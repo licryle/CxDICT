@@ -4,8 +4,8 @@
 
 code = "zh-CN-HSK03"
 base_label = "HSK3 base"
-prompt_template = "generate_hsk3_v1.txt"
-few_shot = "few_shot_examples.json"
+prompt_template = "assets/generate_hsk3_v1.txt"
+few_shot = "assets/few_shot_examples.json"
 prompt_version = "v1"
 prompt_user_intro = """Explain the meanings of the Chinese entries below in simple Chinese for an HSK 3 learner.
 Entries to explain:

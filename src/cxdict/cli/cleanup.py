@@ -22,13 +22,13 @@ from ..languages import resolve_paths
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--language", required=True,
-                        help="target dictionary language code (see assets/)")
+                        help="target dictionary language code (see dictionaries/)")
     parser.add_argument("--base", default=None,
-                        help="base dictionary file (default: data/<language>/…)")
+                        help="base dictionary file (default: dictionaries/<language>/data/…)")
     parser.add_argument("--human", default=None,
-                        help="human curation file (default: data/<language>/human.u8)")
+                        help="human curation file (default: dictionaries/<language>/data/human.u8)")
     parser.add_argument("--llm-generated", default=None,
-                        help="LLM dataset file (default: data/<language>/llm_generated.json)")
+                        help="LLM dataset file (default: dictionaries/<language>/data/llm_generated.json)")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args(argv)
     try:

@@ -1,4 +1,4 @@
-"""Integration test: parse the authoritative CFDICT source in data/fr/ (spec §2, §14).
+"""Integration test: parse the authoritative CFDICT source (spec §2, §14).
 
 Skipped when cfdict.u8 has not been forked into the repository yet.
 """
@@ -9,10 +9,13 @@ import pytest
 
 from cxdict.parser.u8 import parse_u8_file
 
-CFDICT = Path(__file__).resolve().parent.parent / "data" / "fr" / "cfdict.u8"
+CFDICT = (
+    Path(__file__).resolve().parent.parent
+    / "dictionaries" / "fr" / "data" / "cfdict.u8"
+)
 
 pytestmark = pytest.mark.skipif(
-    not CFDICT.exists(), reason="cfdict.u8 not forked into data/fr/ yet"
+    not CFDICT.exists(), reason="cfdict.u8 not forked into dictionaries/fr/ yet"
 )
 
 

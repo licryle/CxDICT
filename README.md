@@ -18,11 +18,11 @@ For a stable pointer that never moves, each variant also has a rolling
 release refreshed every run (e.g. `cxdict-french-full` holding
 `CxDICT-French-Full.u8` — see `docs/workflow.md`).
 
-Languages (see `assets/<code>/dict.toml` for each definition):
+Languages (see `dictionaries/<code>/dict.toml` for each definition):
 
 | code | dictionary | base |
 |---|---|---|
-| `fr` | French (`CxDICT-French-…`) | CFDICT, authoritative, forked into `data/` |
+| `fr` | French (`CxDICT-French-…`) | CFDICT, authoritative, forked into `dictionaries/` |
 | `zh-CN-HSK03` | HSK3-level Chinese (`CxDICT-HSK3-…`) | none — human curation + LLM over CC-CEDICT scope |
 
 ## License
@@ -36,7 +36,7 @@ It combines two ShareAlike sources, the resulting adapted dictionary is distribu
 
 - [**CFDICT**](https://chine.in/mandarin/dictionnaire/CFDICT/) — founded by David Houstin
   ([chine.in](https://chine.in)), licensed
-  CC BY-SA 3.0. The authoritative French base, forked into `data/`.
+  CC BY-SA 3.0. The authoritative French base, forked into `dictionaries/`.
 - [**CC-CEDICT**](https://www.mdbg.net/chinese/dictionary?page=cedict) — community-maintained, published by MDBG, descending
   from Paul Denisowski's CEDICT, licensed CC BY-SA 4.0. Provides the
   Chinese lexical scope and glosses anchors.
@@ -51,7 +51,7 @@ Contributions are French dictionary content, and the process is narrow on
 purpose:
 
 1. **Fork** this repository.
-2. **Edit `data/human.u8`** — add or fix French definitions, one entry per
+2. **Edit `dictionaries/fr/data/human.u8`** — add or fix French definitions, one entry per
    line (`traditional simplified [pinyin] /définition1/définition2/.../`).
    No gloss-count check: human French is free-form. Validation only checks
    that, when CC-CEDICT knows the word, the traditional/simplified pair
@@ -62,9 +62,10 @@ purpose:
 4. Open a **pull request**. Merging to `main` triggers validation,
    assembly, and a new timestamped release automatically.
 
-LLM-generated entries live in `data/llm_generated.json` (machine output,
-structural gates only). Correcting one means adding the fixed entry to
-`data/human.u8` — cleanup then drops the superseded LLM record.
+LLM-generated entries live in `dictionaries/fr/data/llm_generated.json`
+(machine output, structural gates only). Correcting one means adding the
+fixed entry to `dictionaries/fr/data/human.u8` — cleanup then drops the
+superseded LLM record.
 
 ## Using the dictionaries
 
@@ -105,7 +106,7 @@ Assembly refuses overlapping inputs instead of overriding them:
 
 ```
 CxDICT/
-├── data/                 # per-language dirs (fr/, zh-CN-HSK03/) + shared cc-cedict/ + README provenance
+├── dictionaries/         # per-language units (fr/, zh-CN-HSK03/ + shared cc-cedict/) + README provenance
 ├── src/cxdict/      # importable package (parser, generation, cli, assembly, validation, schemas, ...)
 ├── scripts/              # thin shims resolving to src/cxdict/cli/* (same names)
 ├── docs/                 # specs, workflow, update procedures, maintenance checklist

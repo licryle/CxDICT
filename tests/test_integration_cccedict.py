@@ -1,4 +1,4 @@
-"""Integration test: parse the real CC-CEDICT snapshot in data/ (spec §3, §14).
+"""Integration test: parse the real CC-CEDICT snapshot (spec §3, §14).
 
 Skipped when the snapshot has not been downloaded yet.
 """
@@ -9,7 +9,10 @@ import pytest
 
 from cxdict.parser.u8 import parse_u8_file
 
-CEDICT_GZ = Path(__file__).resolve().parent.parent / "data" / "cc-cedict" / "cedict_1_0_ts_utf-8_mdbg.txt.gz"
+CEDICT_GZ = (
+    Path(__file__).resolve().parent.parent
+    / "dictionaries" / "cc-cedict" / "cedict_1_0_ts_utf-8_mdbg.txt.gz"
+)
 
 pytestmark = pytest.mark.skipif(
     not CEDICT_GZ.exists(), reason="CC-CEDICT snapshot not downloaded"

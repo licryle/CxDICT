@@ -26,8 +26,10 @@ from cxdict.assembly import (
 from cxdict.parser.u8 import DictionaryEntry, iter_u8_lines, parse_u8_line, parse_u8_file
 
 REPO = Path(__file__).resolve().parent.parent
-BASE = REPO / "data" / "fr" / "cfdict.u8"
-CEDICT_GZ = REPO / "data" / "cc-cedict" / "cedict_1_0_ts_utf-8_mdbg.txt.gz"
+BASE = REPO / "dictionaries" / "fr" / "data" / "cfdict.u8"
+CEDICT_GZ = (
+    REPO / "dictionaries" / "cc-cedict" / "cedict_1_0_ts_utf-8_mdbg.txt.gz"
+)
 
 
 def entry(trad="中國", simp="中国", pin="Zhong1 guo2", defs=("Chine",)):

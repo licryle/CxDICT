@@ -12,10 +12,11 @@
 
 ## On demand
 
-- [ ] CFDICT upstream fix → `data/fr/cxdict.u8` → `cleanup --language fr`
+- [ ] CFDICT upstream fix → `dictionaries/fr/data/cfdict.u8` → `cleanup --language fr`
       → review diff → `validate --language fr` → commit.
-- [ ] New prompt version → template file under `assets/<code>/` + version
-      bump for that language → trial generations → suite green → commit.
+- [ ] New prompt version → template file under
+      `dictionaries/<code>/assets/` + version bump for that language →
+      trial generations → suite green → commit.
 - [ ] New model → `.env` change (local only) → trial batch → judge
       definition quality (French / HSK3) before any bulk run.
 

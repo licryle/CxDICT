@@ -1,7 +1,8 @@
 """Unit tests for the TOML-driven language registry (src/cxdict/languages.py).
 
-Language definitions live outside the package in assets/<code>/dict.toml;
-these tests pin the loader behavior and path resolution.
+Language definitions live outside the package in
+dictionaries/<code>/dict.toml; these tests pin the loader behavior and
+path resolution.
 """
 
 from pathlib import Path
@@ -30,7 +31,7 @@ def test_french_config_matches_current_pipeline_reality():
     )
     assert fr.target_language_name == "French"
     assert fr.output_slug == "cfdict"
-    assert fr.config_dir == REPO / "assets" / "fr"
+    assert fr.config_dir == REPO / "dictionaries" / "fr"
 
 
 def test_hsk3_config_has_no_base():
@@ -79,16 +80,16 @@ def _write_minimal_toml(directory, code):
 
 
 def test_code_mismatch_fails_loudly(tmp_path, monkeypatch):
-    _write_minimal_toml(tmp_path / "assets" / "fr", "es")
+    _write_minimal_toml(tmp_path / "dictionaries" / "fr", "es")
     monkeypatch.chdir(tmp_path)
     with pytest.raises(ValueError, match="requested"):
         get_language("fr")
 
 
 def test_unknown_field_fails_loudly(tmp_path, monkeypatch):
-    _write_minimal_toml(tmp_path / "assets" / "fr", "fr")
+    _write_minimal_toml(tmp_path / "dictionaries" / "fr", "fr")
     monkeypatch.chdir(tmp_path)
-    with open(tmp_path / "assets" / "fr" / "dict.toml", "a", encoding="utf-8") as f:
+    with open(tmp_path / "dictionaries" / "fr" / "dict.toml", "a", encoding="utf-8") as f:
         f.write('bogus = "x"\n')
     with pytest.raises(ValueError, match="unknown field"):
         get_language("fr")
@@ -96,10 +97,12 @@ def test_unknown_field_fails_loudly(tmp_path, monkeypatch):
 
 def test_resolve_paths_uses_data_lang_layout():
     paths = resolve_paths("fr", repo_root=".")
-    assert paths.base == Path("data/fr/cfdict.u8")
-    assert paths.human == Path("data/fr/human.u8")
-    assert paths.llm_generated == Path("data/fr/llm_generated.json")
-    assert paths.cc_cedict == Path("data/cc-cedict/cedict_1_0_ts_utf-8_mdbg.txt.gz")
+    assert paths.base == Path("dictionaries/fr/data/cfdict.u8")
+    assert paths.human == Path("dictionaries/fr/data/human.u8")
+    assert paths.llm_generated == Path("dictionaries/fr/data/llm_generated.json")
+    assert paths.cc_cedict == Path(
+        "dictionaries/cc-cedict/cedict_1_0_ts_utf-8_mdbg.txt.gz"
+    )
     assert paths.out_human == Path("output/fr/cfdict-next-human.u8")
     assert paths.out_full == Path("output/fr/cfdict-next-full.u8")
     assert paths.scope_out == Path("output/fr/scope.md")
@@ -109,12 +112,16 @@ def test_resolve_paths_hsk3_layout():
     paths = resolve_paths("zh-CN-HSK03", repo_root=".")
     # No authoritative base for HSK3: base resolves to None.
     assert paths.base is None
-    assert paths.human == Path("data/zh-CN-HSK03/human.u8")
-    assert paths.llm_generated == Path("data/zh-CN-HSK03/llm_generated.json")
+    assert paths.human == Path("dictionaries/zh-CN-HSK03/data/human.u8")
+    assert paths.llm_generated == Path(
+        "dictionaries/zh-CN-HSK03/data/llm_generated.json"
+    )
     assert paths.out_human == Path("output/zh-CN-HSK03/hsk3-next-human.u8")
     assert paths.out_full == Path("output/zh-CN-HSK03/hsk3-next-full.u8")
     # CC-CEDICT scope is shared across languages, not per-lang.
-    assert paths.cc_cedict == Path("data/cc-cedict/cedict_1_0_ts_utf-8_mdbg.txt.gz")
+    assert paths.cc_cedict == Path(
+        "dictionaries/cc-cedict/cedict_1_0_ts_utf-8_mdbg.txt.gz"
+    )
 
 
 def test_hsk3_explicit_base_override_still_applies(tmp_path):
@@ -124,7 +131,7 @@ def test_hsk3_explicit_base_override_still_applies(tmp_path):
 
 def test_empty_string_override_counts_as_not_given(tmp_path):
     paths = resolve_paths("fr", repo_root=tmp_path, base="")
-    assert paths.base == tmp_path / "data" / "fr" / "cfdict.u8"
+    assert paths.base == tmp_path / "dictionaries" / "fr" / "data" / "cfdict.u8"
 
 
 def test_explicit_overrides_win_over_language_defaults(tmp_path):
@@ -137,4 +144,6 @@ def test_explicit_overrides_win_over_language_defaults(tmp_path):
     assert paths.base == tmp_path / "custom-base.u8"
     assert paths.human == tmp_path / "custom-human.u8"
     # Non-overridden paths still resolve under the given repo root.
-    assert paths.llm_generated == tmp_path / "data" / "fr" / "llm_generated.json"
+    assert paths.llm_generated == (
+        tmp_path / "dictionaries" / "fr" / "data" / "llm_generated.json"
+    )

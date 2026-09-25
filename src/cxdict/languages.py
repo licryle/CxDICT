@@ -1,13 +1,14 @@
 """Per-language configuration, loaded from ``dict.toml`` files (CXDict boundary).
 
 Everything that varies per target language lives OUTSIDE this package, in
-``assets/<code>/dict.toml`` files (prompt template and few-shot paths
-inside are relative to the TOML file's directory, so language directories
-stay relocatable). The engine itself ships zero language content: adding
+``dictionaries/<code>/`` units: ``dict.toml`` at the unit root plus
+``data/`` and ``assets/`` subdirectories. Prompt template and few-shot
+paths inside the TOML are relative to the TOML file's directory, so units
+stay relocatable. The engine itself ships zero language content: adding
 a language means adding a directory, never editing engine code.
 
-Resolution is a plain CWD convention — ``./assets``, exactly like
-``./data`` — so checkouts and child repos work with no extra flags.
+Resolution is a plain CWD convention — ``./dictionaries`` — so checkouts
+and child repos work with no extra flags.
 """
 
 from __future__ import annotations
@@ -17,11 +18,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 # CC-CEDICT is the shared Chinese lexical scope for every language —
-# it lives outside any ``data/<lang>/`` directory.
-CC_CEDICT_REL = Path("data/cc-cedict/cedict_1_0_ts_utf-8_mdbg.txt.gz")
+# a dict.toml-less directory under ``dictionaries/``.
+CC_CEDICT_REL = Path("dictionaries/cc-cedict/cedict_1_0_ts_utf-8_mdbg.txt.gz")
 
-#: Language directory (CWD-relative, mirroring ``data/``).
-ASSETS_DIR = Path("assets")
+#: Language units directory (CWD-relative).
+DICTIONARIES_DIR = Path("dictionaries")
 
 #: Fields every dict.toml must define (besides the optional base pair).
 _REQUIRED_FIELDS = (
@@ -42,8 +43,8 @@ _REQUIRED_FIELDS = (
 class LanguageConfig:
     """Everything that varies per target language, loaded from dict.toml."""
 
-    code: str  # directory key: "fr", "zh-CN-HSK03", mirroring data/<code>/ and output/<code>/
-    base_filename: str | None  # authoritative base filename in data/<code>/ (None = no base)
+    code: str  # directory key, mirroring dictionaries/<code>/ and output/<code>/
+    base_filename: str | None  # authoritative base filename in dictionaries/<code>/data/ (None = no base)
     base_label: str  # human label rendered in scope info / section headers
     base_url: str | None  # provenance URL for the base (None when there is no upstream)
     prompt_template: Path  # absolute path of the versioned prompt template
@@ -58,7 +59,7 @@ class LanguageConfig:
 
 
 def _lang_toml_path(code: str) -> Path:
-    return ASSETS_DIR / code / "dict.toml"
+    return DICTIONARIES_DIR / code / "dict.toml"
 
 
 def get_language(code: str) -> LanguageConfig:
@@ -72,7 +73,7 @@ def get_language(code: str) -> LanguageConfig:
     except FileNotFoundError:
         raise ValueError(
             f"unknown language {code!r} (no {toml_path}; "
-            "run from a tree holding assets/<code>/dict.toml)"
+            "run from a tree holding dictionaries/<code>/dict.toml)"
         ) from None
     except (OSError, tomllib.TOMLDecodeError) as exc:
         raise ValueError(f"{toml_path}: cannot load language definition: {exc}") from exc
@@ -145,12 +146,12 @@ def resolve_paths(
     out_full: str | Path | None = None,
     scope_out: str | Path | None = None,
 ) -> ResolvedPaths:
-    """Resolve default ``data/<lang>/`` + ``output/<lang>/`` paths with overrides.
+    """Resolve default ``dictionaries/<lang>/data/`` + ``output/<lang>/`` paths.
 
     Explicit arguments win over language defaults, so every CLI can accept
     ``--base/--human/...`` overrides while ``--language`` supplies the rest.
     ``repo_root`` anchors all relative defaults (tests pass ``tmp_path``).
-    The language definition itself always comes from ``./assets`` (CWD
+    The language definition itself always comes from ``./dictionaries`` (CWD
     convention) — pass an absolute ``repo_root`` and matching overrides
     when driving another tree.
     Languages without an authoritative base (``base_filename is None``)
@@ -160,7 +161,7 @@ def resolve_paths(
     """
     cfg = get_language(code)
     root = Path(repo_root)
-    data_dir = root / "data" / cfg.code
+    data_dir = root / "dictionaries" / cfg.code / "data"
     out_dir = root / "output" / cfg.code
     if base:
         resolved_base: Path | None = Path(base)

@@ -96,8 +96,8 @@ glosses (gloss parity — see the output spec).
 ## Other languages
 
 The worked example above is the French instantiation (templates in
-`assets/fr/`; the HSK3 templates live in
-`assets/zh-CN-HSK03/`). Every language follows the same
+`dictionaries/fr/assets/`; the HSK3 templates live in
+`dictionaries/zh-CN-HSK03/assets/`). Every language follows the same
 contract — Chinese + pinyin as the primary source, English glosses as
 disambiguation anchors, one `definition` per gloss — differing only in
 the target voice (French dictionary style vs. HSK3-level Chinese).

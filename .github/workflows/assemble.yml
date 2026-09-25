@@ -1,7 +1,7 @@
 name: Assemble and release
 
 # Two functions (spec §13):
-# - push to main: rebuild each language touched under data/ or assets/.
+# - push to main: rebuild each language touched under dictionaries/.
 #   Tooling-only pushes run the tests but cut no release (use dispatch).
 # - manual dispatch ("Run workflow" button): rebuild all known languages,
 #   or a single language via the `language` input.
@@ -13,8 +13,7 @@ on:
   push:
     branches: [main]
     paths:
-      - "data/**"
-      - "assets/**"
+      - "dictionaries/**"
       - "src/**"
       - "scripts/**"
       - "flake.nix"
@@ -58,18 +57,23 @@ jobs:
             && [ "${{ inputs.language }}" != "all" ]; then
             CODES="${{ inputs.language }}"
           elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            CODES="$(ls assets)"
+            for d in dictionaries/*/; do
+              [ -f "$d/dict.toml" ] && CODES="$CODES $(basename "$d")"
+            done
           else
             CHANGED="$(git diff --name-only "${{ github.event.before }}" "${{ github.sha }}")"
             CODES=""
             for p in $CHANGED; do
               case "$p" in
-                data/*|assets/*)
+                dictionaries/*)
                   code="$(echo "$p" | cut -d/ -f2)"
-                  if [ -f "assets/$code/dict.toml" ]; then
-                    CODES="$CODES $code"  # one language's own inputs
+                  if [ -f "dictionaries/$code/dict.toml" ]; then
+                    CODES="$CODES $code"  # one language's own unit
                   else
-                    CODES="$CODES $(ls assets)"  # shared paths hit all
+                    # Shared paths (e.g. dictionaries/cc-cedict/) hit all.
+                    for d in dictionaries/*/; do
+                      [ -f "$d/dict.toml" ] && CODES="$CODES $(basename "$d")"
+                    done
                   fi
                   ;;
               esac
@@ -98,7 +102,7 @@ jobs:
         id: meta
         run: |
           CODE="${{ matrix.code }}"
-          NAME="$(python -c 'import tomllib,sys; print(tomllib.load(open(f"assets/{sys.argv[1]}/dict.toml","rb"))["release_name"])' "$CODE")"
+          NAME="$(python -c 'import tomllib,sys; print(tomllib.load(open(f"dictionaries/{sys.argv[1]}/dict.toml","rb"))["release_name"])' "$CODE")"
           DATE="$(date -u +%Y%m%d)"
           {
             echo "relname=$NAME"

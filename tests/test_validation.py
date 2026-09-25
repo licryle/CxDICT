@@ -248,22 +248,33 @@ def test_none_base_passes_with_empty_identities(tmp_path):
 
 
 def _write_repo_layout(root):
-    """Minimal data/<lang>/ + assets/<lang>/ layout plus shared CC-CEDICT."""
+    """Minimal dictionaries/<lang>/ layout plus shared CC-CEDICT."""
     import gzip
     import shutil
 
     for code in ("fr", "zh-CN-HSK03"):
-        shutil.copytree(REPO / "assets" / code, root / "assets" / code)
-    (root / "data" / "fr").mkdir(parents=True)
-    (root / "data" / "fr" / "cfdict.u8").write_text(BASE_SAMPLE, encoding="utf-8")
-    (root / "data" / "fr" / "human.u8").write_text("", encoding="utf-8")
-    (root / "data" / "fr" / "llm_generated.json").write_text("{}", encoding="utf-8")
-    (root / "data" / "zh-CN-HSK03").mkdir(parents=True)
-    (root / "data" / "zh-CN-HSK03" / "human.u8").write_text("", encoding="utf-8")
-    (root / "data" / "zh-CN-HSK03" / "llm_generated.json").write_text(
+        src_lang = REPO / "dictionaries" / code
+        dst_lang = root / "dictionaries" / code
+        shutil.copytree(src_lang / "assets", dst_lang / "assets")
+        shutil.copy(src_lang / "dict.toml", dst_lang / "dict.toml")
+    (root / "dictionaries" / "fr" / "data").mkdir(parents=True)
+    (root / "dictionaries" / "fr" / "data" / "cfdict.u8").write_text(
+        BASE_SAMPLE, encoding="utf-8"
+    )
+    (root / "dictionaries" / "fr" / "data" / "human.u8").write_text(
+        "", encoding="utf-8"
+    )
+    (root / "dictionaries" / "fr" / "data" / "llm_generated.json").write_text(
         "{}", encoding="utf-8"
     )
-    cc_dir = root / "data" / "cc-cedict"
+    (root / "dictionaries" / "zh-CN-HSK03" / "data").mkdir(parents=True)
+    (root / "dictionaries" / "zh-CN-HSK03" / "data" / "human.u8").write_text(
+        "", encoding="utf-8"
+    )
+    (root / "dictionaries" / "zh-CN-HSK03" / "data" / "llm_generated.json").write_text(
+        "{}", encoding="utf-8"
+    )
+    cc_dir = root / "dictionaries" / "cc-cedict"
     cc_dir.mkdir(parents=True)
     cc_dir.joinpath("cedict_1_0_ts_utf-8_mdbg.txt.gz").write_bytes(
         gzip.compress(CC_SAMPLE.encode("utf-8"))

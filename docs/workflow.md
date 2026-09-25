@@ -5,23 +5,22 @@
 The `Assemble and release` workflow runs on every push to `main` that
 touches release-relevant inputs, and on manual dispatch:
 
-- `data/**`, `assets/**` (language sources — new languages need no
-  workflow edits, they are discovered from `assets/`)
-- `src/**`, `scripts/**`, `flake.nix` (tooling changes rebuild all)
+- `dictionaries/**` (language units — new languages need no workflow
+  edits, they are discovered from `dictionaries/`)
+- `src/**`, `scripts/**`, `flake.nix` (tooling changes)
 - the workflow file itself
 
 ## Pipeline order
 
 1. **Test suite** (`test` job) — the full pytest suite must pass first.
 2. **Detect** (`changes` job) — map changed files to languages: a path
-   under `data/<code>/` or `assets/<code>/` selects that language when
-   the directory owns a `dict.toml`; any other path under `data/` or
-   `assets/` (today: the shared `data/cc-cedict/` snapshot) selects every
-   language, so scope updates can never merge silently. Paths outside
-   `data/`/`assets/` (engine, tooling) cut no release — they still run
-   the test suite; re-release via the button. Manual dispatch with
-   `language: all` (the default) selects everything discovered under
-   `assets/`.
+   under `dictionaries/<code>/` selects that language when the directory
+   owns a `dict.toml`; any other path under `dictionaries/` (today: the
+   shared `dictionaries/cc-cedict/` snapshot) selects every language, so
+   scope updates can never merge silently. Paths outside `dictionaries/`
+   (engine, tooling) cut no release — they still run the test suite;
+   re-release via the button. Manual dispatch with `language: all` (the
+   default) selects everything discovered under `dictionaries/`.
 3. **Release matrix** (one job per detected language) — validate inputs
    (all §14 relationships gated before anything is produced; a failure
    names the violated check), assemble both dictionaries (gitignored
@@ -67,8 +66,9 @@ overlap.
 
 Every script takes a required `--language` (`fr`, `zh-CN-HSK03` — no
 default). CI builds French; the HSK3 dictionary runs the same commands
-with `--language zh-CN-HSK03` against `data/zh-CN-HSK03/` (which has no
-authoritative base: generation starts from human curation + LLM output).
+with `--language zh-CN-HSK03` against `dictionaries/zh-CN-HSK03/` (which
+has no authoritative base: generation starts from human curation + LLM
+output).
 
 ## Library releases (engine)
 
@@ -92,7 +92,7 @@ Push a source-data change to `main`, or use *Run workflow* (workflow
 dispatch) on `main` to re-release unchanged sources (e.g. after a
 tooling-only fix). The dispatch takes an optional `language` input:
 a code for one language, or `all` (the default) for everything under
-`assets/`.
+`dictionaries/`.
 
 ## Permissions
 

@@ -22,8 +22,8 @@ be traceable to exact source versions).
 
 ## CFDICT (authoritative French definitions, `fr` only)
 
-- File: `fr/cxdict.u8`
-- Source URL: https://chine.in/assets/cxdict/cxdict.u8 (provided by maintainer)
+- File: `fr/data/cfdict.u8`
+- Source URL: https://chine.in/assets/cfdict/cfdict.u8 (provided by maintainer)
 - Downloaded (UTC): 2025-09-12
 - SHA-256: `124d87f0fc2aed305e42ec3794584fa62bf00df9ed0aac45b950aba518795e75`
 - Size: 56,326 lines (3,522,011 bytes)
@@ -36,7 +36,7 @@ be traceable to exact source versions).
 
 ## Human curation (free-form target language)
 
-- Files: `fr/human.u8`, `zh-CN-HSK03/human.u8` (empty until curated)
+- Files: `fr/data/human.u8`, `zh-CN-HSK03/data/human.u8` (empty until curated)
 - Format: CEDICT — `traditional simplified [pinyin] /définition1/définition2/.../`,
   `#` lines are metadata/comments.
 - Precedence: CFDICT > human.u8 > llm_generated.json (spec §9). Entries
@@ -48,14 +48,15 @@ be traceable to exact source versions).
 ## HSK3 (`zh-CN-HSK03`): no authoritative base
 
 - There is no upstream base dictionary: generation starts from human
-  curation + LLM output over CC-CEDICT scope. `zh-CN-HSK03/human.u8`
-  (empty) and `zh-CN-HSK03/llm_generated.json` (`{}`) are the skeletons;
+  curation + LLM output over CC-CEDICT scope.
+  `zh-CN-HSK03/data/human.u8` (empty) and
+  `zh-CN-HSK03/data/llm_generated.json` (`{}`) are the skeletons;
   definitions must stay understandable to an HSK3 learner, using mostly
   HSK3 vocabulary.
 
 ## LLM-generated definitions (unified per-language datasets)
 
-- Files: `fr/llm_generated.json` (77,077 records merged from the former
+- Files: `fr/data/llm_generated.json` (77,077 records merged from the former
   `confident.json` + `review.json`; per-record `confidence` field dropped
   2026-09-18 — the model is no longer asked to rate itself).
 - Format: JSON object mapping `traditional|simplified|pinyin` identity →

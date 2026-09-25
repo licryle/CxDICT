@@ -111,10 +111,10 @@ def test_cli_on_real_data(tmp_path):
     rc = cli_main(
         [
             "--language", "fr",
-            "--base", "data/fr/cfdict.u8",
+            "--base", "dictionaries/fr/data/cfdict.u8",
             "--human", str(tmp_path / "human.u8"),
             "--llm-generated", str(tmp_path / "llm.json"),
-            "--cc-cedict", "data/cc-cedict/cedict_1_0_ts_utf-8_mdbg.txt.gz",
+            "--cc-cedict", "dictionaries/cc-cedict/cedict_1_0_ts_utf-8_mdbg.txt.gz",
             "--out", str(out),
         ]
     )
@@ -131,5 +131,5 @@ def test_cli_requires_language(tmp_path):
     from cxdict.cli.scope_info import main as cli_main
 
     with pytest.raises(SystemExit):
-        cli_main(["--base", "data/fr/cfdict.u8"])
-    assert cli_main(["--language", "xx-unknown", "--base", "data/fr/cfdict.u8"]) == 1
+        cli_main(["--base", "dictionaries/fr/data/cfdict.u8"])
+    assert cli_main(["--language", "xx-unknown", "--base", "dictionaries/fr/data/cfdict.u8"]) == 1
