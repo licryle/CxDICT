@@ -22,6 +22,7 @@
             ]))
             git
             gzip
+            dos2unix
           ];
 
           shellHook = ''
