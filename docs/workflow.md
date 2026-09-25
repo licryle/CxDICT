@@ -5,25 +5,54 @@
 The `Assemble and release` workflow runs on every push to `main` that
 touches release-relevant inputs, and on manual dispatch:
 
-- `data/fr/**`, `data/zh-CN-HSK03/**` (per-language sources)
-- `data/cc-cedict/**` (scope changes)
-- `src/**`, `scripts/**`, `flake.nix` (tooling changes)
+- `data/**`, `assets/**` (language sources — new languages need no
+  workflow edits, they are discovered from `assets/`)
+- `src/**`, `scripts/**`, `flake.nix` (tooling changes rebuild all)
 - the workflow file itself
 
 ## Pipeline order
 
 1. **Test suite** (`test` job) — the full pytest suite must pass first.
-2. **Validate inputs** — all §14 data relationships are gated before
-   anything is produced. A failure names the violated check.
-3. **Assemble** — `scripts/assemble.py --language fr` writes
-   `output/fr/cxdict-human.u8` and `output/fr/cxdict-full.u8`
-   (gitignored build artifacts, never committed).
-4. **Validate outputs** — assembled files are checked against the inputs
-   (exact identity sets, no duplicate lines).
-5. **Scope information** — `scripts/scope_info.py` renders the release
-   notes with content-hashed source versions (§12, §16).
-6. **Publish** — a timestamp-tagged GitHub release with both `.u8` files
-   as assets and the scope information as its notes body.
+2. **Detect** (`changes` job) — map changed files to languages: a path
+   under `data/<code>/` or `assets/<code>/` selects that language when
+   the directory owns a `dict.toml`; any other path under `data/` or
+   `assets/` (today: the shared `data/cc-cedict/` snapshot) selects every
+   language, so scope updates can never merge silently. Paths outside
+   `data/`/`assets/` (engine, tooling) cut no release — they still run
+   the test suite; re-release via the button. Manual dispatch with
+   `language: all` (the default) selects everything discovered under
+   `assets/`.
+3. **Release matrix** (one job per detected language) — validate inputs
+   (all §14 relationships gated before anything is produced; a failure
+   names the violated check), assemble both dictionaries (gitignored
+   build artifacts, never committed), validate outputs, render scope
+   notes (§12, §16), publish. Languages release independently
+   (`fail-fast: false`).
+
+## Naming scheme
+
+Tags are `<code>-YYYYMMDD-HHMMSS` (UTC); assets are
+`CxDICT-<Name>-YYYYMMDD-{Human,Full}.u8` where `<Name>` is the language's
+`release_name` from `dict.toml` (e.g. `CxDICT-French-20260925-Human.u8`).
+Release titles read `<Name> dictionary <tag>` with the scope notes as
+body. Output paths stay `output/<code>/` internally; only the published
+asset names carry the scheme.
+
+## Floating latest releases
+
+Next to each timestamped (immutable) release, two rolling release
+objects per language are refreshed in place — `cxdict-<name>-human` and
+`cxdict-<name>-full` (lowercase `<Name>`, e.g. `cxdict-french-full`) —
+each holding one stably-named asset (`CxDICT-<Name>-<Variant>.u8`, no
+date). Their download URLs never move, Docker-`:latest`-style:
+
+```
+gh release download cxdict-french-full --pattern '*-Full.u8'
+https://github.com/<owner>/<repo>/releases/download/cxdict-french-full/CxDICT-French-Full.u8
+```
+
+Keep `release_name` short, ASCII, no spaces: it lands in tags, asset
+names, and URLs verbatim (lowercased for tags only).
 
 ## Deliberately not automated: cleanup
 
@@ -61,7 +90,9 @@ agreement: bump, commit, tag, push.
 
 Push a source-data change to `main`, or use *Run workflow* (workflow
 dispatch) on `main` to re-release unchanged sources (e.g. after a
-tooling-only fix).
+tooling-only fix). The dispatch takes an optional `language` input:
+a code for one language, or `all` (the default) for everything under
+`assets/`.
 
 ## Permissions
 

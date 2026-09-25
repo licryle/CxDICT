@@ -56,17 +56,42 @@ def test_workflow_triggers_on_source_data():
         assert watched in paths, watched
     assert on["push"]["branches"] == ["main"]
     assert "workflow_dispatch" in on
+    assert on["workflow_dispatch"]["inputs"]["language"]["default"] == "all"
 
 
 def test_workflow_has_test_then_release_jobs():
     jobs = workflow()["jobs"]
-    assert set(jobs) == {"test", "assemble"}
-    assert jobs["assemble"]["needs"] == ["test"]
+    assert set(jobs) == {"test", "changes", "release"}
+    assert jobs["release"]["needs"] == ["test", "changes"]
     steps = " ".join(
-        str(step) for step in jobs["assemble"]["steps"]
+        str(step) for step in jobs["release"]["steps"]
     )
     for stage in ("validate", "ssemble", "cope", "release"):
         assert stage in steps, stage
+
+
+def test_release_is_matrix_per_detected_language():
+    jobs = workflow()["jobs"]
+    release = jobs["release"]
+    assert "matrix" in str(release.get("strategy", {}))
+    assert "needs.changes.outputs" in str(release.get("if", ""))
+    changes_steps = " ".join(str(step) for step in jobs["changes"]["steps"])
+    assert "fetch-depth" in changes_steps  # full history for before..sha diff
+    assert "dict.toml" in changes_steps  # only dirs owning a language count
+
+
+def test_release_assets_follow_naming_scheme():
+    steps = " ".join(str(step) for step in workflow()["jobs"]["release"]["steps"])
+    assert "CxDICT-" in steps
+    assert "-Human.u8" in steps and "-Full.u8" in steps
+    assert "release_name" in steps  # display name comes from dict.toml
+
+
+def test_floating_latest_releases_are_refreshed():
+    steps = " ".join(str(step) for step in workflow()["jobs"]["release"]["steps"])
+    assert "--clobber" in steps  # in-place refresh, stable download URLs
+    assert "gh release upload" in steps
+    assert "(latest)" in steps
 
 
 def test_workflow_requests_only_release_permissions():

@@ -6,13 +6,24 @@ CC-CEDICT scope with human-curated and LLM-generated French for the
 missing entries.
 Precedence throughout: CFDICT > human.u8 > llm_generated.json.
 
-Each [release](https://github.com/licryle/CxDICT/releases) publishes
-two dictionaries:
+Each language gets its own [releases](https://github.com/licryle/CxDICT/releases),
+rebuilt only when its inputs change. Every release publishes two dictionaries:
 
 | file | contains |
 |---|---|
-| `cfdict-next-human.u8` | CFDICT + human-curated additions (conservative choice) |
-| `cfdict-next-full.u8` | everything above + LLM-generated coverage (maximum coverage) |
+| `CxDICT-<Language>-<YYYYMMDD>-Human.u8` | base + human-curated additions (conservative choice) |
+| `CxDICT-<Language>-<YYYYMMDD>-Full.u8` | everything above + LLM-generated coverage (maximum coverage) |
+
+For a stable pointer that never moves, each variant also has a rolling
+release refreshed every run (e.g. `cxdict-french-full` holding
+`CxDICT-French-Full.u8` — see `docs/workflow.md`).
+
+Languages (see `assets/<code>/dict.toml` for each definition):
+
+| code | dictionary | base |
+|---|---|---|
+| `fr` | French (`CxDICT-French-…`) | CFDICT, authoritative, forked into `data/` |
+| `zh-CN-HSK03` | HSK3-level Chinese (`CxDICT-HSK3-…`) | none — human curation + LLM over CC-CEDICT scope |
 
 ## License
 

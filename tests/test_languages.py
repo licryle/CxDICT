@@ -72,6 +72,7 @@ def _write_minimal_toml(directory, code):
         'prompt_user_intro = "intro\\n"\n'
         'target_language_name = "T"\n'
         'output_slug = "s"\n'
+        'release_name = "Xx"\n'
         'description = "D"\n',
         encoding="utf-8",
     )

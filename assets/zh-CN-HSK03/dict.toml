@@ -12,4 +12,5 @@ Entries to explain:
 """
 target_language_name = "HSK3-level Chinese"
 output_slug = "hsk3"
+release_name = "HSK3"
 description = "HSK3-level definitions, LLM generated, that an HSK3 learner should understand, hence focused on using mostly HSK3 vocabulary."

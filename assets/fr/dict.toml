@@ -13,4 +13,5 @@ Entries to translate:
 """
 target_language_name = "French"
 output_slug = "cfdict"
+release_name = "French"
 description = "French definitions (CFDICT authoritative base + LLM coverage)."

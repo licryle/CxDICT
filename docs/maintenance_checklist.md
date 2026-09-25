@@ -35,4 +35,5 @@
 | `assemble` refuses overlap | same as overlap above — assembly never overrides; clean first |
 | `generate` `GenerationError: missing id` | model dropped an entry — retry; persistent drops mean the batch is too large or the model too small |
 | `nix develop` broken | `nix flake check`; fallback is venv + `pip install -e .` (sets `PYTHONPATH` equivalent) |
+| pytest `WinError` on `result` | stale `nix build` symlink unreadable from Windows — delete `./result` (gitignored build output) and re-run |
 | CI red on `gh release` | check `contents: write` permission and tag collision (two pushes within one second) |

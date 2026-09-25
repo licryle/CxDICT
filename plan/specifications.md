@@ -218,4 +218,11 @@ prompt assets under `assets/<code>/` described by `assets/<code>/dict.toml`
 `--language` (no default). The single sense field is `definition` for
 all languages; per-language prompt versions are stamped on each record.
 A language without an authoritative base (e.g. `zh-CN-HSK03`) runs the
-same precedence pipeline with an empty base set.
+same precedence pipeline with an empty base set. Releases are per
+language: pushes touching a language's inputs rebuild only it (any other
+path under `data/`/`assets/` rebuilds all; tooling-only pushes cut no
+release). Each release is tagged `<code>-YYYYMMDD-HHMMSS` with assets
+`CxDICT-<Name>-YYYYMMDD-{Human,Full}.u8` (`<Name>` from `release_name`),
+plus rolling per-variant releases (`cxdict-<name>-<variant>`, refreshed
+in place) as stable download pointers. Manual dispatch rebuilds all
+discovered languages or one named language.

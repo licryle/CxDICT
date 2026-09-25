@@ -1,6 +1,14 @@
 name: Assemble and release
 
-# Spec §13: runs when relevant source data is updated or merged.
+# Two functions (spec §13):
+# - push to main: rebuild each language touched under data/ or assets/.
+#   Tooling-only pushes run the tests but cut no release (use dispatch).
+# - manual dispatch ("Run workflow" button): rebuild all known languages,
+#   or a single language via the `language` input.
+# Each released language gets its own timestamped release:
+#   tag <code>-YYYYMMDD-HHMMSS,
+#   assets CxDICT-<Name>-YYYYMMDD-{Human,Full}.u8 (<Name> from dict.toml),
+#   notes = scope.md; plus rolling per-variant releases (see below).
 on:
   push:
     branches: [main]
@@ -11,7 +19,12 @@ on:
       - "scripts/**"
       - "flake.nix"
       - ".github/workflows/assemble.yml"
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      language:
+        description: "Language code to release (default all)"
+        required: false
+        default: "all"
 
 permissions:
   contents: write  # create GitHub releases and upload .u8 assets
@@ -29,36 +42,99 @@ jobs:
       - uses: DeterminateSystems/nix-installer-action@v23
       - run: nix develop --command python -m pytest -q
 
-  assemble:
-    name: Validate, assemble, release
+  changes:
+    name: Detect languages to build
     runs-on: ubuntu-latest
-    needs: [test]
+    outputs:
+      matrix: ${{ steps.set.outputs.matrix }}
+      count: ${{ steps.set.outputs.count }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history: before..sha diff needs both ends
+      - id: set
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] \
+            && [ "${{ inputs.language }}" != "all" ]; then
+            CODES="${{ inputs.language }}"
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            CODES="$(ls assets)"
+          else
+            CHANGED="$(git diff --name-only "${{ github.event.before }}" "${{ github.sha }}")"
+            CODES=""
+            for p in $CHANGED; do
+              case "$p" in
+                data/*|assets/*)
+                  code="$(echo "$p" | cut -d/ -f2)"
+                  if [ -f "assets/$code/dict.toml" ]; then
+                    CODES="$CODES $code"  # one language's own inputs
+                  else
+                    CODES="$CODES $(ls assets)"  # shared paths hit all
+                  fi
+                  ;;
+              esac
+            done
+          fi
+          MATRIX="$(echo "$CODES" | tr ' ' '\n' | sort -u | grep -v '^$' \
+            | jq -R . | jq -cs '{include: map({code: .})}')"
+          COUNT="$(echo "$MATRIX" | jq '.include | length')"
+          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
+          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+          echo "Releasing: $(echo "$CODES" | tr ' ' '\n' | sort -u | grep -v '^$' | tr '\n' ' ')"
+
+  release:
+    name: Build and release (${{ matrix.code }})
+    runs-on: ubuntu-latest
+    needs: [test, changes]
+    if: needs.changes.outputs.count != '0'
+    strategy:
+      fail-fast: false  # languages release independently
+      matrix: ${{ fromJSON(needs.changes.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v4
       - uses: DeterminateSystems/nix-installer-action@v23
+
+      - name: Read language metadata
+        id: meta
+        run: |
+          CODE="${{ matrix.code }}"
+          NAME="$(python -c 'import tomllib,sys; print(tomllib.load(open(f"assets/{sys.argv[1]}/dict.toml","rb"))["release_name"])' "$CODE")"
+          DATE="$(date -u +%Y%m%d)"
+          {
+            echo "relname=$NAME"
+            echo "tag=${CODE}-$(date -u +%Y%m%d-%H%M%S)"
+            echo "human=CxDICT-${NAME}-${DATE}-Human.u8"
+            echo "full=CxDICT-${NAME}-${DATE}-Full.u8"
+          } >> "$GITHUB_OUTPUT"
 
       # 1. Gate on inputs first: any violated data relationship fails the
       #    run before anything is produced (spec §14). Overlaps are NOT
       #    auto-fixed here — run scripts/cleanup.py locally and commit the
       #    result (see docs/workflow.md).
       - name: Validate inputs
-        run: nix develop --command python scripts/validate.py --language fr
+        run: nix develop --command python scripts/validate.py --language "${{ matrix.code }}"
 
       # 2. Assemble both dictionaries (spec §10): CC-CEDICT scope is an
       #    input to assembly via --cc-cedict for provenance; precedence
       #    base > human > llm_generated is enforced, overlaps fail (spec §14).
       - name: Assemble dictionaries
-        run: nix develop --command python scripts/assemble.py --language fr
+        run: >-
+          nix develop --command python scripts/assemble.py --language "${{ matrix.code }}"
+          --out-human "output/${{ matrix.code }}/${{ steps.meta.outputs.human }}"
+          --out-full "output/${{ matrix.code }}/${{ steps.meta.outputs.full }}"
 
       # 3. Validate the assembled outputs against the inputs.
       - name: Validate outputs
         run: >-
-          nix develop --command python scripts/validate.py --language fr
-          --out-human output/fr/cfdict-next-human.u8 --out-full output/fr/cfdict-next-full.u8
+          nix develop --command python scripts/validate.py --language "${{ matrix.code }}"
+          --out-human "output/${{ matrix.code }}/${{ steps.meta.outputs.human }}"
+          --out-full "output/${{ matrix.code }}/${{ steps.meta.outputs.full }}"
 
       # 4. Scope information for the release notes (spec §12, §16).
       - name: Scope information
-        run: nix develop --command python scripts/scope_info.py --language fr --out output/fr/scope.md
+        run: >-
+          nix develop --command python scripts/scope_info.py --language "${{ matrix.code }}"
+          --out "output/${{ matrix.code }}/scope.md"
 
       # 5. Publish the release: both .u8 dictionaries as assets, scope
       #    information as the notes body. Generated files are release
@@ -67,9 +143,36 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          TAG="cfdict-$(date -u +%Y%m%d-%H%M%S)"
-          gh release create "$TAG" \
-            --title "CFDICT-Next $TAG" \
-            --notes-file output/fr/scope.md \
-            output/fr/cfdict-next-human.u8 \
-            output/fr/cfdict-next-full.u8
+          gh release create "${{ steps.meta.outputs.tag }}" \
+            --title "${{ steps.meta.outputs.relname }} dictionary ${{ steps.meta.outputs.tag }}" \
+            --notes-file "output/${{ matrix.code }}/scope.md" \
+            "output/${{ matrix.code }}/${{ steps.meta.outputs.human }}" \
+            "output/${{ matrix.code }}/${{ steps.meta.outputs.full }}"
+
+      # 6. Rolling latest releases, Docker `:latest`-style: the timestamped
+      #    release above stays the immutable record; these per-variant
+      #    objects are refreshed in place so their download URLs never move:
+      #    github/<owner>/<repo>/releases/download/cxdict-<name>-<variant>/CxDICT-<Name>-<Variant>.u8
+      #    or: gh release download cxdict-<name>-<variant> --pattern '*-<Variant>.u8'
+      - name: Refresh floating latest releases
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          CODE="${{ matrix.code }}"
+          NAME="${{ steps.meta.outputs.relname }}"
+          DATE="$(date -u +%Y%m%d)"
+          SLUG="$(echo "$NAME" | tr '[:upper:]' '[:lower:]' | tr ' ' '-')"
+          for variant in human full; do
+            Variant="$(tr '[:lower:]' '[:upper:]' <<< "${variant:0:1}")${variant:1}"
+            cp "output/${CODE}/CxDICT-${NAME}-${DATE}-${Variant}.u8" "/tmp/CxDICT-${NAME}-${Variant}.u8"
+            FTAG="cxdict-${SLUG}-${variant}"
+            if gh release view "$FTAG" >/dev/null 2>&1; then
+              gh release upload --clobber "$FTAG" "/tmp/CxDICT-${NAME}-${Variant}.u8"
+              gh release edit "$FTAG" --notes-file "output/${CODE}/scope.md"
+            else
+              gh release create "$FTAG" \
+                --title "CxDICT ${NAME} ${Variant} (latest)" \
+                --notes-file "output/${CODE}/scope.md" \
+                "/tmp/CxDICT-${NAME}-${Variant}.u8"
+            fi
+          done

@@ -33,6 +33,7 @@ _REQUIRED_FIELDS = (
     "prompt_user_intro",
     "target_language_name",
     "output_slug",
+    "release_name",
     "description",
 )
 
@@ -51,6 +52,7 @@ class LanguageConfig:
     prompt_user_intro: str  # user-message prefix for generation batches
     target_language_name: str  # used when rendering prompts ("French", ...)
     output_slug: str  # output/<code>/<slug>-next-{human,full}.u8
+    release_name: str  # short display name used in release assets (no slashes)
     description: str  # one-line description of the target dictionary
     config_dir: Path = field(compare=False)  # directory holding dict.toml
 
@@ -90,6 +92,11 @@ def get_language(code: str) -> LanguageConfig:
         raise ValueError(
             f"{toml_path}: code is {raw['code']!r} but {code!r} was requested"
         )
+    release_name = raw["release_name"]
+    if not release_name.strip() or "/" in release_name or "\\" in release_name:
+        raise ValueError(
+            f"{toml_path}: 'release_name' must be a bare filename-safe name"
+        )
     config_dir = toml_path.parent.absolute()
     template = config_dir / raw["prompt_template"]
     few_shot = config_dir / raw["few_shot"]
@@ -107,6 +114,7 @@ def get_language(code: str) -> LanguageConfig:
         prompt_user_intro=raw["prompt_user_intro"],
         target_language_name=raw["target_language_name"],
         output_slug=raw["output_slug"],
+        release_name=release_name,
         description=raw["description"],
         config_dir=config_dir,
     )
