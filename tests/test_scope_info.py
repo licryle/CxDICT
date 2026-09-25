@@ -111,7 +111,7 @@ def test_cli_on_real_data(tmp_path):
     rc = cli_main(
         [
             "--language", "fr",
-            "--base", "data/cfdict.u8",
+            "--base", "data/fr/cfdict.u8",
             "--human", str(tmp_path / "human.u8"),
             "--llm-generated", str(tmp_path / "llm.json"),
             "--cc-cedict", "data/cc-cedict/cedict_1_0_ts_utf-8_mdbg.txt.gz",

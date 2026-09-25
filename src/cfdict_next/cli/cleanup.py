@@ -16,22 +16,29 @@ from pathlib import Path
 
 
 from ..cleanup import cleanup_files
-from ..languages import LANGUAGES
+from ..languages import LANGUAGES, resolve_paths
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--language", required=True, choices=sorted(LANGUAGES),
                         help="target dictionary language")
-    parser.add_argument("--base", default="data/cfdict.u8")
-    parser.add_argument("--human", default="data/human.u8")
-    parser.add_argument("--llm-generated", default="data/llm_generated.json")
+    parser.add_argument("--base", default=None,
+                        help="base dictionary file (default: data/<language>/…)")
+    parser.add_argument("--human", default=None,
+                        help="human curation file (default: data/<language>/human.u8)")
+    parser.add_argument("--llm-generated", default=None,
+                        help="LLM dataset file (default: data/<language>/llm_generated.json)")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args(argv)
+    paths = resolve_paths(
+        args.language, base=args.base, human=args.human,
+        llm_generated=args.llm_generated,
+    )
 
     try:
         report = cleanup_files(
-            args.base, args.human, args.llm_generated, args.dry_run
+            paths.base, paths.human, paths.llm_generated, args.dry_run
         )
     except (ValueError, OSError) as exc:
         print(f"cleanup failed: {exc}", file=sys.stderr)

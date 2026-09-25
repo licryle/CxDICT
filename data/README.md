@@ -1,7 +1,8 @@
 # Source data
 
-This directory holds the source datasets. Provenance (URL, date, checksum) is
-recorded here for every file, per specification §3, §12 and §16 (releases must
+This directory holds the source datasets, one subdirectory per target
+language (`fr`, `zh-CN-HSK03`); CC-CEDICT is the shared Chinese lexical scope for every language. Provenance (URL, date, checksum) is recorded
+here for every file, per specification §3, §12 and §16 (releases must
 be traceable to exact source versions).
 
 ## CC-CEDICT (lexical scope)
@@ -19,9 +20,9 @@ be traceable to exact source versions).
 - Note: MDBG serves a daily snapshot without an explicit version identifier;
   the SHA-256 above is the release-pinning reference for this snapshot.
 
-## CFDICT (authoritative French definitions)
+## CFDICT (authoritative French definitions, `fr` only)
 
-- File: `cfdict.u8`
+- File: `fr/cfdict.u8`
 - Source URL: https://chine.in/assets/cfdict/cfdict.u8 (provided by maintainer)
 - Downloaded (UTC): 2025-09-12
 - SHA-256: `124d87f0fc2aed305e42ec3794584fa62bf00df9ed0aac45b950aba518795e75`
@@ -33,9 +34,9 @@ be traceable to exact source versions).
 - This file is the forked authoritative source (spec §2); future updates
   arrive via pull requests against it.
 
-## Human curation (free-form French)
+## Human curation (free-form target language)
 
-- File: `human.u8`
+- Files: `fr/human.u8`, `zh-CN-HSK03/human.u8` (empty until curated)
 - Format: CEDICT — `traditional simplified [pinyin] /définition1/définition2/.../`,
   `#` lines are metadata/comments.
 - Precedence: CFDICT > human.u8 > llm_generated.json (spec §9). Entries
@@ -44,9 +45,17 @@ be traceable to exact source versions).
   (traditional, simplified) pair, the pinyin must be one of its observed
   readings, and mixed hanzi pairs fail (spec §14).
 
-## LLM-generated French (unified dataset)
+## HSK3 (`zh-CN-HSK03`): no authoritative base
 
-- File: `llm_generated.json` (77,077 records merged from the former
+- There is no upstream base dictionary: generation starts from human
+  curation + LLM output over CC-CEDICT scope. `zh-CN-HSK03/human.u8`
+  (empty) and `zh-CN-HSK03/llm_generated.json` (`{}`) are the skeletons;
+  definitions must stay understandable to an HSK3 learner, using mostly
+  HSK3 vocabulary.
+
+## LLM-generated definitions (unified per-language datasets)
+
+- Files: `fr/llm_generated.json` (77,077 records merged from the former
   `confident.json` + `review.json`; per-record `confidence` field dropped
   2026-09-18 — the model is no longer asked to rate itself).
 - Format: JSON object mapping `traditional|simplified|pinyin` identity →

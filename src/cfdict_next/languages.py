@@ -131,12 +131,13 @@ def resolve_paths(
     Languages without an authoritative base (``base_filename is None``)
     resolve ``base`` to None unless an explicit ``base=`` override is given;
     downstream stages treat None as "no base identities" (empty set).
+    Empty-string overrides count as not given.
     """
     cfg = get_language(code)
     root = Path(repo_root)
     data_dir = root / "data" / cfg.code
     out_dir = root / "output" / cfg.code
-    if base is not None:
+    if base:
         resolved_base: Path | None = Path(base)
     elif cfg.base_filename is None:
         resolved_base = None
@@ -144,20 +145,20 @@ def resolve_paths(
         resolved_base = data_dir / cfg.base_filename
     return ResolvedPaths(
         base=resolved_base,
-        human=Path(human) if human is not None else data_dir / "human.u8",
+        human=Path(human) if human else data_dir / "human.u8",
         llm_generated=(
-            Path(llm_generated) if llm_generated is not None else data_dir / "llm_generated.json"
+            Path(llm_generated) if llm_generated else data_dir / "llm_generated.json"
         ),
-        cc_cedict=Path(cc_cedict) if cc_cedict is not None else root / CC_CEDICT_REL,
+        cc_cedict=Path(cc_cedict) if cc_cedict else root / CC_CEDICT_REL,
         out_human=(
             Path(out_human)
-            if out_human is not None
+            if out_human
             else out_dir / f"{cfg.output_slug}-next-human.u8"
         ),
         out_full=(
             Path(out_full)
-            if out_full is not None
+            if out_full
             else out_dir / f"{cfg.output_slug}-next-full.u8"
         ),
-        scope_out=Path(scope_out) if scope_out is not None else out_dir / "scope.md",
+        scope_out=Path(scope_out) if scope_out else out_dir / "scope.md",
     )

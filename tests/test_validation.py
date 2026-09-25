@@ -246,3 +246,41 @@ def test_none_base_passes_with_empty_identities(tmp_path):
     report, data = validate_inputs(None, cc_p, human_p, llm_p)
     assert report.passed, [(c.name, c.detail) for c in report.failures()]
     assert data is not None and data["base_ids"] == set()
+
+
+def _write_repo_layout(root):
+    """Minimal data/<lang>/ layout plus shared CC-CEDICT (gzipped)."""
+    import gzip
+
+    (root / "data" / "fr").mkdir(parents=True)
+    (root / "data" / "fr" / "cfdict.u8").write_text(BASE_SAMPLE, encoding="utf-8")
+    (root / "data" / "fr" / "human.u8").write_text("", encoding="utf-8")
+    (root / "data" / "fr" / "llm_generated.json").write_text("{}", encoding="utf-8")
+    (root / "data" / "zh-CN-HSK03").mkdir(parents=True)
+    (root / "data" / "zh-CN-HSK03" / "human.u8").write_text("", encoding="utf-8")
+    (root / "data" / "zh-CN-HSK03" / "llm_generated.json").write_text(
+        "{}", encoding="utf-8"
+    )
+    cc_dir = root / "data" / "cc-cedict"
+    cc_dir.mkdir(parents=True)
+    cc_dir.joinpath("cedict_1_0_ts_utf-8_mdbg.txt.gz").write_bytes(
+        gzip.compress(CC_SAMPLE.encode("utf-8"))
+    )
+
+
+def test_cli_defaults_resolve_to_repo_layout(tmp_path, monkeypatch, capsys):
+    from cfdict_next.cli.validate import main as cli_main
+
+    _write_repo_layout(tmp_path)
+    monkeypatch.chdir(tmp_path)
+    assert cli_main(["--language", "fr"]) == 0
+    assert "validation passed" in capsys.readouterr().out
+
+
+def test_cli_hsk3_skeleton_validates_without_base(tmp_path, monkeypatch, capsys):
+    from cfdict_next.cli.validate import main as cli_main
+
+    _write_repo_layout(tmp_path)
+    monkeypatch.chdir(tmp_path)
+    assert cli_main(["--language", "zh-CN-HSK03"]) == 0
+    assert "validation passed" in capsys.readouterr().out

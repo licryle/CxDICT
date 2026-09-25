@@ -23,7 +23,7 @@ from ..generation.config import LLMConfig
 from ..generation.llm import GenerationError
 from ..generation.orchestrator import generate_files
 from ..generation.llm import post_chat_completions
-from ..languages import LANGUAGES, get_language
+from ..languages import LANGUAGES, get_language, resolve_paths
 from ..scope_info import (
     ReleaseSources,
     build_scope_info,
@@ -218,7 +218,7 @@ def run_pipeline(
     _announce("[scope] start")
     models, prompts = collect_llm_provenance(data["llm_generated"])
     try:
-        base_version = sha256_file(base_path) if base_path is not None else ""
+        base_version = sha256_file(base_path) if base_path is not None else "n/a"
         human_version = sha256_file(human_path)
         llm_generated_version = sha256_file(llm_generated_path)
     except OSError as exc:
@@ -268,22 +268,33 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--env", default=".env")
     parser.add_argument("--language", required=True, choices=sorted(LANGUAGES),
                         help="target dictionary language")
-    parser.add_argument("--base", default="data/cfdict.u8")
-    parser.add_argument(
-        "--cc-cedict", default="data/cc-cedict/cedict_1_0_ts_utf-8_mdbg.txt.gz"
-    )
-    parser.add_argument("--human", default="data/human.u8")
-    parser.add_argument("--llm-generated", default="data/llm_generated.json")
-    parser.add_argument("--out-human", default="output/cfdict-next-human.u8")
-    parser.add_argument("--out-full", default="output/cfdict-next-full.u8")
+    parser.add_argument("--base", default=None,
+                        help="base dictionary file (default: data/<language>/…)")
+    parser.add_argument("--cc-cedict", default=None,
+                        help="CC-CEDICT file (default: data/cc-cedict/…)")
+    parser.add_argument("--human", default=None,
+                        help="human curation file (default: data/<language>/human.u8)")
+    parser.add_argument("--llm-generated", default=None,
+                        help="LLM dataset file (default: data/<language>/llm_generated.json)")
+    parser.add_argument("--out-human", default=None,
+                        help="human dictionary output (default: output/<language>/…)")
+    parser.add_argument("--out-full", default=None,
+                        help="full dictionary output (default: output/<language>/…)")
     parser.add_argument("--cc-version", default=None)
     parser.add_argument("--batch-size", type=int, default=None)
     parser.add_argument("--limit", type=int, default=0)
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--skip-generate", action="store_true")
     parser.add_argument("--no-progress", action="store_true")
-    parser.add_argument("--scope-out", default="scope.md")
+    parser.add_argument("--scope-out", default=None,
+                        help="scope notes output (default: output/<language>/scope.md)")
     args = parser.parse_args(argv)
+    paths = resolve_paths(
+        args.language, base=args.base, cc_cedict=args.cc_cedict,
+        human=args.human, llm_generated=args.llm_generated,
+        out_human=args.out_human, out_full=args.out_full,
+        scope_out=args.scope_out,
+    )
 
     if args.limit < 0:
         print("pipeline failed: --limit must be >= 0 (0 = unlimited)")
@@ -300,12 +311,12 @@ def main(argv: list[str] | None = None) -> int:
         config = dataclasses.replace(config, batch_size=args.batch_size)
     try:
         report = run_pipeline(
-            base_path=args.base,
-            cc_cedict_path=args.cc_cedict,
-            human_path=args.human,
-            llm_generated_path=args.llm_generated,
-            out_human_path=args.out_human,
-            out_full_path=args.out_full,
+            base_path=paths.base,
+            cc_cedict_path=paths.cc_cedict,
+            human_path=paths.human,
+            llm_generated_path=paths.llm_generated,
+            out_human_path=paths.out_human,
+            out_full_path=paths.out_full,
             config=config,
             language=args.language,
             cc_version=args.cc_version,
@@ -313,7 +324,7 @@ def main(argv: list[str] | None = None) -> int:
             dry_run=args.dry_run,
             skip_generate=args.skip_generate,
             progress=not args.no_progress,
-            scope_out=None if args.dry_run else args.scope_out,
+            scope_out=None if args.dry_run else paths.scope_out,
         )
     except PipelineError as exc:
         print(f"pipeline failed: {exc}")

@@ -72,6 +72,11 @@ def test_hsk3_explicit_base_override_still_applies(tmp_path):
     assert paths.base == tmp_path / "base.u8"
 
 
+def test_empty_string_override_counts_as_not_given(tmp_path):
+    paths = resolve_paths("fr", repo_root=tmp_path, base="")
+    assert paths.base == tmp_path / "data" / "fr" / "cfdict.u8"
+
+
 def test_explicit_overrides_win_over_language_defaults(tmp_path):
     paths = resolve_paths(
         "fr",

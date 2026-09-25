@@ -26,7 +26,7 @@ from cfdict_next.assembly import (
 from cfdict_next.parser.u8 import DictionaryEntry, iter_u8_lines, parse_u8_line, parse_u8_file
 
 REPO = Path(__file__).resolve().parent.parent
-BASE = REPO / "data" / "cfdict.u8"
+BASE = REPO / "data" / "fr" / "cfdict.u8"
 CEDICT_GZ = REPO / "data" / "cc-cedict" / "cedict_1_0_ts_utf-8_mdbg.txt.gz"
 
 

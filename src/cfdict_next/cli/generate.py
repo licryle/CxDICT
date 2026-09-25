@@ -25,7 +25,7 @@ from pathlib import Path
 from ..generation.config import load_config
 from ..generation.llm import GenerationError
 from ..generation.orchestrator import generate_files
-from ..languages import LANGUAGES
+from ..languages import LANGUAGES, resolve_paths
 from ..scope_info import sha256_file
 
 
@@ -34,12 +34,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--env", default=".env")
     parser.add_argument("--language", required=True, choices=sorted(LANGUAGES),
                         help="target dictionary language")
-    parser.add_argument("--base", default="data/cfdict.u8")
-    parser.add_argument(
-        "--cc-cedict", default="data/cc-cedict/cedict_1_0_ts_utf-8_mdbg.txt.gz"
-    )
-    parser.add_argument("--human", default="data/human.u8")
-    parser.add_argument("--llm-generated", default="data/llm_generated.json")
+    parser.add_argument("--base", default=None,
+                        help="base dictionary file (default: data/<language>/…)")
+    parser.add_argument("--cc-cedict", default=None,
+                        help="CC-CEDICT file (default: data/cc-cedict/…)")
+    parser.add_argument("--human", default=None,
+                        help="human curation file (default: data/<language>/human.u8)")
+    parser.add_argument("--llm-generated", default=None,
+                        help="LLM dataset file (default: data/<language>/llm_generated.json)")
     parser.add_argument("--cc-version", default=None)
     parser.add_argument("--batch-size", type=int, default=None)
     parser.add_argument("--limit", type=int, default=20)
@@ -62,13 +64,17 @@ def main(argv: list[str] | None = None) -> int:
         import dataclasses
 
         config = dataclasses.replace(config, batch_size=args.batch_size)
+    paths = resolve_paths(
+        args.language, base=args.base, cc_cedict=args.cc_cedict,
+        human=args.human, llm_generated=args.llm_generated,
+    )
     try:
-        cc_version = args.cc_version or sha256_file(args.cc_cedict)
+        cc_version = args.cc_version or sha256_file(paths.cc_cedict)
         report = generate_files(
-            args.base,
-            args.cc_cedict,
-            args.human,
-            args.llm_generated,
+            paths.base,
+            paths.cc_cedict,
+            paths.human,
+            paths.llm_generated,
             config,
             cc_version,
             limit=args.limit,
