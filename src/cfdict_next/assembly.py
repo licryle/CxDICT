@@ -12,9 +12,9 @@ Precedence:  base > human.u8 > llm_generated.json
 - Output order is deterministic: base file order, then LLM-only entries
   sorted by identity — so identical inputs always yield byte-identical
   outputs.
-- Headword fields split on ASCII space/tab (a single CFDICT line uses
-  tabs); U+3000 inside headwords is content and round-trips exactly.
-- Definitions are strip-normalized on parse (a few dozen CFDICT lines
+- Headword fields split on ASCII space/tab (a single base-dictionary line
+  uses tabs); U+3000 inside headwords is content and round-trips exactly.
+- Definitions are strip-normalized on parse (a few dozen base lines
   carry incidental separator whitespace — "/ " gaps, "//" empties,
   even non-breaking spaces); the writer therefore emits canonical
   "/"-joined definitions. Content is preserved exactly — including

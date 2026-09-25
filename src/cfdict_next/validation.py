@@ -10,8 +10,8 @@ overriding or discarding data. Checks:
 4. No base∩human, base∩LLM, or human∩LLM overlap.
 5. Every LLM record covers exactly its CC-CEDICT gloss set
    (accept/reject via assert_gloss_coverage); no LLM record may reference
-   an identity outside CC-CEDICT scope. Human entries are free-form
-   French (no gloss check) but must not mix hanzi pairs or pinyin:
+   an    identity outside CC-CEDICT scope. Human entries are free-form
+   target language (no gloss check) but must not mix hanzi pairs or pinyin:
    if CC-CEDICT knows the (traditional, simplified) pair, the human
    pinyin must be one of its observed readings; a novel pair mixing a
    known traditional with a wrong simplified (or vice versa) fails.

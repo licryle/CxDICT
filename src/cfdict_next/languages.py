@@ -41,7 +41,7 @@ _REQUIRED_FIELDS = (
 class LanguageConfig:
     """Everything that varies per target language, loaded from dict.toml."""
 
-    code: str  # directory key: "fr", "zh-CN-HSK03" (data/<code>/, output/<code>/)
+    code: str  # directory key: "fr", "zh-CN-HSK03", mirroring data/<code>/ and output/<code>/
     base_filename: str | None  # authoritative base filename in data/<code>/ (None = no base)
     base_label: str  # human label rendered in scope info / section headers
     base_url: str | None  # provenance URL for the base (None when there is no upstream)

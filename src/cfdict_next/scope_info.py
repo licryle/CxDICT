@@ -102,7 +102,7 @@ def render_scope_markdown(info: dict[str, Any], base_label: str) -> str:
     """Render scope information as the release-notes body.
 
     `base_label` is required (no default): it names the authoritative base
-    row (e.g. "CFDICT") from the language registry.
+    row from the language registry.
     """
     sources = info["sources"]
     coverage = info["coverage"]
