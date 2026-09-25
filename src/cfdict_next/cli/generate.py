@@ -1,13 +1,14 @@
 """Generation orchestrator CLI: fill the LLM dataset from the missing scope.
 
 Usage:
-    python scripts/generate.py [--env PATH] [--cfdict PATH] [--cc-cedict PATH]
-                                [--human PATH] [--llm-generated PATH]
-                                [--cc-version LABEL] [--batch-size N]
-                                [--limit N] [--dry-run]
+    python scripts/generate.py --language CODE [--env PATH] [--base PATH]
+                                 [--cc-cedict PATH]
+                                 [--human PATH] [--llm-generated PATH]
+                                 [--cc-version LABEL] [--batch-size N]
+                                 [--limit N] [--dry-run]
 
 Computes CC-CEDICT − base − human.u8 − llm_generated.json (spec §3, §5),
-generates French definitions in batches through the configured
+generates definitions in batches through the configured
 OpenAI-compatible endpoint, and merges the records into llm_generated.json.
 
 Safety: --limit caps entries per run (default 20); pass --limit 0 for a
@@ -24,13 +25,16 @@ from pathlib import Path
 from ..generation.config import load_config
 from ..generation.llm import GenerationError
 from ..generation.orchestrator import generate_files
+from ..languages import LANGUAGES
 from ..scope_info import sha256_file
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--env", default=".env")
-    parser.add_argument("--cfdict", default="data/cfdict.u8")
+    parser.add_argument("--language", required=True, choices=sorted(LANGUAGES),
+                        help="target dictionary language")
+    parser.add_argument("--base", default="data/cfdict.u8")
     parser.add_argument(
         "--cc-cedict", default="data/cc-cedict/cedict_1_0_ts_utf-8_mdbg.txt.gz"
     )
@@ -61,7 +65,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         cc_version = args.cc_version or sha256_file(args.cc_cedict)
         report = generate_files(
-            args.cfdict,
+            args.base,
             args.cc_cedict,
             args.human,
             args.llm_generated,
@@ -70,6 +74,7 @@ def main(argv: list[str] | None = None) -> int:
             limit=args.limit,
             dry_run=args.dry_run,
             progress=not args.no_progress,
+            language=args.language,
         )
     except (ValueError, OSError, GenerationError) as exc:
         print(f"generate failed: {exc}", file=sys.stderr)

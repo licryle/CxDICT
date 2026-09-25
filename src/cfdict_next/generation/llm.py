@@ -249,9 +249,14 @@ def _split_batch(
 def generate_batch(
     items: list[GenerationItem],
     config: LLMConfig,
+    *,
+    language: str,
     post: Callable[..., Any] = post_chat_completions,
 ) -> BatchOutcome:
     """Generate definitions for one batch of entries, with retries.
+
+    `language` is required (no default): it selects the prompt template,
+    few-shot examples, and user-message voice for the target dictionary.
 
     `post` is injectable so tests run without a network. Transport and
 envelope failures retry the whole batch up to `max_retries`, then raise
@@ -266,8 +271,7 @@ caller. A single-entry batch retries per-entry failures too, then raises.
     for item in items:
         if not item.glosses:
             raise GenerationError(f"entry {item.key}: no glosses to generate")
-    # TODO(P4): thread --language from the CLI instead of hardcoding French.
-    system, user = render_prompt(items, "fr")
+    system, user = render_prompt(items, language)
     attempts = config.max_retries + 1
     last_error: GenerationError | None = None
     for _ in range(attempts):

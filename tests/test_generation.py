@@ -147,7 +147,7 @@ def test_few_shot_examples_pass_the_real_validator():
         return chat_body(EXAMPLE_OUTPUTS)
 
     outcome = generate_batch(
-        list(EXAMPLE_ITEMS), make_config(max_retries=0), post=fake_post
+        list(EXAMPLE_ITEMS), make_config(max_retries=0), language="fr", post=fake_post
     )
     assert outcome.failed == []
     assert len(outcome.results) == 16
@@ -310,7 +310,7 @@ def test_generate_batch_maps_entries_to_sense_lists():
             ]
         )
 
-    outcome = generate_batch(make_items(), make_config(), post=fake_post)
+    outcome = generate_batch(make_items(), make_config(), language="fr", post=fake_post)
     assert outcome.failed == []
     results = outcome.results
     assert [r.key for r in results] == ["中國|中国|Zhong1 guo2", "行|行|Xing2"]
@@ -319,6 +319,44 @@ def test_generate_batch_maps_entries_to_sense_lists():
         ("Middle Kingdom", "Empire du Milieu"),
     ]
     assert len(results) == 2
+
+
+def test_generate_batch_renders_hsk3_prompt():
+    def fake_post(endpoint, model, system, user, timeout_s):
+        assert "HSK 3" in system
+        assert "Explain the meanings" in user
+        return chat_body(
+            [
+                {
+                    "id": 0,
+                    "word": "中国",
+                    "senses": [
+                        {"gloss": "China", "definition": "一个很大的国家"},
+                        {"gloss": "Middle Kingdom", "definition": "中国以前的名字"},
+                    ],
+                },
+                {
+                    "id": 1,
+                    "word": "行",
+                    "senses": [{"gloss": "to walk", "definition": "用脚走路"}],
+                },
+            ]
+        )
+
+    outcome = generate_batch(
+        make_items(), make_config(), language="zh-CN-HSK03", post=fake_post
+    )
+    assert outcome.failed == []
+    assert [(s.gloss, s.definition) for s in outcome.results[0].senses] == [
+        ("China", "一个很大的国家"),
+        ("Middle Kingdom", "中国以前的名字"),
+    ]
+
+
+def test_generate_batch_rejects_unknown_language():
+    with pytest.raises(ValueError, match="xx-unknown"):
+        generate_batch(make_items(), make_config(), language="xx-unknown",
+                       post=lambda *a: None)
 
 
 def test_dropped_sense_fails_the_batch():
@@ -334,7 +372,7 @@ def test_dropped_sense_fails_the_batch():
         )
 
     with pytest.raises(GenerationError, match="dropped sense.*Middle Kingdom"):
-        generate_batch(make_items()[:1], make_config(), post=fake_post)
+        generate_batch(make_items()[:1], make_config(), language="fr", post=fake_post)
 
 
 def test_invented_sense_fails_the_batch():
@@ -354,7 +392,7 @@ def test_invented_sense_fails_the_batch():
         )
 
     with pytest.raises(GenerationError, match="invented sense.*Cathay"):
-        generate_batch(make_items()[:1], make_config(), post=fake_post)
+        generate_batch(make_items()[:1], make_config(), language="fr", post=fake_post)
 
 
 def test_extra_confidence_field_is_ignored():
@@ -373,7 +411,7 @@ def test_extra_confidence_field_is_ignored():
             ]
         )
 
-    outcome = generate_batch(make_items()[:1], make_config(), post=fake_post)
+    outcome = generate_batch(make_items()[:1], make_config(), language="fr", post=fake_post)
     assert outcome.failed == []
     (result,) = outcome.results
     assert [s.gloss for s in result.senses] == ["China", "Middle Kingdom"]
@@ -397,7 +435,7 @@ def test_missing_id_retries_then_raises():
             ]
         )
 
-    outcome = generate_batch(make_items(), make_config(max_retries=2), post=fake_post)
+    outcome = generate_batch(make_items(), make_config(max_retries=2), language="fr", post=fake_post)
     assert [r.key for r in outcome.results] == ["中國|中国|Zhong1 guo2"]
     assert [i.key for i in outcome.failed] == ["行|行|Xing2"]
     assert "missing id 1" in outcome.causes["行|行|Xing2"]
@@ -417,7 +455,7 @@ def test_word_mismatch_is_rejected():
         )
 
     with pytest.raises(GenerationError, match="does not match"):
-        generate_batch(make_items()[:1], make_config(), post=fake_post)
+        generate_batch(make_items()[:1], make_config(), language="fr", post=fake_post)
 
 
 def test_non_array_response_is_rejected():
@@ -425,7 +463,7 @@ def test_non_array_response_is_rejected():
         return {"choices": [{"message": {"content": '{"id": 0}'}}]}
 
     with pytest.raises(GenerationError, match="JSON array"):
-        generate_batch(make_items()[:1], make_config(), post=fake_post)
+        generate_batch(make_items()[:1], make_config(), language="fr", post=fake_post)
 
 
 def test_fenced_json_content_is_accepted():
@@ -462,7 +500,7 @@ def test_generate_batch_accepts_fenced_content():
     def fake_post(*args):
         return {"choices": [{"message": {"content": fenced}}]}
 
-    outcome = generate_batch(make_items()[:1], make_config(), post=fake_post)
+    outcome = generate_batch(make_items()[:1], make_config(), language="fr", post=fake_post)
     assert outcome.failed == []
     (result,) = outcome.results
     assert [s.gloss for s in result.senses] == ["China", "Middle Kingdom"]
@@ -493,7 +531,7 @@ def test_partial_salvage_returns_good_and_defers_bad():
             ]
         )
 
-    outcome = generate_batch(make_items(), make_config(), post=fake_post)
+    outcome = generate_batch(make_items(), make_config(), language="fr", post=fake_post)
     assert [r.key for r in outcome.results] == ["中國|中国|Zhong1 guo2"]
     assert [i.key for i in outcome.failed] == ["行|行|Xing2"]
     assert "non-empty array" in outcome.causes["行|行|Xing2"]
@@ -508,7 +546,7 @@ def test_envelope_failure_retries_whole_batch_then_raises():
         return {"choices": [{"message": {"content": '{"id": 0}'}}]}
 
     with pytest.raises(GenerationError, match="JSON array"):
-        generate_batch(make_items(), make_config(max_retries=2), post=fake_post)
+        generate_batch(make_items(), make_config(max_retries=2), language="fr", post=fake_post)
     assert len(calls) == 3  # 1 initial + 2 retries
 
 
@@ -542,7 +580,7 @@ def test_single_transient_failure_recovers_on_retry():
         return good
 
     outcome = generate_batch(
-        make_items()[:1], make_config(max_retries=2), post=fake_post
+        make_items()[:1], make_config(max_retries=2), language="fr", post=fake_post
     )
     assert outcome.failed == []
     assert [r.key for r in outcome.results] == ["中國|中国|Zhong1 guo2"]
@@ -551,20 +589,21 @@ def test_single_transient_failure_recovers_on_retry():
 
 def test_empty_batch_is_rejected():
     with pytest.raises(GenerationError, match="empty batch"):
-        generate_batch([], make_config(), post=lambda *a: None)
+        generate_batch([], make_config(), language="fr", post=lambda *a: None)
 
 
 def test_entry_without_glosses_is_rejected():
     bad = GenerationItem(key="K", traditional="T", simplified="S", pinyin="P", glosses=())
     with pytest.raises(GenerationError, match="no glosses"):
-        generate_batch([bad], make_config(), post=lambda *a: None)
+        generate_batch([bad], make_config(), language="fr", post=lambda *a: None)
 
 
 # --- output ---
 
 
 def provenance():
-    return Provenance(cc_cedict_version="mdbg-test", llm_model="test-model")
+    return Provenance(cc_cedict_version="mdbg-test", llm_model="test-model",
+                        prompt_version=PROMPT_VERSION)
 
 
 def test_build_records_groups_single_mapping():

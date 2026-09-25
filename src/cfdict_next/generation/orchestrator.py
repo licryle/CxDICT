@@ -31,6 +31,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from ..cleanup import base_identities
+from ..languages import get_language
 from ..parser.json import load_llm_json
 from ..parser.u8 import DictionaryEntry, parse_u8_file
 from .config import LLMConfig
@@ -129,6 +130,8 @@ def generate_all(
     on_batch: Callable[[dict[str, dict[str, Any]]], None] | None = None,
     progress: bool = True,
     stream: Any | None = None,
+    *,
+    language: str,
 ) -> tuple[dict[str, dict[str, Any]], tuple[str, ...], dict[str, str]]:
     """Generate all items in batches; return (records, failed, causes).
 
@@ -196,7 +199,7 @@ def generate_all(
         chunk = list(chunk)
         label = f"Batch {index}/{first_pass_batches}"
         try:
-            outcome = generate_batch(chunk, config, post=post)
+            outcome = generate_batch(chunk, config, language=language, post=post)
         except GenerationError as exc:
             # Transport/envelope failure: nothing salvageable, defer all.
             deferred.extend(chunk)
@@ -225,7 +228,7 @@ def generate_all(
     causes: dict[str, str] = {}
     for index, item in enumerate(deferred, start=1):
         try:
-            _absorb(generate_batch([item], config, post=post).results)
+            _absorb(generate_batch([item], config, language=language, post=post).results)
         except GenerationError as exc:
             failed_keys.append(item.key)
             causes[item.key] = _short_error(exc)
@@ -242,7 +245,7 @@ def generate_all(
 
 
 def generate_files(
-    base_path: str | Path,
+    base_path: str | Path | None,
     cc_cedict_path: str | Path,
     human_path: str | Path,
     llm_generated_path: str | Path,
@@ -254,8 +257,15 @@ def generate_files(
     post: Callable[..., Any] = post_chat_completions,
     progress: bool = True,
     stream: Any | None = None,
+    *,
+    language: str,
 ) -> GenerationReport:
-    """Run generation against on-disk datasets; rewrite them unless dry_run."""
+    """Run generation against on-disk datasets; rewrite them unless dry_run.
+
+    `language` is required (no default): it selects the prompt template and
+    the prompt version stamped on new records. `base_path` may be None for
+    languages without an authoritative base (no base identities then).
+    """
     base_ids = base_identities(base_path)
     cc_entries, errors = parse_u8_file(cc_cedict_path)
     if errors:
@@ -281,7 +291,9 @@ def generate_files(
 
     limited = items if limit <= 0 else items[:limit]
     provenance = Provenance(
-        cc_cedict_version=cc_cedict_version, llm_model=config.model
+        cc_cedict_version=cc_cedict_version,
+        llm_model=config.model,
+        prompt_version=get_language(language).prompt_version,
     )
 
     def _persist(new_records: dict[str, dict[str, Any]]) -> None:
@@ -298,6 +310,7 @@ def generate_files(
     new_records, failed_keys, causes = generate_all(
         limited, config, provenance, generation_date, post,
         on_batch=_persist, progress=progress, stream=stream,
+        language=language,
     )
     if failed_keys:
         shown = "; ".join(f"{key}: {causes[key]}" for key in failed_keys[:3])

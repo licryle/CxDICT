@@ -30,6 +30,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from .languages import get_language
 from .parser.json import load_llm_json
 from .parser.u8 import DictionaryEntry, iter_u8_lines, parse_u8_file
 
@@ -52,13 +53,16 @@ def record_to_entry(key: str, record: dict[str, Any]) -> DictionaryEntry:
     )
 
 
-# TODO(P4): per-language section headers from the languages registry.
-# The value stays byte-identical until then: it lands in the assembled
-# .u8 artifacts, so changing it would change release bytes.
-BASE_SECTION_HEADER = (
-    "# CFDICT Authoritative entries "
-    "(from https://chine.in/mandarin/dictionnaire/CFDICT/)"
-)
+def section_header_for(code: str) -> str:
+    """Base section header for one language, from the registry."""
+    cfg = get_language(code)
+    header = f"# {cfg.base_label} Authoritative entries"
+    if cfg.base_url:
+        header += f" (from {cfg.base_url})"
+    return header
+
+
+BASE_SECTION_HEADER = section_header_for("fr")
 HUMAN_SECTION_HEADER = "# Human-curated entries (data/human.u8)"
 LLM_SECTION_HEADER = "# LLM-Generated entries (data/llm_generated.json)"
 
@@ -137,14 +141,23 @@ def write_u8_file(path: str | Path, entries: list[DictionaryEntry]) -> None:
 
 
 def assemble_files(
-    base_path: str | Path,
+    base_path: str | Path | None,
     human_path: str | Path,
     llm_generated_path: str | Path,
     out_human_path: str | Path,
     out_full_path: str | Path,
+    language: str,
 ) -> tuple[int, int]:
-    """Full assembly from on-disk sources; return (human_n, full_n)."""
-    entries, errors = parse_u8_file(base_path)
+    """Full assembly from on-disk sources; return (human_n, full_n).
+
+    `language` is required (no default): it selects the base section
+    header. `base_path` may be None for languages without an
+    authoritative base (the base section is then empty and omitted).
+    """
+    if base_path is None:
+        entries, errors = [], []
+    else:
+        entries, errors = parse_u8_file(base_path)
     if errors:
         preview = "; ".join(f"line {n}: {msg}" for n, msg in errors[:5])
         raise ValueError(f"base dictionary has {len(errors)} malformed line(s): {preview}")
@@ -161,14 +174,14 @@ def assemble_files(
     write_sectioned_u8_file(
         out_human_path,
         [
-            (BASE_SECTION_HEADER, base),
+            (section_header_for(language), base),
             (HUMAN_SECTION_HEADER, human_extra),
         ],
     )
     write_sectioned_u8_file(
         out_full_path,
         [
-            (BASE_SECTION_HEADER, base),
+            (section_header_for(language), base),
             (HUMAN_SECTION_HEADER, human_extra),
             (LLM_SECTION_HEADER, llm_extra),
         ],

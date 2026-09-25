@@ -141,7 +141,8 @@ def test_pipeline_end_to_end(pipeline_data, tmp_path):
     # 1. validate inputs
     r = run(
         "scripts/validate.py",
-        "--cfdict", str(d / "cfdict.u8"),
+        "--language", "fr",
+        "--base", str(d / "cfdict.u8"),
         "--cc-cedict", str(d / "cc.u8"),
         "--human", str(d / "human.u8"),
         "--llm-generated", str(d / "llm_generated.json"),
@@ -151,7 +152,8 @@ def test_pipeline_end_to_end(pipeline_data, tmp_path):
     # 2. assemble
     r = run(
         "scripts/assemble.py",
-        "--cfdict", str(d / "cfdict.u8"),
+        "--language", "fr",
+        "--base", str(d / "cfdict.u8"),
         "--human", str(d / "human.u8"),
         "--llm-generated", str(d / "llm_generated.json"),
         "--out-human", str(out_c),
@@ -163,7 +165,8 @@ def test_pipeline_end_to_end(pipeline_data, tmp_path):
     # 3. validate outputs
     r = run(
         "scripts/validate.py",
-        "--cfdict", str(d / "cfdict.u8"),
+        "--language", "fr",
+        "--base", str(d / "cfdict.u8"),
         "--cc-cedict", str(d / "cc.u8"),
         "--human", str(d / "human.u8"),
         "--llm-generated", str(d / "llm_generated.json"),
@@ -175,7 +178,8 @@ def test_pipeline_end_to_end(pipeline_data, tmp_path):
     # 4. scope info
     r = run(
         "scripts/scope_info.py",
-        "--cfdict", str(d / "cfdict.u8"),
+        "--language", "fr",
+        "--base", str(d / "cfdict.u8"),
         "--cc-cedict", str(d / "cc.u8"),
         "--human", str(d / "human.u8"),
         "--llm-generated", str(d / "llm_generated.json"),
@@ -204,7 +208,8 @@ def test_pipeline_fails_fast_on_overlap(pipeline_data):
     )
     r = run(
         "scripts/validate.py",
-        "--cfdict", str(d / "cfdict.u8"),
+        "--language", "fr",
+        "--base", str(d / "cfdict.u8"),
         "--cc-cedict", str(d / "cc.u8"),
         "--human", str(d / "human.u8"),
         "--llm-generated", str(d / "llm_generated.json"),

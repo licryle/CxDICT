@@ -2,6 +2,8 @@
 
 import json
 
+import pytest
+
 from cfdict_next.scope_info import (
     ReleaseSources,
     build_scope_info,
@@ -43,10 +45,12 @@ def test_scope_info_matches_exact_inputs():
 
 def test_markdown_contains_figures_and_versions():
     markdown = render_scope_markdown(
-        build_scope_info(sources(), generated_at="T")
+        build_scope_info(sources(), generated_at="T"), "CFDICT"
     )
     for needle in (
         "cc-v1", "base-v1", "human-v1", "llm-v1",
+        "| CFDICT (authoritative) |",
+        "CFDICT covers 1 CC-CEDICT entries",
         "Human dictionary: 2 entries",
         "Full dictionary: 3 entries",
         "Missing scope (still to generate): 1",
@@ -54,6 +58,14 @@ def test_markdown_contains_figures_and_versions():
         "Prompt versions: p1",
     ):
         assert needle in markdown, needle
+
+
+def test_markdown_uses_base_label():
+    markdown = render_scope_markdown(
+        build_scope_info(sources(), generated_at="T"), "Base"
+    )
+    assert "| Base (authoritative) |" in markdown
+    assert "Base covers 1 CC-CEDICT entries" in markdown
 
 
 def test_empty_llm_data_renders_na_provenance():
@@ -65,7 +77,7 @@ def test_empty_llm_data_renders_na_provenance():
     )
     assert info["coverage"]["human_dictionary_total"] == 2
     assert info["coverage"]["full_dictionary_total"] == 2
-    markdown = render_scope_markdown(info)
+    markdown = render_scope_markdown(info, "CFDICT")
     assert "LLM models: n/a" in markdown
     assert "Prompt versions: n/a" in markdown
 
@@ -98,7 +110,8 @@ def test_cli_on_real_data(tmp_path):
     out = tmp_path / "scope.md"
     rc = cli_main(
         [
-            "--cfdict", "data/cfdict.u8",
+            "--language", "fr",
+            "--base", "data/cfdict.u8",
             "--human", str(tmp_path / "human.u8"),
             "--llm-generated", str(tmp_path / "llm.json"),
             "--cc-cedict", "data/cc-cedict/cedict_1_0_ts_utf-8_mdbg.txt.gz",
@@ -109,3 +122,15 @@ def test_cli_on_real_data(tmp_path):
     text = out.read_text(encoding="utf-8")
     assert "sha256:" in text  # default content-hash versions
     assert "56300" in text or "56,300" in text or "56279" in text
+    assert "| CFDICT (authoritative) |" in text
+
+
+def test_cli_requires_language(tmp_path):
+    import pytest
+
+    from cfdict_next.cli.scope_info import main as cli_main
+
+    with pytest.raises(SystemExit):
+        cli_main(["--base", "data/cfdict.u8"])
+    with pytest.raises(SystemExit):
+        cli_main(["--language", "xx-unknown", "--base", "data/cfdict.u8"])

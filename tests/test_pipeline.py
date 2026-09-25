@@ -69,6 +69,7 @@ def base_kwargs(tmp_paths, **overrides):
     base, cc, human_p, llm_p = tmp_paths
     args = {
         "base_path": base,
+        "language": "fr",
         "cc_cedict_path": cc,
         "human_path": human_p,
         "llm_generated_path": llm_p,
@@ -82,6 +83,17 @@ def base_kwargs(tmp_paths, **overrides):
     }
     args.update(overrides)
     return args
+
+
+def test_cli_requires_language():
+    import pytest
+
+    from cfdict_next.cli.pipeline import main as cli_main
+
+    with pytest.raises(SystemExit):
+        cli_main(["--dry-run"])
+    with pytest.raises(SystemExit):
+        cli_main(["--language", "xx-unknown", "--dry-run"])
 
 
 def test_full_run_end_to_end(tmp_path):
@@ -177,7 +189,7 @@ def test_cli_dry_run(tmp_path, capsys):
     env = tmp_path / ".env"
     env.write_text("LLM_API_ENDPOINT=http://x:1/y\nLLM_MODEL_NAME=m\n", encoding="utf-8")
     rc = main(
-        ["--env", str(env), "--cfdict", str(base), "--cc-cedict", str(cc),
+        ["--env", str(env), "--language", "fr", "--base", str(base), "--cc-cedict", str(cc),
          "--human", str(human_p), "--llm-generated", str(llm_p),
          "--out-human", str(tmp_path / "c.u8"),
          "--out-full", str(tmp_path / "f.u8"),
@@ -205,7 +217,7 @@ def test_cli_limit_defaults_to_unlimited(tmp_path, monkeypatch):
 
     monkeypatch.setattr(pipeline_mod, "run_pipeline", fake_run)
     rc = main(
-        ["--env", str(env), "--cfdict", str(base), "--cc-cedict", str(cc),
+        ["--env", str(env), "--language", "fr", "--base", str(base), "--cc-cedict", str(cc),
          "--human", str(human_p), "--llm-generated", str(llm_p),
          "--out-human", str(tmp_path / "c.u8"),
          "--out-full", str(tmp_path / "f.u8"),
@@ -215,7 +227,7 @@ def test_cli_limit_defaults_to_unlimited(tmp_path, monkeypatch):
     assert seen["limit"] == 0
     assert seen["progress"] is True
     rc = main(
-        ["--env", str(env), "--cfdict", str(base), "--cc-cedict", str(cc),
+        ["--env", str(env), "--language", "fr", "--base", str(base), "--cc-cedict", str(cc),
          "--human", str(human_p), "--llm-generated", str(llm_p),
          "--out-human", str(tmp_path / "c.u8"),
          "--out-full", str(tmp_path / "f.u8"),
@@ -238,7 +250,7 @@ def test_cli_reports_generation_error_with_stage(tmp_path, capsys, monkeypatch):
 
     monkeypatch.setattr(pipeline_mod, "run_pipeline", failing_run)
     rc = main(
-        ["--env", str(env), "--cfdict", str(base), "--cc-cedict", str(cc),
+        ["--env", str(env), "--language", "fr", "--base", str(base), "--cc-cedict", str(cc),
          "--human", str(human_p), "--llm-generated", str(llm_p),
          "--out-human", str(tmp_path / "c.u8"),
          "--out-full", str(tmp_path / "f.u8"),

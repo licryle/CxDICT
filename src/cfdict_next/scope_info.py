@@ -98,8 +98,12 @@ def build_scope_info(
     }
 
 
-def render_scope_markdown(info: dict[str, Any]) -> str:
-    """Render scope information as the release-notes body."""
+def render_scope_markdown(info: dict[str, Any], base_label: str) -> str:
+    """Render scope information as the release-notes body.
+
+    `base_label` is required (no default): it names the authoritative base
+    row (e.g. "CFDICT") from the language registry.
+    """
     sources = info["sources"]
     coverage = info["coverage"]
     provenance = info["provenance"]
@@ -112,7 +116,7 @@ def render_scope_markdown(info: dict[str, Any]) -> str:
         "| --- | --- | --- |",
         f"| CC-CEDICT (scope) | {sources['cc_cedict']['version']} "
         f"| {sources['cc_cedict']['entries']} |",
-        f"| Base (authoritative) | {sources['base']['version']} "
+        f"| {base_label} (authoritative) | {sources['base']['version']} "
         f"| {sources['base']['entries']} |",
         f"| Human (curated) | {sources['human']['version']} "
         f"| {sources['human']['entries']} |",
@@ -124,7 +128,7 @@ def render_scope_markdown(info: dict[str, Any]) -> str:
         f"- Missing scope (still to generate): {coverage['missing_scope_total']}",
         f"- Human dictionary: {coverage['human_dictionary_total']} entries",
         f"- Full dictionary: {coverage['full_dictionary_total']} entries",
-        f"- Base covers {coverage['base_covers_cc_cedict']} CC-CEDICT entries",
+        f"- {base_label} covers {coverage['base_covers_cc_cedict']} CC-CEDICT entries",
         f"- Human covers {coverage['human_covers_cc_cedict']} CC-CEDICT entries",
         f"- LLM covers {coverage['llm_covers_cc_cedict']} CC-CEDICT entries",
         "",

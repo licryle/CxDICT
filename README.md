@@ -46,7 +46,7 @@ purpose:
    that, when CC-CEDICT knows the word, the traditional/simplified pair
    and pinyin match a CC-CEDICT reading.
 3. **Check locally**: `python -m pytest -q` and
-   `python scripts/validate.py` must pass — validation rejects overlapping
+   `python scripts/validate.py --language fr` must pass — validation rejects overlapping
    identities and hanzi/pinyin mismatches against CC-CEDICT.
 4. Open a **pull request**. Merging to `main` triggers validation,
    assembly, and a new timestamped release automatically.
@@ -84,9 +84,12 @@ LLM generation is configured through a gitignored `.env`
 builds or tests.
 
 Pipeline order — generate → cleanup → validate → assemble → validate →
-scope. One command runs it locally (`scripts/pipeline.py --dry-run`
+scope. One command runs it locally (`scripts/pipeline.py --language fr --dry-run`
 plans without calling any model; `--limit N` caps bulk runs, `--limit 0`
 unlocks full scope; `--skip-generate` re-runs downstream stages only).
+`--language` is always required (no default): `fr` for the French
+dictionary, `zh-CN-HSK03` for HSK3-level Chinese definitions (definitions
+an HSK3 learner should understand, using mostly HSK3 vocabulary).
 Assembly refuses overlapping inputs instead of overriding them:
 
 ```

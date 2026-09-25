@@ -151,3 +151,17 @@ def test_invalid_llm_json_fails_loudly(tmp_path):
     llm_p = write(tmp_path / "llm_generated.json", "{bad json")
     with pytest.raises(Exception, match="[Ii]nvalid JSON"):
         cleanup_files(base, human_p, llm_p)
+
+
+def test_no_base_means_empty_identity_set():
+    assert base_identities(None) == set()
+
+
+def test_cli_requires_language(tmp_path):
+    from cfdict_next.cli.cleanup import main as cli_main
+
+    base = write(tmp_path / "cfdict.u8", BASE_SAMPLE)
+    with pytest.raises(SystemExit):
+        cli_main(["--base", str(base)])
+    with pytest.raises(SystemExit):
+        cli_main(["--language", "xx-unknown", "--base", str(base)])

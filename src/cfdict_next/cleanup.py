@@ -33,8 +33,14 @@ class CleanupReport:
     llm_after: int
 
 
-def base_identities(base_path: str | Path) -> set[str]:
-    """Parse the base dictionary and return its lexical identity set (fail on errors)."""
+def base_identities(base_path: str | Path | None) -> set[str]:
+    """Parse the base dictionary and return its lexical identity set (fail on errors).
+
+    None means the language has no authoritative base: the identity set is
+    then empty and every base check passes vacuously.
+    """
+    if base_path is None:
+        return set()
     entries, errors = parse_u8_file(base_path)
     if errors:
         preview = "; ".join(f"line {n}: {msg}" for n, msg in errors[:5])
@@ -83,7 +89,7 @@ def cleanup_datasets(
 
 
 def cleanup_files(
-    base_path: str | Path,
+    base_path: str | Path | None,
     human_path: str | Path,
     llm_generated_path: str | Path,
     dry_run: bool = False,

@@ -1,7 +1,7 @@
 """Validation CLI: gate releases on data relationships (spec §14).
 
 Usage:
-    python scripts/validate.py [--cfdict PATH] [--cc-cedict PATH]
+    python scripts/validate.py --language CODE [--base PATH] [--cc-cedict PATH]
                                 [--human PATH] [--llm-generated PATH]
                                 [--out-human PATH] [--out-full PATH]
 
@@ -16,12 +16,15 @@ import sys
 from pathlib import Path
 
 
+from ..languages import LANGUAGES
 from ..validation import check_outputs, validate_inputs
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--cfdict", default="data/cfdict.u8")
+    parser.add_argument("--language", required=True, choices=sorted(LANGUAGES),
+                        help="target dictionary language")
+    parser.add_argument("--base", default="data/cfdict.u8")
     parser.add_argument(
         "--cc-cedict", default="data/cc-cedict/cedict_1_0_ts_utf-8_mdbg.txt.gz"
     )
@@ -33,7 +36,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     report, data = validate_inputs(
-        args.cfdict, args.cc_cedict, args.human, args.llm_generated
+        args.base, args.cc_cedict, args.human, args.llm_generated
     )
     out_human = args.out_human or args.out_confident
     if data is not None and out_human and args.out_full:

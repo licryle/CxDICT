@@ -23,6 +23,7 @@ from ..generation.config import LLMConfig
 from ..generation.llm import GenerationError
 from ..generation.orchestrator import generate_files
 from ..generation.llm import post_chat_completions
+from ..languages import LANGUAGES, get_language
 from ..scope_info import (
     ReleaseSources,
     build_scope_info,
@@ -63,13 +64,14 @@ def _failures(report: ValidationReport) -> str:
 
 def run_pipeline(
     *,
-    base_path: str | Path,
+    base_path: str | Path | None,
     cc_cedict_path: str | Path,
     human_path: str | Path,
     llm_generated_path: str | Path,
     out_human_path: str | Path,
     out_full_path: str | Path,
     config: LLMConfig,
+    language: str,
     cc_version: str | None = None,
     limit: int = 0,
     dry_run: bool = False,
@@ -80,7 +82,10 @@ def run_pipeline(
     generation_date: str | None = None,
 ) -> PipelineReport:
     """Run the full local pipeline; raise PipelineError on any failure."""
-    base_path, cc_cedict_path = Path(base_path), Path(cc_cedict_path)
+    base_label = get_language(language).base_label
+    # None base_path means the language has no authoritative base.
+    base_path = Path(base_path) if base_path is not None else None
+    cc_cedict_path = Path(cc_cedict_path)
     human_path, llm_generated_path = Path(human_path), Path(llm_generated_path)
 
     def _announce(text: str) -> None:
@@ -110,6 +115,7 @@ def run_pipeline(
                 dry_run=True,
                 post=post,
                 progress=False,
+                language=language,
             )
         except (ValueError, OSError, GenerationError) as exc:
             raise PipelineError("generate", str(exc)) from exc
@@ -133,6 +139,7 @@ def run_pipeline(
                     generation_date=generation_date,
                     post=post,
                     progress=progress,
+                    language=language,
                 )
             except (ValueError, OSError, GenerationError) as exc:
                 raise PipelineError("generate", str(exc)) from exc
@@ -188,6 +195,7 @@ def run_pipeline(
             llm_generated_path,
             out_human_path,
             out_full_path,
+            language,
         )
     except (ValueError, OSError) as exc:
         raise PipelineError("assemble", str(exc)) from exc
@@ -210,7 +218,7 @@ def run_pipeline(
     _announce("[scope] start")
     models, prompts = collect_llm_provenance(data["llm_generated"])
     try:
-        base_version = sha256_file(base_path)
+        base_version = sha256_file(base_path) if base_path is not None else ""
         human_version = sha256_file(human_path)
         llm_generated_version = sha256_file(llm_generated_path)
     except OSError as exc:
@@ -227,7 +235,7 @@ def run_pipeline(
         llm_models=models,
         prompt_versions=prompts,
     )
-    markdown = render_scope_markdown(build_scope_info(sources))
+    markdown = render_scope_markdown(build_scope_info(sources), base_label)
     if scope_out is not None:
         try:
             Path(scope_out).write_text(markdown, encoding="utf-8")
@@ -258,7 +266,9 @@ def main(argv: list[str] | None = None) -> int:
 
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--env", default=".env")
-    parser.add_argument("--cfdict", default="data/cfdict.u8")
+    parser.add_argument("--language", required=True, choices=sorted(LANGUAGES),
+                        help="target dictionary language")
+    parser.add_argument("--base", default="data/cfdict.u8")
     parser.add_argument(
         "--cc-cedict", default="data/cc-cedict/cedict_1_0_ts_utf-8_mdbg.txt.gz"
     )
@@ -290,13 +300,14 @@ def main(argv: list[str] | None = None) -> int:
         config = dataclasses.replace(config, batch_size=args.batch_size)
     try:
         report = run_pipeline(
-            base_path=args.cfdict,
+            base_path=args.base,
             cc_cedict_path=args.cc_cedict,
             human_path=args.human,
             llm_generated_path=args.llm_generated,
             out_human_path=args.out_human,
             out_full_path=args.out_full,
             config=config,
+            language=args.language,
             cc_version=args.cc_version,
             limit=args.limit,
             dry_run=args.dry_run,

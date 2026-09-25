@@ -269,14 +269,19 @@ def check_outputs(
 
 
 def validate_inputs(
-    base_path: str | Path,
+    base_path: str | Path | None,
     cc_cedict_path: str | Path,
     human_path: str | Path,
     llm_generated_path: str | Path,
 ) -> tuple[ValidationReport, dict[str, Any] | None]:
     """Validate all release inputs; return (report, loaded data or None)."""
     report = ValidationReport()
-    base_entries = _parse_or_fail(base_path, "base", report)
+    if base_path is None:
+        # Languages without an authoritative base: vacuous pass, zero entries.
+        report.checks.append(Check("base parses", True, "no base dictionary"))
+        base_entries: list = []
+    else:
+        base_entries = _parse_or_fail(base_path, "base", report)
     cc_entries = _parse_or_fail(cc_cedict_path, "CC-CEDICT", report)
     human_entries = _parse_or_fail(human_path, "human.u8", report)
     llm_generated = _load_or_fail(llm_generated_path, "llm_generated.json", report)

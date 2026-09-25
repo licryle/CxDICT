@@ -195,7 +195,7 @@ def test_assemble_files_with_empty_llm_round_trips_base(tmp_path):
     (tmp_path / "h.u8").write_text("", encoding="utf-8")
     (tmp_path / "l.json").write_text("{}", encoding="utf-8")
     human_n, full_n = assemble_files(
-        BASE, tmp_path / "h.u8", tmp_path / "l.json", out_c, out_f
+        BASE, tmp_path / "h.u8", tmp_path / "l.json", out_c, out_f, "fr"
     )
     assert human_n == full_n
     source_entries, errors = parse_u8_file(BASE)
@@ -223,7 +223,7 @@ def test_outputs_carry_section_headers_in_order(tmp_path):
         format_u8_entry(entry()), encoding="utf-8"
     )
     assemble_files(tmp_path / "cfdict.u8", tmp_path / "h.u8",
-                     tmp_path / "l.json", c, f)
+                     tmp_path / "l.json", c, f, "fr")
     c_lines = c.read_text(encoding="utf-8").splitlines()
     assert c_lines[0] == BASE_SECTION_HEADER
     assert c_lines[2] == HUMAN_SECTION_HEADER
@@ -251,6 +251,38 @@ def test_empty_sections_omit_their_header(tmp_path):
     assert lines == [BASE_SECTION_HEADER, format_u8_entry(entry()).strip()]
 
 
+def test_section_header_comes_from_registry():
+    from cfdict_next.assembly import section_header_for
+
+    assert section_header_for("fr") == BASE_SECTION_HEADER
+    assert section_header_for("fr").startswith("# CFDICT Authoritative entries")
+    assert section_header_for("zh-CN-HSK03") == "# HSK3 base Authoritative entries"
+
+
+def test_assemble_files_without_base_omits_base_section(tmp_path):
+    out_c, out_f = tmp_path / "c.u8", tmp_path / "f.u8"
+    (tmp_path / "h.u8").write_text(
+        format_u8_entry(entry("美", "美", "Mei3", ("beau",))), encoding="utf-8"
+    )
+    (tmp_path / "l.json").write_text("{}", encoding="utf-8")
+    human_n, full_n = assemble_files(
+        None, tmp_path / "h.u8", tmp_path / "l.json", out_c, out_f, "zh-CN-HSK03"
+    )
+    assert (human_n, full_n) == (1, 1)
+    assert out_c.read_text(encoding="utf-8").splitlines()[0] == HUMAN_SECTION_HEADER
+
+
+def test_cli_requires_language(tmp_path):
+    import pytest
+
+    from cfdict_next.cli.assemble import main as cli_main
+
+    with pytest.raises(SystemExit):
+        cli_main(["--base", str(tmp_path / "cfdict.u8")])
+    with pytest.raises(SystemExit):
+        cli_main(["--language", "xx-unknown", "--base", str(tmp_path / "cfdict.u8")])
+
+
 def test_sections_match_assemble_splits():
     base = [entry()]
     human = [entry("美", "美", "Mei3", ("beau",))]
@@ -273,7 +305,7 @@ def test_cli_smoke(tmp_path, capsys):
     (tmp_path / "l.json").write_text("{}", encoding="utf-8")
     rc = cli_main(
         [
-            "--cfdict", str(c),
+            "--language", "fr", "--base", str(c),
             "--human", str(h),
             "--llm-generated", str(tmp_path / "l.json"),
             "--out-human", str(tmp_path / "o_c.u8"),

@@ -99,8 +99,9 @@ def test_generate_all_batches_and_groups():
     records, failed, _causes = generate_all(
         items,
         config(),
-        Provenance(cc_cedict_version="v", llm_model="m"),
+        Provenance(cc_cedict_version="v", llm_model="m", prompt_version="v"),
         generation_date="T",
+        language="fr",
         post=fake_post_factory(calls),
     )
     assert failed == ()
@@ -137,6 +138,7 @@ def test_generate_files_end_to_end(tmp_path):
         base, cc, human_p, llm_p,
         config(), "cc-v1", limit=0, post=fake_post_factory(calls),
         generation_date="T",
+        language="fr",
     )
     assert report.plan.scoped == 2  # 國 + 行 (中 is base)
     assert report.llm_new == 2
@@ -153,11 +155,13 @@ def test_limit_truncates_and_resumes(tmp_path):
     first = generate_files(
         base, cc, human_p, llm_p, config(), "v", limit=1, post=post,
         generation_date="T",
+        language="fr",
     )
     assert first.plan.limited_to == 1 and first.llm_new == 1
     second = generate_files(
         base, cc, human_p, llm_p, config(), "v", limit=0, post=post,
         generation_date="T",
+        language="fr",
     )
     assert second.llm_new == 1  # only the remaining entry
     llm_generated = json.loads(llm_p.read_text(encoding="utf-8"))
@@ -170,7 +174,7 @@ def test_dry_run_calls_no_batches_and_writes_nothing(tmp_path):
     calls = []
     report = generate_files(
         base, cc, human_p, llm_p, config(), "v", dry_run=True,
-        post=fake_post_factory(calls),
+        post=fake_post_factory(calls), language="fr",
     )
     assert calls == []
     assert report.dry_run and report.plan.scoped == 2
@@ -185,7 +189,8 @@ def test_total_failure_writes_nothing_and_raises(tmp_path):
 
     with pytest.raises(GenerationError, match="2 entries failed after retry") as exc_info:
         generate_files(
-            base, cc, human_p, llm_p, config(), "v", limit=0, post=bad_post
+            base, cc, human_p, llm_p, config(), "v", limit=0, post=bad_post,
+            language="fr",
         )
     assert "Causes:" in str(exc_info.value) and "boom" in str(exc_info.value)
     assert json.loads(llm_p.read_text(encoding="utf-8")) == {}
@@ -205,7 +210,7 @@ def test_poison_entry_isolated_rest_written_and_reported(tmp_path):
     with pytest.raises(GenerationError, match="國\\|国\\|Guo2"):
         generate_files(
             base, cc, human_p, llm_p, config(), "v", limit=0,
-            post=flaky_post, generation_date="T",
+            post=flaky_post, generation_date="T", language="fr",
         )
     llm_generated = json.loads(llm_p.read_text(encoding="utf-8"))
     assert set(llm_generated) == {"行|行|Xing2"}  # success persisted
@@ -213,7 +218,7 @@ def test_poison_entry_isolated_rest_written_and_reported(tmp_path):
     with pytest.raises(GenerationError, match="國\\|国\\|Guo2"):
         generate_files(
             base, cc, human_p, llm_p, config(), "v", limit=0,
-            post=flaky_post, generation_date="T",
+            post=flaky_post, generation_date="T", language="fr",
         )
     llm_generated = json.loads(llm_p.read_text(encoding="utf-8"))
     assert set(llm_generated) == {"行|行|Xing2"}
@@ -233,7 +238,7 @@ def test_transient_failure_recovers_in_retry_pass(tmp_path):
 
     report = generate_files(
         base, cc, human_p, llm_p, config(), "v", limit=0,
-        post=transient_post, generation_date="T",
+        post=transient_post, generation_date="T", language="fr",
     )
     assert report.llm_new == 2
     llm_generated = json.loads(llm_p.read_text(encoding="utf-8"))
@@ -249,8 +254,9 @@ def test_progress_lines_report_counts_percent_and_elapsed():
     records, failed, _causes = generate_all(
         items,
         config(),
-        Provenance(cc_cedict_version="v", llm_model="m"),
+        Provenance(cc_cedict_version="v", llm_model="m", prompt_version="v"),
         generation_date="T",
+        language="fr",
         post=fake_post_factory([]),
         stream=stream,
     )
@@ -281,8 +287,9 @@ def test_progress_colors_only_on_tty_without_no_color(monkeypatch):
         generate_all(
             compute_missing_items(CC, set(), set()),
             config(),
-            Provenance(cc_cedict_version="v", llm_model="m"),
+            Provenance(cc_cedict_version="v", llm_model="m", prompt_version="v"),
             generation_date="T",
+        language="fr",
             post=fake_post_factory([]),
             stream=stream,
         )
@@ -311,8 +318,9 @@ def test_progress_marks_failed_batches_and_retries():
     records, failed, _causes = generate_all(
         compute_missing_items(CC, set(), set()),
         config(),
-        Provenance(cc_cedict_version="v", llm_model="m"),
+        Provenance(cc_cedict_version="v", llm_model="m", prompt_version="v"),
         generation_date="T",
+        language="fr",
         post=poison_post,
         stream=stream,
     )
@@ -357,8 +365,9 @@ def test_retry_success_moves_entry_from_errors_to_done():
     records, failed, _causes = generate_all(
         items,
         config(),
-        Provenance(cc_cedict_version="v", llm_model="m"),
+        Provenance(cc_cedict_version="v", llm_model="m", prompt_version="v"),
         generation_date="T",
+        language="fr",
         post=batch_only_post,
         stream=stream,
     )
@@ -396,8 +405,9 @@ def test_failed_lines_carry_truncated_single_line_cause():
     generate_all(
         compute_missing_items(CC, set(), set())[:1],
         config(),
-        Provenance(cc_cedict_version="v", llm_model="m"),
+        Provenance(cc_cedict_version="v", llm_model="m", prompt_version="v"),
         generation_date="T",
+        language="fr",
         post=bad_post,
         stream=stream,
     )
@@ -441,7 +451,7 @@ def test_partial_batch_writes_good_and_defers_bad(tmp_path):
     with pytest.raises(GenerationError, match="國\\|国\\|Guo2"):
         generate_files(
             base, cc, human_p, llm_p, config(), "v", limit=0,
-            post=partial_post, generation_date="T", stream=stream,
+            post=partial_post, generation_date="T", language="fr", stream=stream,
         )
     llm_generated = json.loads(llm_p.read_text(encoding="utf-8"))
     assert set(llm_generated) == {"行|行|Xing2"}
@@ -468,8 +478,9 @@ def test_no_progress_prints_nothing():
     generate_all(
         compute_missing_items(CC, set(), set()),
         config(),
-        Provenance(cc_cedict_version="v", llm_model="m"),
+        Provenance(cc_cedict_version="v", llm_model="m", prompt_version="v"),
         generation_date="T",
+        language="fr",
         post=fake_post_factory([]),
         progress=False,
         stream=stream,
@@ -483,8 +494,9 @@ def test_on_batch_fires_per_successful_batch():
     records, failed, _causes = generate_all(
         items,
         config(),
-        Provenance(cc_cedict_version="v", llm_model="m"),
+        Provenance(cc_cedict_version="v", llm_model="m", prompt_version="v"),
         generation_date="T",
+        language="fr",
         post=fake_post_factory([]),
         on_batch=lambda rec: seen.append(set(rec)),
     )
@@ -509,7 +521,7 @@ def test_cli_reports_generation_error_without_traceback(tmp_path, capsys, monkey
 
     monkeypatch.setattr(cli_mod, "generate_files", failing_generate)
     rc = cli_main(
-        ["--env", str(env), "--cfdict", str(base), "--cc-cedict", str(cc),
+        ["--env", str(env), "--language", "fr", "--base", str(base), "--cc-cedict", str(cc),
          "--human", str(human_p), "--llm-generated", str(llm_p)]
     )
     assert rc == 1
@@ -526,10 +538,61 @@ def test_cli_dry_run(tmp_path, capsys):
         "LLM_API_ENDPOINT=http://x:1/y\nLLM_MODEL_NAME=m\n", encoding="utf-8"
     )
     rc = cli_main(
-        ["--env", str(env), "--cfdict", str(base), "--cc-cedict", str(cc),
+        ["--env", str(env), "--language", "fr", "--base", str(base), "--cc-cedict", str(cc),
          "--human", str(human_p), "--llm-generated", str(llm_p),
          "--dry-run"]
     )
     assert rc == 0
     out = capsys.readouterr().out
     assert "dry run" in out and "2 entries in missing scope" in out
+
+
+def test_cli_requires_language(tmp_path):
+    from cfdict_next.cli.generate import main as cli_main
+
+    with pytest.raises(SystemExit):
+        cli_main(["--env", str(tmp_path / ".env")])
+    with pytest.raises(SystemExit):
+        cli_main(["--env", str(tmp_path / ".env"), "--language", "xx-unknown"])
+
+
+def test_prompt_version_comes_from_registry(tmp_path):
+    import json
+
+    base, cc, human_p, llm_p = dataset_files(tmp_path)
+    calls = []
+    report = generate_files(
+        base, cc, human_p, llm_p, config(), "v", limit=1,
+        post=fake_post_factory(calls), generation_date="T", language="fr",
+    )
+    assert report.llm_new == 1
+    records = json.loads(llm_p.read_text(encoding="utf-8"))
+    assert set(records) == {"國|国|Guo2"}
+    assert records["國|国|Guo2"]["prompt_version"] == "v6"
+
+
+def test_hsk3_generates_without_base(tmp_path):
+    import json
+
+    _base, cc, human_p, llm_p = dataset_files(tmp_path)
+    calls = []
+    report = generate_files(
+        None, cc, human_p, llm_p, config(), "v", limit=1,
+        post=fake_post_factory(calls), generation_date="T",
+        language="zh-CN-HSK03",
+    )
+    assert report.plan.scoped == 3  # no base: whole CC sample is missing scope
+    assert report.llm_new == 1
+    records = json.loads(llm_p.read_text(encoding="utf-8"))
+    assert set(records) == {"中|中|Zhong1"}
+    assert records["中|中|Zhong1"]["prompt_version"] == "v1"
+    assert "HSK 3" in calls[0]  # HSK3 user-message voice, not the French one
+
+
+def test_none_base_dry_run_plans_whole_scope(tmp_path):
+    _base, cc, human_p, llm_p = dataset_files(tmp_path)
+    report = generate_files(
+        None, cc, human_p, llm_p, config(), "v", dry_run=True,
+        language="zh-CN-HSK03",
+    )
+    assert report.plan.scoped == 3 and report.llm_new == 0

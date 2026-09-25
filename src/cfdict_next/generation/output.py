@@ -17,7 +17,6 @@ from pathlib import Path
 from typing import Any
 
 from .llm import GenerationResult
-from .prompt import PROMPT_VERSION
 
 
 @dataclass(frozen=True)
@@ -26,7 +25,7 @@ class Provenance:
 
     cc_cedict_version: str
     llm_model: str
-    prompt_version: str = PROMPT_VERSION
+    prompt_version: str
 
 
 def build_records(

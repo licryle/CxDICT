@@ -218,14 +218,31 @@ def test_cli_exit_codes(tmp_path, capsys):
         tmp_path, llm_generated={BEAUTY: record_for(BEAUTY, ["beautiful"])}
     )
     rc = cli_main(
-        ["--cfdict", str(paths[0]), "--cc-cedict", str(paths[1]),
+        ["--language", "fr", "--base", str(paths[0]), "--cc-cedict", str(paths[1]),
          "--human", str(paths[2]), "--llm-generated", str(paths[3])]
     )
     assert rc == 0
     assert "validation passed" in capsys.readouterr().out
     bad = fixture_files(tmp_path, base="junk\n")
     rc = cli_main(
-        ["--cfdict", str(bad[0]), "--cc-cedict", str(bad[1]),
+        ["--language", "fr", "--base", str(bad[0]), "--cc-cedict", str(bad[1]),
          "--human", str(bad[2]), "--llm-generated", str(bad[3])]
     )
     assert rc == 1
+
+
+def test_cli_requires_language(tmp_path):
+    from cfdict_next.cli.validate import main as cli_main
+
+    paths = fixture_files(tmp_path)
+    with pytest.raises(SystemExit):
+        cli_main(["--base", str(paths[0])])
+    with pytest.raises(SystemExit):
+        cli_main(["--language", "xx-unknown", "--base", str(paths[0])])
+
+
+def test_none_base_passes_with_empty_identities(tmp_path):
+    _, cc_p, human_p, llm_p = fixture_files(tmp_path)
+    report, data = validate_inputs(None, cc_p, human_p, llm_p)
+    assert report.passed, [(c.name, c.detail) for c in report.failures()]
+    assert data is not None and data["base_ids"] == set()
