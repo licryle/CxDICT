@@ -1,12 +1,26 @@
 # CxDICT
 
-An actively maintained Chinese–French dictionary. CFDICT stays the
-authoritative source for French definitions; coverage is expanded to
-CC-CEDICT scope with human-curated and LLM-generated French for the
-missing entries.
-Precedence throughout: CFDICT > human.u8 > llm_generated.json.
+An actively maintained Chinese dictionary project. Authoritative sources
+stay in charge wherever they exist; coverage is expanded to CC-CEDICT
+scope with human-curated and LLM-generated definitions for the missing
+entries.
+Precedence throughout: base > human.u8 > llm_generated.json.
 
-Each language gets its own [releases](https://github.com/licryle/CxDICT/releases),
+## Languages
+
+All dictionaries use as base the CC-CEDICT (Chinese lexical scope), licensed under CC BY-SA 4.0, from MDBG ([mdbg.net](https://www.mdbg.net/chinese/dictionary?page=cedict))
+
+| Language | Inputs (one per line, with licenses) | Output license | Latest release |
+|---|---|---|---|
+| French (`fr`) — French definitions (CFDICT authoritative base + LLM coverage of the missing scope) | - CFDICT (`dictionaries/fr/data/cfdict.u8`, authoritative base) — CC BY-SA 3.0, David Houstin ([chine.in](https://chine.in/mandarin/dictionnaire/CFDICT/))<br>- Human curation (`dictionaries/fr/data/human.u8`) — CC BY-SA 4.0<br>LLM-generated definitions (`dictionaries/fr/data/llm_generated.json`, qwen models) — CC BY-SA 4.0 | CC BY-SA 4.0 | [cxdict-french](https://github.com/licryle/CFDICT-Next/releases/tag/cxdict-french) |
+| HSK3-level Chinese (`zh-CN-HSK03`) — explanations an HSK3 learner should understand; no authoritative base (human curation + LLM over CC-CEDICT scope) | CC-CEDICT (Chinese lexical scope) — CC BY-SA 4.0, MDBG ([mdbg.net](https://www.mdbg.net/chinese/dictionary?page=cedict))<br>Human curation (`dictionaries/zh-CN-HSK03/data/human.u8`) — CC BY-SA 4.0<br>LLM-generated definitions (`dictionaries/zh-CN-HSK03/data/llm_generated.json`) — CC BY-SA 4.0 | CC BY-SA 4.0 | [cxdict-hsk3](https://github.com/licryle/CFDICT-Next/releases/tag/cxdict-hsk3) |
+
+(Latest-release links point at the rolling per-language releases, created
+or refreshed on every release run — see `docs/workflow.md`.)
+
+## Releases
+
+Each language gets its own [releases](https://github.com/licryle/CFDICT-Next/releases),
 rebuilt only when its inputs change. Every release publishes two dictionaries:
 
 | file | contains |
@@ -14,57 +28,66 @@ rebuilt only when its inputs change. Every release publishes two dictionaries:
 | `CxDICT-<Language>-<YYYYMMDD>-Human.u8` | base + human-curated additions (conservative choice) |
 | `CxDICT-<Language>-<YYYYMMDD>-Full.u8` | everything above + LLM-generated coverage (maximum coverage) |
 
-For a stable pointer that never moves, each variant also has a rolling
-release refreshed every run (e.g. `cxdict-french-full` holding
-`CxDICT-French-Full.u8` — see `docs/workflow.md`).
-
-Languages (see `dictionaries/<code>/dict.toml` for each definition):
-
-| code | dictionary | base |
-|---|---|---|
-| `fr` | French (`CxDICT-French-…`) | CFDICT, authoritative, forked into `dictionaries/` |
-| `zh-CN-HSK03` | HSK3-level Chinese (`CxDICT-HSK3-…`) | none — human curation + LLM over CC-CEDICT scope |
+For a stable pointer that never moves, each language also has one rolling
+release refreshed every run (e.g. `cxdict-french` holding
+`CxDICT-French-Human.u8` and `CxDICT-French-Full.u8` — see `docs/workflow.md`).
 
 ## License
 
-The dictionary data (CFDICT fork, generated French, assembled outputs) is
-released under the **Creative Commons Attribution-ShareAlike 4.0
-International License**
-([CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/)).
+### Code (this project)
 
-It combines two ShareAlike sources, the resulting adapted dictionary is distributed under CC BY-SA 4.0.
+All code, tooling, prompts, specs and docs in this repository are
+released under the **Creative Commons Attribution-NonCommercial-ShareAlike 4.0
+International License**
+([CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/)).
+You may use, share and adapt them for non-commercial purposes, provided
+you credit this project (state the source/origin) and distribute any
+adaptation under the same terms, free of charge. Commercial use of the
+code requires prior permission.
+
+### Dictionaries (generated data)
+
+The commercial-use restriction above covers the code only, not the
+dictionaries it produces. The dictionary data (authoritative fork,
+human curation, generated definitions, assembled outputs) is released
+under the **Creative Commons Attribution-ShareAlike 4.0 International
+License**
+([CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/)),
+which allows commercial use.
+
+It combines two ShareAlike sources, so the resulting adapted dictionary is distributed under CC BY-SA 4.0.
 
 - [**CFDICT**](https://chine.in/mandarin/dictionnaire/CFDICT/) — founded by David Houstin
   ([chine.in](https://chine.in)), licensed
-  CC BY-SA 3.0. The authoritative French base, forked into `dictionaries/`.
+  CC BY-SA 3.0. The authoritative French base, forked into `dictionaries/fr/data/`.
 - [**CC-CEDICT**](https://www.mdbg.net/chinese/dictionary?page=cedict) — community-maintained, published by MDBG, descending
   from Paul Denisowski's CEDICT, licensed CC BY-SA 4.0. Provides the
-  Chinese lexical scope and glosses anchors.
-- LLM Definitions generated by myself are using qwen/qwen2.5-vl-7b Q4_K_M from Alibaba
+  Chinese lexical scope and gloss anchors for every language.
+- LLM definitions generated by the maintainer using qwen/qwen2.5-vl-7b Q4_K_M from Alibaba (exact models and prompt versions are recorded in each release's notes)
 
-By contributing French definitions you agree to release them under the
-same CC BY-SA 4.0.
+By contributing curated definitions you agree to release them under
+CC BY-SA 4.0.
 
 ## Contributing
 
-Contributions are French dictionary content, and the process is narrow on
+Contributions are dictionary content, and the process is narrow on
 purpose:
 
 1. **Fork** this repository.
-2. **Edit `dictionaries/fr/data/human.u8`** — add or fix French definitions, one entry per
-   line (`traditional simplified [pinyin] /définition1/définition2/.../`).
-   No gloss-count check: human French is free-form. Validation only checks
+2. **Edit `dictionaries/<code>/data/human.u8`** (e.g. `dictionaries/fr/data/human.u8`) — add or fix definitions, one entry per
+   line (`traditional simplified [pinyin] /definition1/definition2/.../`).
+   No gloss-count check: human-curated definitions are free-form. Validation only checks
    that, when CC-CEDICT knows the word, the traditional/simplified pair
    and pinyin match a CC-CEDICT reading.
 3. **Check locally**: `python -m pytest -q` and
-   `python scripts/validate.py --language fr` must pass — validation rejects overlapping
+   `python scripts/validate.py --language <code>` must pass — validation rejects overlapping
    identities and hanzi/pinyin mismatches against CC-CEDICT.
 4. Open a **pull request**. Merging to `main` triggers validation,
    assembly, and a new timestamped release automatically.
 
-LLM-generated entries live in `dictionaries/fr/data/llm_generated.json`
+LLM-generated entries live in `dictionaries/<code>/data/llm_generated.json`
 (machine output, structural gates only). Correcting one means adding the
-fixed entry to `dictionaries/fr/data/human.u8` — cleanup then drops the
+fixed entry to `dictionaries/<code>/data/human.u8` — cleanup then drops the
 superseded LLM record.
 
 ## Using the dictionaries
@@ -85,8 +108,8 @@ as part of the word. Each release's notes record the exact sources
 Setup:
 
 ```bash
-git clone https://github.com/licryle/CxDICT.git
-cd CxDICT
+git clone https://github.com/licryle/CFDICT-Next.git
+cd CFDICT-Next
 direnv allow        # Nix flake env (spec §17); fallback: venv + pip install -e .
 python -m pytest -q # full suite first, always
 ```
@@ -105,7 +128,7 @@ an HSK3 learner should understand, using mostly HSK3 vocabulary).
 Assembly refuses overlapping inputs instead of overriding them:
 
 ```
-CxDICT/
+CFDICT-Next/
 ├── dictionaries/         # per-language units (fr/, zh-CN-HSK03/ + shared cc-cedict/) + README provenance
 ├── src/cxdict/      # importable package (parser, generation, cli, assembly, validation, schemas, ...)
 ├── scripts/              # thin shims resolving to src/cxdict/cli/* (same names)
