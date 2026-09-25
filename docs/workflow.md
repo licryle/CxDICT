@@ -30,30 +30,29 @@ touches release-relevant inputs, and on manual dispatch:
 
 ## Naming scheme
 
-Tags are `CxDICT-<Name>-YYYYMMDD` (UTC, `<Name>` is the language's
-`release_name` from `dict.toml`); assets are
-`CxDICT-<Name>-YYYYMMDD-{Human,Full}.u8`
-(e.g. `CxDICT-French-20260925-Human.u8`). Release titles match the tag
-with the scope notes as body. A same-day re-run refreshes the day's
-release in place (`upload --clobber` + notes update). Output paths stay
-`output/<code>/` internally; only the published asset names carry the
-scheme. Keep `release_name` short, ASCII, no spaces: it lands in tags,
-asset names, and URLs verbatim.
-
-## Latest pointer (`latest-<code>`)
-
-Next to each dated release, one rolling release object per language is
-refreshed in place every run — tag `latest-<code>` (e.g. `latest-fr`),
-titled `CxDICT <Name> (latest)` — holding both stably-named assets
-(`CxDICT-<Name>-Human.u8` and `CxDICT-<Name>-Full.u8`, no date). This is
-our own per-language `:latest`, Docker-style: GitHub's own "Latest"
-badge is repo-wide and cannot mark one release per language, so these
-pointers are the stable links:
+One release object per language: tag `latest-<code>` (e.g. `latest-fr`),
+titled `CxDICT <Name> (latest YYYYMMDD)`, holding the stably-named
+assets `CxDICT-<Name>-Human.u8` and `CxDICT-<Name>-Full.u8` (`<Name>` is
+the language's `release_name` from `dict.toml`) with the scope notes as
+body. Every run refreshes it in place (`upload --clobber` + notes
+update), so these download URLs never move, Docker-`:latest`-style:
 
 ```
 gh release download latest-fr --pattern '*-Full.u8'
 https://github.com/<owner>/<repo>/releases/download/latest-fr/CxDICT-French-Full.u8
 ```
+
+(GitHub's own "Latest" badge is repo-wide and cannot mark one release
+per language — `latest-<code>` is our own per-language latest.)
+
+The release commit carries two git tags and nothing more is created:
+the moving `latest-<code>` pointer plus an immutable
+`CxDICT-<Name>-YYYYMMDD` daily marker. Only the current assets are
+kept — old builds stay rebuildable from the tagged commit, since every
+input is a committed source. Output paths stay `output/<code>/`
+internally; only the published asset names carry the scheme. Keep
+`release_name` short, ASCII, no spaces: it lands in tags, asset names,
+and URLs verbatim.
 
 ## Deliberately not automated: cleanup
 

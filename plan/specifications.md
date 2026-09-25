@@ -221,11 +221,10 @@ A language without an authoritative base (e.g. `zh-CN-HSK03`) runs the
 same precedence pipeline with an empty base set. Releases are per
 language: pushes touching a language's inputs rebuild only it (any other
 path under `data/`/`assets/` rebuilds all; tooling-only pushes cut no
-release). Each release is tagged `CxDICT-<Name>-YYYYMMDD` with assets
-`CxDICT-<Name>-YYYYMMDD-{Human,Full}.u8` (`<Name>` from `release_name`);
-a same-day re-run refreshes the day's release in place. Each language
-additionally owns one rolling pointer release, tag `latest-<code>`
+release). Each language owns exactly one release, tag `latest-<code>`
 (e.g. `latest-fr`), refreshed in place every run with stably-named
-assets — our own per-language `:latest`, since GitHub's "Latest" badge
-is repo-wide. Manual dispatch rebuilds all
+assets `CxDICT-<Name>-{Human,Full}.u8` (`<Name>` from `release_name`) —
+our own per-language `:latest`. The release commit is additionally
+tagged with an immutable `CxDICT-<Name>-YYYYMMDD` daily marker; no other
+release objects are created. Manual dispatch rebuilds all
 discovered languages or one named language.

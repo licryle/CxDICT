@@ -86,27 +86,26 @@ def test_release_assets_follow_naming_scheme():
     assert "release_name" in steps  # display name comes from dict.toml
 
 
-def test_single_daily_release_per_language():
+def test_one_release_two_tags_per_language():
     steps = " ".join(str(step) for step in workflow()["jobs"]["release"]["steps"])
-    # One dated release per language per day, refreshed in place on re-runs.
-    assert 'tag=CxDICT-${NAME}-' in steps
-    assert "--clobber" in steps  # in-place refresh, stable download URLs
-    assert "gh release upload" in steps
-    assert "gh release create" in steps
-    assert "gh release edit" in steps
-    # No per-second timestamp tags.
-    assert "%H%M%S" not in steps
-
-
-def test_latest_pointer_release_per_language():
-    steps = " ".join(str(step) for step in workflow()["jobs"]["release"]["steps"])
-    # Our own per-language `:latest` (GitHub's Latest badge is repo-wide,
-    # so it cannot mark one release per language): tag latest-<code> with
-    # stably-named assets, refreshed in place every run.
+    # Exactly ONE release object per language, on our own `latest-<code>`
+    # pointer (GitHub's Latest badge is repo-wide, so it cannot mark one
+    # release per language).
+    assert steps.count("gh release create") == 1
     assert 'LTAG="latest-${CODE}"' in steps
-    assert "/tmp/CxDICT-${NAME}-Human.u8" in steps
-    assert "/tmp/CxDICT-${NAME}-Full.u8" in steps
-    assert "(latest)" in steps
+    assert "gh release upload --clobber" in steps
+    assert "gh release edit" in steps
+    # ...plus TWO git tags on the release commit, no second release object.
+    assert 'DTAG="CxDICT-${NAME}-' in steps
+    assert "git tag" in steps
+    assert "git push" in steps
+    assert 'tag=CxDICT-${NAME}-' not in steps  # no dated release object
+    assert 'FTAG=' not in steps
+    assert "%H%M%S" not in steps
+    # Stably-named assets (no date): in-place refresh must overwrite, not
+    # accumulate a new asset pair per day.
+    assert "-${DATE}-Human" not in steps
+    assert "/tmp/CxDICT-" not in steps
 
 
 def test_workflow_requests_only_release_permissions():

@@ -21,16 +21,17 @@ releases, created or refreshed on every release run — see `docs/workflow.md`.)
 ## Releases
 
 Each language gets its own [releases](https://github.com/licryle/CFDICT-Next/releases),
-rebuilt only when its inputs change. Every release publishes two dictionaries:
+rebuilt only when its inputs change. Each language owns exactly one
+release object (`latest-<code>`, e.g. `latest-fr`), refreshed every run,
+publishing two dictionaries:
 
 | file | contains |
 |---|---|
-| `CxDICT-<Language>-<YYYYMMDD>-Human.u8` | base + human-curated additions (conservative choice) |
-| `CxDICT-<Language>-<YYYYMMDD>-Full.u8` | everything above + LLM-generated coverage (maximum coverage) |
+| `CxDICT-<Language>-Human.u8` | base + human-curated additions (conservative choice) |
+| `CxDICT-<Language>-Full.u8` | everything above + LLM-generated coverage (maximum coverage) |
 
-For a stable pointer that never moves, each language also has one rolling
-`latest-<code>` release refreshed every run (e.g. `latest-fr` holding
-`CxDICT-French-Human.u8` and `CxDICT-French-Full.u8` — see `docs/workflow.md`).
+The release commit is additionally tagged `CxDICT-<Language>-<YYYYMMDD>`
+per day as a source marker — two tags, one release (see `docs/workflow.md`).
 
 ## License
 
@@ -83,7 +84,7 @@ purpose:
    `python scripts/validate.py --language <code>` must pass — validation rejects overlapping
    identities and hanzi/pinyin mismatches against CC-CEDICT.
 4. Open a **pull request**. Merging to `main` triggers validation,
-   assembly, and a new timestamped release automatically.
+   assembly, and refreshes the language's `latest-<code>` release automatically.
 
 LLM-generated entries live in `dictionaries/<code>/data/llm_generated.json`
 (machine output, structural gates only). Correcting one means adding the
