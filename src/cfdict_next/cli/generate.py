@@ -6,7 +6,7 @@ Usage:
                                 [--cc-version LABEL] [--batch-size N]
                                 [--limit N] [--dry-run]
 
-Computes CC-CEDICT − CFDICT − human.u8 − llm_generated.json (spec §3, §5),
+Computes CC-CEDICT − base − human.u8 − llm_generated.json (spec §3, §5),
 generates French definitions in batches through the configured
 OpenAI-compatible endpoint, and merges the records into llm_generated.json.
 

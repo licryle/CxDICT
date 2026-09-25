@@ -24,7 +24,7 @@ def config(**overrides):
     return LLMConfig(**args)
 
 
-CFDICT_SAMPLE = "中國 中国 [Zhong1 guo2] /Chine/\n"
+BASE_SAMPLE = "中國 中国 [Zhong1 guo2] /Chine/\n"
 CC_SAMPLE = (
     "中國 中国 [Zhong1 guo2] /China/Middle Kingdom/\n"
     "美 美 [Mei3] /beautiful/\n"
@@ -38,14 +38,14 @@ def write(path, content):
 
 
 def fixture(tmp_path, human="", llm_generated=None):
-    cfdict = write(tmp_path / "cfdict.u8", CFDICT_SAMPLE)
+    base = write(tmp_path / "cfdict.u8", BASE_SAMPLE)
     cc = write(tmp_path / "cc.u8", CC_SAMPLE)
     human_p = write(tmp_path / "human.u8", human)
     llm_p = write(
         tmp_path / "llm_generated.json",
         json.dumps(llm_generated if llm_generated is not None else {}, ensure_ascii=False),
     )
-    return cfdict, cc, human_p, llm_p
+    return base, cc, human_p, llm_p
 
 
 def fake_post(endpoint, model, system, user, timeout_s):
@@ -66,9 +66,9 @@ def fake_post(endpoint, model, system, user, timeout_s):
 
 
 def base_kwargs(tmp_paths, **overrides):
-    cfdict, cc, human_p, llm_p = tmp_paths
+    base, cc, human_p, llm_p = tmp_paths
     args = {
-        "cfdict_path": cfdict,
+        "base_path": base,
         "cc_cedict_path": cc,
         "human_path": human_p,
         "llm_generated_path": llm_p,
@@ -89,7 +89,7 @@ def test_full_run_end_to_end(tmp_path):
     out_scope = tmp_path / "scope.md"
     report = run_pipeline(**base_kwargs(paths, scope_out=out_scope))
     assert not report.dry_run
-    assert report.missing_scoped == 2  # 美 + 行 (中國 is CFDICT)
+    assert report.missing_scoped == 2  # 美 + 行 (中國 is base)
     assert report.generated == 2
     assert report.llm_new == 2
     assert report.human_n == 1 and report.full_n == 3
@@ -141,7 +141,7 @@ def test_skip_generate_uses_current_datasets(tmp_path):
     )
     assert calls == []
     assert report.generated == 0 and report.missing_scoped == 0
-    assert report.human_n == 1 and report.full_n == 1  # CFDICT only
+    assert report.human_n == 1 and report.full_n == 1  # base only
 
 
 def test_stage_announcements_name_each_stage(tmp_path, capsys):
@@ -173,11 +173,11 @@ def test_no_progress_silences_stages_and_batches(tmp_path, capsys):
 
 
 def test_cli_dry_run(tmp_path, capsys):
-    cfdict, cc, human_p, llm_p = fixture(tmp_path)
+    base, cc, human_p, llm_p = fixture(tmp_path)
     env = tmp_path / ".env"
     env.write_text("LLM_API_ENDPOINT=http://x:1/y\nLLM_MODEL_NAME=m\n", encoding="utf-8")
     rc = main(
-        ["--env", str(env), "--cfdict", str(cfdict), "--cc-cedict", str(cc),
+        ["--env", str(env), "--cfdict", str(base), "--cc-cedict", str(cc),
          "--human", str(human_p), "--llm-generated", str(llm_p),
          "--out-human", str(tmp_path / "c.u8"),
          "--out-full", str(tmp_path / "f.u8"),
@@ -191,7 +191,7 @@ def test_cli_limit_defaults_to_unlimited(tmp_path, monkeypatch):
     import cfdict_next.cli.pipeline as pipeline_mod
     from cfdict_next.cli.pipeline import PipelineReport
 
-    cfdict, cc, human_p, llm_p = fixture(tmp_path)
+    base, cc, human_p, llm_p = fixture(tmp_path)
     env = tmp_path / ".env"
     env.write_text("LLM_API_ENDPOINT=http://x:1/y\nLLM_MODEL_NAME=m\n", encoding="utf-8")
     seen = {}
@@ -205,7 +205,7 @@ def test_cli_limit_defaults_to_unlimited(tmp_path, monkeypatch):
 
     monkeypatch.setattr(pipeline_mod, "run_pipeline", fake_run)
     rc = main(
-        ["--env", str(env), "--cfdict", str(cfdict), "--cc-cedict", str(cc),
+        ["--env", str(env), "--cfdict", str(base), "--cc-cedict", str(cc),
          "--human", str(human_p), "--llm-generated", str(llm_p),
          "--out-human", str(tmp_path / "c.u8"),
          "--out-full", str(tmp_path / "f.u8"),
@@ -215,7 +215,7 @@ def test_cli_limit_defaults_to_unlimited(tmp_path, monkeypatch):
     assert seen["limit"] == 0
     assert seen["progress"] is True
     rc = main(
-        ["--env", str(env), "--cfdict", str(cfdict), "--cc-cedict", str(cc),
+        ["--env", str(env), "--cfdict", str(base), "--cc-cedict", str(cc),
          "--human", str(human_p), "--llm-generated", str(llm_p),
          "--out-human", str(tmp_path / "c.u8"),
          "--out-full", str(tmp_path / "f.u8"),
@@ -229,7 +229,7 @@ def test_cli_limit_defaults_to_unlimited(tmp_path, monkeypatch):
 def test_cli_reports_generation_error_with_stage(tmp_path, capsys, monkeypatch):
     import cfdict_next.cli.pipeline as pipeline_mod
 
-    cfdict, cc, human_p, llm_p = fixture(tmp_path)
+    base, cc, human_p, llm_p = fixture(tmp_path)
     env = tmp_path / ".env"
     env.write_text("LLM_API_ENDPOINT=http://x:1/y\nLLM_MODEL_NAME=m\n", encoding="utf-8")
 
@@ -238,7 +238,7 @@ def test_cli_reports_generation_error_with_stage(tmp_path, capsys, monkeypatch):
 
     monkeypatch.setattr(pipeline_mod, "run_pipeline", failing_run)
     rc = main(
-        ["--env", str(env), "--cfdict", str(cfdict), "--cc-cedict", str(cc),
+        ["--env", str(env), "--cfdict", str(base), "--cc-cedict", str(cc),
          "--human", str(human_p), "--llm-generated", str(llm_p),
          "--out-human", str(tmp_path / "c.u8"),
          "--out-full", str(tmp_path / "f.u8"),

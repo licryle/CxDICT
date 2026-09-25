@@ -9,7 +9,7 @@ import json
 import pytest
 
 from cfdict_next.cleanup import (
-    cfdict_identities,
+    base_identities,
     cleanup_datasets,
     cleanup_files,
     human_identities,
@@ -36,7 +36,7 @@ def record_for(key):
     }
 
 
-CFDICT_SAMPLE = (
+BASE_SAMPLE = (
     "# sample\n"
     "中國 中国 [Zhong1 guo2] /Chine/\n"
     "行 行 [Xing2] /marcher/\n"
@@ -48,19 +48,19 @@ OTHER = "美|美|Mei3"
 FOURTH = "好|好|Hao3"
 
 
-def test_human_entries_in_cfdict_are_removed():
+def test_human_entries_in_base_are_removed():
     kept_human, kept_llm, report = cleanup_datasets({CHINA}, {CHINA, OTHER}, {})
     assert kept_human == {OTHER}
     assert kept_llm == {}
-    assert report.human_removed_cfdict == 1
+    assert report.human_removed_base == 1
     assert report.human_after == 1
 
 
-def test_llm_entries_in_cfdict_are_removed():
+def test_llm_entries_in_base_are_removed():
     llm = {CHINA: record_for(CHINA), OTHER: record_for(OTHER)}
     _, kept, report = cleanup_datasets({CHINA}, set(), llm)
     assert set(kept) == {OTHER}
-    assert report.llm_removed_cfdict == 1
+    assert report.llm_removed_base == 1
 
 
 def test_llm_entries_in_human_are_removed():
@@ -72,14 +72,14 @@ def test_llm_entries_in_human_are_removed():
     assert report.llm_removed_human == 1
 
 
-def test_cfdict_beats_human_for_llm_too():
-    # Entry in all three datasets: survives only implicitly via CFDICT.
+def test_base_beats_human_for_llm_too():
+    # Entry in all three datasets: survives only implicitly via base.
     llm = {CHINA: record_for(CHINA)}
     kept_h, kept_l, report = cleanup_datasets({CHINA}, {CHINA}, llm)
     assert kept_h == set()
     assert kept_l == {}
-    assert report.llm_removed_cfdict == 1
-    assert report.llm_removed_human == 0  # counted under CFDICT
+    assert report.llm_removed_base == 1
+    assert report.llm_removed_human == 0  # counted under base
 
 
 def test_no_overlap_is_a_no_op():
@@ -90,7 +90,7 @@ def test_no_overlap_is_a_no_op():
 
 
 def test_cleanup_files_end_to_end(tmp_path):
-    cfdict = write(tmp_path / "cfdict.u8", CFDICT_SAMPLE)
+    base = write(tmp_path / "cfdict.u8", BASE_SAMPLE)
     human_p = write(
         tmp_path / "human.u8",
         "行 行 [Xing2] /marcher/\n美 美 [Mei3] /beau/\n",
@@ -106,9 +106,9 @@ def test_cleanup_files_end_to_end(tmp_path):
             ensure_ascii=False,
         ),
     )
-    report = cleanup_files(cfdict, human_p, llm_p)
-    # WALK dropped from human (now in CFDICT); CHINA dropped from LLM
-    # (now in CFDICT); OTHER dropped from LLM (kept human);
+    report = cleanup_files(base, human_p, llm_p)
+    # WALK dropped from human (now in base); CHINA dropped from LLM
+    # (now in base); OTHER dropped from LLM (kept human);
     # FOURTH survives in LLM (nowhere else).
     assert report.human_after == 1
     assert report.llm_after == 1
@@ -120,23 +120,23 @@ def test_cleanup_files_end_to_end(tmp_path):
 
 
 def test_dry_run_writes_nothing(tmp_path):
-    cfdict = write(tmp_path / "cfdict.u8", CFDICT_SAMPLE)
+    base = write(tmp_path / "cfdict.u8", BASE_SAMPLE)
     human_p = write(tmp_path / "human.u8", "中國 中国 [Zhong1 guo2] /Chine/\n")
     llm_p = write(tmp_path / "llm_generated.json", json.dumps({}))
     before_h, before_l = (
         human_p.read_bytes(),
         llm_p.read_bytes(),
     )
-    report = cleanup_files(cfdict, human_p, llm_p, dry_run=True)
-    assert report.human_removed_cfdict == 1
+    report = cleanup_files(base, human_p, llm_p, dry_run=True)
+    assert report.human_removed_base == 1
     assert human_p.read_bytes() == before_h
     assert llm_p.read_bytes() == before_l
 
 
-def test_malformed_cfdict_fails_loudly(tmp_path):
-    cfdict = write(tmp_path / "cfdict.u8", "this is not an entry\n")
+def test_malformed_base_fails_loudly(tmp_path):
+    base = write(tmp_path / "cfdict.u8", "this is not an entry\n")
     with pytest.raises(ValueError, match="malformed"):
-        cfdict_identities(cfdict)
+        base_identities(base)
 
 
 def test_malformed_human_fails_loudly(tmp_path):
@@ -146,8 +146,8 @@ def test_malformed_human_fails_loudly(tmp_path):
 
 
 def test_invalid_llm_json_fails_loudly(tmp_path):
-    cfdict = write(tmp_path / "cfdict.u8", CFDICT_SAMPLE)
+    base = write(tmp_path / "cfdict.u8", BASE_SAMPLE)
     human_p = write(tmp_path / "human.u8", "")
     llm_p = write(tmp_path / "llm_generated.json", "{bad json")
     with pytest.raises(Exception, match="[Ii]nvalid JSON"):
-        cleanup_files(cfdict, human_p, llm_p)
+        cleanup_files(base, human_p, llm_p)

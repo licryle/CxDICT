@@ -3,11 +3,11 @@
 Every check fails loudly with a named reason instead of silently
 overriding or discarding data. Checks:
 
-1. cfdict.u8 parses with zero malformed lines.
+1. base dictionary parses with zero malformed lines.
 2. CC-CEDICT parses with zero malformed lines.
 3. human.u8 parses with zero malformed lines; llm_generated.json loads
    (structure, identity keys).
-4. No CFDICT∩human, CFDICT∩LLM, or human∩LLM overlap.
+4. No base∩human, base∩LLM, or human∩LLM overlap.
 5. Every LLM record covers exactly its CC-CEDICT gloss set
    (accept/reject via assert_gloss_coverage); no LLM record may reference
    an identity outside CC-CEDICT scope. Human entries are free-form
@@ -17,7 +17,7 @@ overriding or discarding data. Checks:
    known traditional with a wrong simplified (or vice versa) fails.
 6. Scope information is consistent with the inputs it claims to describe.
 7. Assembled outputs parse cleanly and contain exactly the expected
-   identity sets (human = CFDICT+human, full = +LLM), with no
+   identity sets (human = base+human, full = +LLM), with no
    duplicate lines.
 """
 
@@ -78,15 +78,15 @@ def _load_or_fail(path: str | Path, label: str, report: ValidationReport):
 
 
 def check_no_overlap(
-    cfdict_ids: set[str],
+    base_ids: set[str],
     human_ids: set[str],
     llm_generated: dict[str, Any],
     report: ValidationReport,
 ) -> None:
     """Check 4: the three datasets are pairwise disjoint where required."""
     pairs = (
-        ("CFDICT/human", set(human_ids) & cfdict_ids),
-        ("CFDICT/LLM", set(llm_generated) & cfdict_ids),
+        ("base/human", set(human_ids) & base_ids),
+        ("base/LLM", set(llm_generated) & base_ids),
         ("human/LLM", set(llm_generated) & set(human_ids)),
     )
     for name, overlap in pairs:
@@ -204,15 +204,15 @@ def check_scope_info(
 def check_outputs(
     human_u8: str | Path,
     full_u8: str | Path,
-    cfdict_ids: set[str],
+    base_ids: set[str],
     human_ids: set[str],
     llm_ids: set[str],
     report: ValidationReport,
 ) -> None:
     """Check 7: assembled outputs contain exactly the expected identities."""
     for label, path, expected in (
-        ("human output", human_u8, cfdict_ids | human_ids),
-        ("full output", full_u8, cfdict_ids | human_ids | llm_ids),
+        ("human output", human_u8, base_ids | human_ids),
+        ("full output", full_u8, base_ids | human_ids | llm_ids),
     ):
         ids: list[str] = []
         try:
@@ -269,22 +269,22 @@ def check_outputs(
 
 
 def validate_inputs(
-    cfdict_path: str | Path,
+    base_path: str | Path,
     cc_cedict_path: str | Path,
     human_path: str | Path,
     llm_generated_path: str | Path,
 ) -> tuple[ValidationReport, dict[str, Any] | None]:
     """Validate all release inputs; return (report, loaded data or None)."""
     report = ValidationReport()
-    cfdict_entries = _parse_or_fail(cfdict_path, "cfdict.u8", report)
+    base_entries = _parse_or_fail(base_path, "base", report)
     cc_entries = _parse_or_fail(cc_cedict_path, "CC-CEDICT", report)
     human_entries = _parse_or_fail(human_path, "human.u8", report)
     llm_generated = _load_or_fail(llm_generated_path, "llm_generated.json", report)
-    if None in (cfdict_entries, cc_entries, human_entries, llm_generated):
+    if None in (base_entries, cc_entries, human_entries, llm_generated):
         return report, None
-    assert cfdict_entries is not None and cc_entries is not None
+    assert base_entries is not None and cc_entries is not None
     assert human_entries is not None and llm_generated is not None
-    cfdict_ids = {e.lexical_id() for e in cfdict_entries}
+    base_ids = {e.lexical_id() for e in base_entries}
     human_ids = {e.lexical_id() for e in human_entries}
     cc_glosses: dict[str, set[str]] = {}
     cc_pair_pinyins: dict[tuple[str, str], set[str]] = {}
@@ -297,7 +297,7 @@ def validate_inputs(
         ).add(e.pinyin.strip())
         cc_trad_to_simp.setdefault(e.traditional, set()).add(e.simplified)
         cc_simp_to_trad.setdefault(e.simplified, set()).add(e.traditional)
-    check_no_overlap(cfdict_ids, human_ids, llm_generated, report)
+    check_no_overlap(base_ids, human_ids, llm_generated, report)
     check_gloss_coverage(cc_glosses, llm_generated, report)
     check_human_hanzi_pinyin(
         human_entries,
@@ -307,7 +307,7 @@ def validate_inputs(
         report,
     )
     return report, {
-        "cfdict_ids": cfdict_ids,
+        "base_ids": base_ids,
         "human_ids": human_ids,
         "cc_glosses": cc_glosses,
         "llm_generated": llm_generated,

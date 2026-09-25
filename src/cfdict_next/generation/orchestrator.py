@@ -2,7 +2,7 @@
 
 Orchestrates the Phase 5 pipeline end to end over real sources:
 
-1. Parse CFDICT + human.u8 + CC-CEDICT, load the LLM dataset (all fail-loud).
+1. Parse base + human.u8 + CC-CEDICT, load the LLM dataset (all fail-loud).
 2. Compute the missing scope (spec §3, §5) and build one item per entry
    with its full CC-CEDICT gloss list.
 3. Generate in batches; every successful batch is merged and written
@@ -30,7 +30,7 @@ from itertools import batched
 from pathlib import Path
 from typing import Any, Callable
 
-from ..cleanup import cfdict_identities
+from ..cleanup import base_identities
 from ..parser.json import load_llm_json
 from ..parser.u8 import DictionaryEntry, parse_u8_file
 from .config import LLMConfig
@@ -88,7 +88,7 @@ class GenerationReport:
 
 def compute_missing_items(
     cc_entries: list[DictionaryEntry],
-    cfdict_ids: set[str],
+    base_ids: set[str],
     existing_ids: set[str],
 ) -> list[GenerationItem]:
     """Build one generation item per missing-scope entry, in CC-CEDICT order."""
@@ -96,7 +96,7 @@ def compute_missing_items(
     seen: set[str] = set()
     for entry in cc_entries:
         key = entry.lexical_id()
-        if key in cfdict_ids or key in existing_ids or key in seen:
+        if key in base_ids or key in existing_ids or key in seen:
             continue
         seen.add(key)
         items.append(
@@ -242,7 +242,7 @@ def generate_all(
 
 
 def generate_files(
-    cfdict_path: str | Path,
+    base_path: str | Path,
     cc_cedict_path: str | Path,
     human_path: str | Path,
     llm_generated_path: str | Path,
@@ -256,7 +256,7 @@ def generate_files(
     stream: Any | None = None,
 ) -> GenerationReport:
     """Run generation against on-disk datasets; rewrite them unless dry_run."""
-    cfdict_ids = cfdict_identities(cfdict_path)
+    base_ids = base_identities(base_path)
     cc_entries, errors = parse_u8_file(cc_cedict_path)
     if errors:
         preview = "; ".join(f"line {n}: {msg}" for n, msg in errors[:5])
@@ -273,7 +273,7 @@ def generate_files(
     llm_generated = load_llm_json(llm_generated_path)
 
     items = compute_missing_items(
-        cc_entries, cfdict_ids, human_ids | set(llm_generated)
+        cc_entries, base_ids, human_ids | set(llm_generated)
     )
     plan = plan_generation(items, config.batch_size, limit)
     if dry_run:

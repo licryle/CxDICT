@@ -1,10 +1,10 @@
 """Scope computation for dictionary generation (spec §3, §10, §12).
 
-Missing generation scope:  CC-CEDICT − CFDICT − human.u8 − llm_generated.json
-Human dictionary:          CFDICT + human.u8
-Full dictionary:           CFDICT + human.u8 + llm_generated.json
+Missing generation scope:  CC-CEDICT − base − human.u8 − llm_generated.json
+Human dictionary:          base + human.u8
+Full dictionary:           base + human.u8 + llm_generated.json
 
-CC-CEDICT, CFDICT and human.u8 arrive as parsed lists of DictionaryEntry;
+CC-CEDICT, base and human.u8 arrive as parsed lists of DictionaryEntry;
 the LLM dataset arrives as a mapping of lexical identity -> record (see
 cfdict_next.parser.json.load_llm_json). All sources meet at the same
 lexical identity (spec §15), which is what makes the set arithmetic valid.
@@ -15,7 +15,7 @@ from __future__ import annotations
 
 def compute_missing_scope(
     cc_cedict_ids: set[str],
-    cfdict_ids: set[str],
+    base_ids: set[str],
     human_ids: set[str],
     llm_ids: set[str],
 ) -> set[str]:
@@ -26,49 +26,49 @@ def compute_missing_scope(
     """
     return (
         set(cc_cedict_ids)
-        - set(cfdict_ids)
+        - set(base_ids)
         - set(human_ids)
         - set(llm_ids)
     )
 
 
 def compute_human_scope(
-    cfdict_ids: set[str],
+    base_ids: set[str],
     human_ids: set[str],
 ) -> set[str]:
     """Return the identities included in the human dictionary (spec §10.1)."""
-    return set(cfdict_ids) | set(human_ids)
+    return set(base_ids) | set(human_ids)
 
 
 def compute_full_scope(
-    cfdict_ids: set[str],
+    base_ids: set[str],
     human_ids: set[str],
     llm_ids: set[str],
 ) -> set[str]:
     """Return the identities included in the full dictionary (spec §10.2)."""
-    return set(cfdict_ids) | set(human_ids) | set(llm_ids)
+    return set(base_ids) | set(human_ids) | set(llm_ids)
 
 
 def compute_scope_statistics(
     cc_cedict_ids: set[str],
-    cfdict_ids: set[str],
+    base_ids: set[str],
     human_ids: set[str],
     llm_ids: set[str],
 ) -> dict[str, int]:
     """Return coverage counts for the release scope information (spec §12)."""
-    missing = compute_missing_scope(cc_cedict_ids, cfdict_ids, human_ids, llm_ids)
-    human_scope = compute_human_scope(cfdict_ids, human_ids)
-    full_scope = compute_full_scope(cfdict_ids, human_ids, llm_ids)
+    missing = compute_missing_scope(cc_cedict_ids, base_ids, human_ids, llm_ids)
+    human_scope = compute_human_scope(base_ids, human_ids)
+    full_scope = compute_full_scope(base_ids, human_ids, llm_ids)
     in_cc = set(cc_cedict_ids)
     return {
         "cc_cedict_total": len(cc_cedict_ids),
-        "cfdict_total": len(cfdict_ids),
+        "base_total": len(base_ids),
         "human_total": len(human_ids),
         "llm_generated_total": len(llm_ids),
         "missing_scope_total": len(missing),
         "human_dictionary_total": len(human_scope),
         "full_dictionary_total": len(full_scope),
-        "cfdict_covers_cc_cedict": len(set(cfdict_ids) & in_cc),
+        "base_covers_cc_cedict": len(set(base_ids) & in_cc),
         "human_covers_cc_cedict": len(set(human_ids) & in_cc),
         "llm_covers_cc_cedict": len(set(llm_ids) & in_cc),
     }

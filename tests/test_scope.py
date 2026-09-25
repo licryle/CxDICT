@@ -15,7 +15,7 @@ def _id(trad, simp, pin):
 
 # Fixture scenario:
 #   CC-CEDICT: A, B, C, D
-#   CFDICT:    A          (authoritative, wins)
+#   base:      A          (authoritative, wins)
 #   human:     B          (curated)
 #   llm:       —
 A = _id("國", "国", "Guo2")
@@ -24,7 +24,7 @@ C = _id("行", "行", "Xing2")
 D = _id("學", "学", "Xue2")
 
 
-def test_missing_scope_excludes_cfdict_and_existing_llm():
+def test_missing_scope_excludes_base_and_existing_llm():
     missing = compute_missing_scope({A, B, C, D}, {A}, set(), {B})
     assert missing == {C, D}
 
@@ -44,7 +44,7 @@ def test_llm_entries_do_not_reenter_missing_scope():
     assert missing == {C}
 
 
-def test_human_scope_is_cfdict_plus_human():
+def test_human_scope_is_base_plus_human():
     scope = compute_human_scope({A}, {B})
     assert scope == {A, B}
     # LLM content has no path into the human dictionary (spec §10.1):
@@ -60,10 +60,10 @@ def test_full_scope_includes_llm():
 def test_scope_statistics_are_consistent():
     stats = compute_scope_statistics({A, B, C, D}, {A}, {B}, {C})
     assert stats["cc_cedict_total"] == 4
-    assert stats["cfdict_total"] == 1
+    assert stats["base_total"] == 1
     assert stats["human_total"] == 1
     assert stats["llm_generated_total"] == 1
     assert stats["missing_scope_total"] == 1  # only D
     assert stats["human_dictionary_total"] == 2  # A + B
     assert stats["full_dictionary_total"] == 3  # A + B + C
-    assert stats["cfdict_covers_cc_cedict"] == 1
+    assert stats["base_covers_cc_cedict"] == 1

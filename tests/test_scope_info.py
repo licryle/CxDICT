@@ -15,8 +15,8 @@ def sources(**overrides):
     args = {
         "cc_cedict_version": "cc-v1",
         "cc_cedict_ids": {"A", "B", "C", "D"},
-        "cfdict_version": "cfdict-v1",
-        "cfdict_ids": {"A"},
+        "base_version": "base-v1",
+        "base_ids": {"A"},
         "human_version": "human-v1",
         "human_ids": {"B"},
         "llm_generated_version": "llm-v1",
@@ -32,7 +32,7 @@ def test_scope_info_matches_exact_inputs():
     info = build_scope_info(sources(), generated_at="2025-01-01T00:00:00+00:00")
     assert info["generated_at"] == "2025-01-01T00:00:00+00:00"
     assert info["sources"]["cc_cedict"] == {"version": "cc-v1", "entries": 4}
-    assert info["sources"]["cfdict"] == {"version": "cfdict-v1", "entries": 1}
+    assert info["sources"]["base"] == {"version": "base-v1", "entries": 1}
     assert info["sources"]["human"] == {"version": "human-v1", "entries": 1}
     assert info["sources"]["llm_generated"] == {"version": "llm-v1", "entries": 1}
     assert info["provenance"] == {"llm_models": ["m1"], "prompt_versions": ["p1"]}
@@ -46,7 +46,7 @@ def test_markdown_contains_figures_and_versions():
         build_scope_info(sources(), generated_at="T")
     )
     for needle in (
-        "cc-v1", "cfdict-v1", "human-v1", "llm-v1",
+        "cc-v1", "base-v1", "human-v1", "llm-v1",
         "Human dictionary: 2 entries",
         "Full dictionary: 3 entries",
         "Missing scope (still to generate): 1",

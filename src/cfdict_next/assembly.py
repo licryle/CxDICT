@@ -1,15 +1,15 @@
 """Dictionary assembly (spec §10, §14).
 
-Precedence:  CFDICT > human.u8 > llm_generated.json
+Precedence:  base > human.u8 > llm_generated.json
 
-- The human dictionary contains CFDICT + human.u8 (§10.1).
+- The human dictionary contains base + human.u8 (§10.1).
 - The full dictionary additionally contains llm_generated.json (§10.2).
 - Higher-priority sources always win: `assemble` *raises* on any
-  CFDICT∩human, CFDICT∩LLM or human∩LLM overlap instead of silently
+  base∩human, base∩LLM or human∩LLM overlap instead of silently
   overriding (§14). Run the cleanup script first so the datasets are
   proper deltas; Phase 9 validation gates the workflow before assembly
   runs.
-- Output order is deterministic: CFDICT file order, then LLM-only entries
+- Output order is deterministic: base file order, then LLM-only entries
   sorted by identity — so identical inputs always yield byte-identical
   outputs.
 - Headword fields split on ASCII space/tab (a single CFDICT line uses
@@ -52,7 +52,10 @@ def record_to_entry(key: str, record: dict[str, Any]) -> DictionaryEntry:
     )
 
 
-CFDICT_SECTION_HEADER = (
+# TODO(P4): per-language section headers from the languages registry.
+# The value stays byte-identical until then: it lands in the assembled
+# .u8 artifacts, so changing it would change release bytes.
+BASE_SECTION_HEADER = (
     "# CFDICT Authoritative entries "
     "(from https://chine.in/mandarin/dictionnaire/CFDICT/)"
 )
@@ -61,48 +64,48 @@ LLM_SECTION_HEADER = "# LLM-Generated entries (data/llm_generated.json)"
 
 
 def assemble_sections(
-    cfdict_entries: list[DictionaryEntry],
+    base_entries: list[DictionaryEntry],
     human_entries: list[DictionaryEntry],
     llm_generated: dict[str, dict[str, Any]],
 ) -> tuple[list[DictionaryEntry], list[DictionaryEntry], list[DictionaryEntry]]:
-    """Split assembly into (cfdict, human_extra, llm_extra).
+    """Split assembly into (base, human_extra, llm_extra).
 
     Same overlap checks as `assemble`; the extra lists preserve output
-    order (CFDICT file order, then human file order, then LLM-only
+    order (base file order, then human file order, then LLM-only
     entries sorted by identity).
     """
-    cfdict_ids = {e.lexical_id() for e in cfdict_entries}
+    base_ids = {e.lexical_id() for e in base_entries}
     human_ids = [e.lexical_id() for e in human_entries]
     if len(set(human_ids)) != len(human_ids):
         raise ValueError("human.u8 contains duplicate entries — fix the source first")
-    bad_human = sorted(set(human_ids) & cfdict_ids)
+    bad_human = sorted(set(human_ids) & base_ids)
     if bad_human:
         raise ValueError(
-            f"{len(bad_human)} human record(s) overlap CFDICT, e.g. "
+            f"{len(bad_human)} human record(s) overlap base, e.g. "
             f"{bad_human[0]!r} — run cleanup first"
         )
-    bad_llm = sorted((set(llm_generated) & cfdict_ids) | (set(llm_generated) & set(human_ids)))
+    bad_llm = sorted((set(llm_generated) & base_ids) | (set(llm_generated) & set(human_ids)))
     if bad_llm:
         raise ValueError(
-            f"{len(bad_llm)} LLM record(s) overlap CFDICT/human, e.g. "
+            f"{len(bad_llm)} LLM record(s) overlap base/human, e.g. "
             f"{bad_llm[0]!r} — run cleanup first"
         )
     llm_extra = [
         record_to_entry(key, llm_generated[key]) for key in sorted(llm_generated)
     ]
-    return list(cfdict_entries), list(human_entries), llm_extra
+    return list(base_entries), list(human_entries), llm_extra
 
 
 def assemble(
-    cfdict_entries: list[DictionaryEntry],
+    base_entries: list[DictionaryEntry],
     human_entries: list[DictionaryEntry],
     llm_generated: dict[str, dict[str, Any]],
 ) -> tuple[list[DictionaryEntry], list[DictionaryEntry]]:
     """Assemble (human_entries, full_entries); raise on overlaps (§14)."""
-    cfdict, human_extra, llm_extra = assemble_sections(
-        cfdict_entries, human_entries, llm_generated
+    base, human_extra, llm_extra = assemble_sections(
+        base_entries, human_entries, llm_generated
     )
-    return cfdict + human_extra, cfdict + human_extra + llm_extra
+    return base + human_extra, base + human_extra + llm_extra
 
 
 def write_sectioned_u8_file(
@@ -134,17 +137,17 @@ def write_u8_file(path: str | Path, entries: list[DictionaryEntry]) -> None:
 
 
 def assemble_files(
-    cfdict_path: str | Path,
+    base_path: str | Path,
     human_path: str | Path,
     llm_generated_path: str | Path,
     out_human_path: str | Path,
     out_full_path: str | Path,
 ) -> tuple[int, int]:
     """Full assembly from on-disk sources; return (human_n, full_n)."""
-    entries, errors = parse_u8_file(cfdict_path)
+    entries, errors = parse_u8_file(base_path)
     if errors:
         preview = "; ".join(f"line {n}: {msg}" for n, msg in errors[:5])
-        raise ValueError(f"cfdict.u8 has {len(errors)} malformed line(s): {preview}")
+        raise ValueError(f"base dictionary has {len(errors)} malformed line(s): {preview}")
     human_entries, human_errors = parse_u8_file(human_path)
     if human_errors:
         preview = "; ".join(f"line {n}: {msg}" for n, msg in human_errors[:5])
@@ -152,25 +155,25 @@ def assemble_files(
             f"human.u8 has {len(human_errors)} malformed line(s): {preview}"
         )
     llm_generated = load_llm_json(llm_generated_path)
-    cfdict, human_extra, llm_extra = assemble_sections(
+    base, human_extra, llm_extra = assemble_sections(
         entries, human_entries, llm_generated
     )
     write_sectioned_u8_file(
         out_human_path,
         [
-            (CFDICT_SECTION_HEADER, cfdict),
+            (BASE_SECTION_HEADER, base),
             (HUMAN_SECTION_HEADER, human_extra),
         ],
     )
     write_sectioned_u8_file(
         out_full_path,
         [
-            (CFDICT_SECTION_HEADER, cfdict),
+            (BASE_SECTION_HEADER, base),
             (HUMAN_SECTION_HEADER, human_extra),
             (LLM_SECTION_HEADER, llm_extra),
         ],
     )
-    human_n = len(cfdict) + len(human_extra)
+    human_n = len(base) + len(human_extra)
     return human_n, human_n + len(llm_extra)
 
 

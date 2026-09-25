@@ -45,11 +45,11 @@ CC = [
     entry("行", "行", "Xing2", ["to walk"]),
 ]
 
-CFDICT_IDS = {"中|中|Zhong1"}  # 中 already authoritative
+BASE_IDS = {"中|中|Zhong1"}  # 中 already authoritative
 
 
-def test_missing_items_exclude_cfdict_and_existing():
-    items = compute_missing_items(CC, CFDICT_IDS, {"行|行|Xing2"})
+def test_missing_items_exclude_base_and_existing():
+    items = compute_missing_items(CC, BASE_IDS, {"行|行|Xing2"})
     assert [i.key for i in items] == ["國|国|Guo2"]
     assert items[0].glosses == ("country", "state")
 
@@ -117,8 +117,8 @@ def write(path, content):
     return path
 
 
-def dataset_files(tmp_path, cfdict_ids_extra=frozenset()):
-    cfdict = write(tmp_path / "cfdict.u8", "中 中 [Zhong1] /milieu/\n")
+def dataset_files(tmp_path, base_ids_extra=frozenset()):
+    base = write(tmp_path / "cfdict.u8", "中 中 [Zhong1] /milieu/\n")
     cc = write(
         tmp_path / "cc.u8",
         "中 中 [Zhong1] /middle/\n"
@@ -127,18 +127,18 @@ def dataset_files(tmp_path, cfdict_ids_extra=frozenset()):
     )
     human_p = write(tmp_path / "human.u8", "")
     llm_p = write(tmp_path / "llm_generated.json", json.dumps({}))
-    return cfdict, cc, human_p, llm_p
+    return base, cc, human_p, llm_p
 
 
 def test_generate_files_end_to_end(tmp_path):
-    cfdict, cc, human_p, llm_p = dataset_files(tmp_path)
+    base, cc, human_p, llm_p = dataset_files(tmp_path)
     calls = []
     report = generate_files(
-        cfdict, cc, human_p, llm_p,
+        base, cc, human_p, llm_p,
         config(), "cc-v1", limit=0, post=fake_post_factory(calls),
         generation_date="T",
     )
-    assert report.plan.scoped == 2  # 國 + 行 (中 is CFDICT)
+    assert report.plan.scoped == 2  # 國 + 行 (中 is base)
     assert report.llm_new == 2
     llm_generated = json.loads(llm_p.read_text(encoding="utf-8"))
     assert set(llm_generated) == {"國|国|Guo2", "行|行|Xing2"}
@@ -147,16 +147,16 @@ def test_generate_files_end_to_end(tmp_path):
 
 
 def test_limit_truncates_and_resumes(tmp_path):
-    cfdict, cc, human_p, llm_p = dataset_files(tmp_path)
+    base, cc, human_p, llm_p = dataset_files(tmp_path)
     calls = []
     post = fake_post_factory(calls)
     first = generate_files(
-        cfdict, cc, human_p, llm_p, config(), "v", limit=1, post=post,
+        base, cc, human_p, llm_p, config(), "v", limit=1, post=post,
         generation_date="T",
     )
     assert first.plan.limited_to == 1 and first.llm_new == 1
     second = generate_files(
-        cfdict, cc, human_p, llm_p, config(), "v", limit=0, post=post,
+        base, cc, human_p, llm_p, config(), "v", limit=0, post=post,
         generation_date="T",
     )
     assert second.llm_new == 1  # only the remaining entry
@@ -165,11 +165,11 @@ def test_limit_truncates_and_resumes(tmp_path):
 
 
 def test_dry_run_calls_no_batches_and_writes_nothing(tmp_path):
-    cfdict, cc, human_p, llm_p = dataset_files(tmp_path)
+    base, cc, human_p, llm_p = dataset_files(tmp_path)
     before = (human_p.read_bytes(), llm_p.read_bytes())
     calls = []
     report = generate_files(
-        cfdict, cc, human_p, llm_p, config(), "v", dry_run=True,
+        base, cc, human_p, llm_p, config(), "v", dry_run=True,
         post=fake_post_factory(calls),
     )
     assert calls == []
@@ -178,14 +178,14 @@ def test_dry_run_calls_no_batches_and_writes_nothing(tmp_path):
 
 
 def test_total_failure_writes_nothing_and_raises(tmp_path):
-    cfdict, cc, human_p, llm_p = dataset_files(tmp_path)
+    base, cc, human_p, llm_p = dataset_files(tmp_path)
 
     def bad_post(*args):
         raise GenerationError("boom")
 
     with pytest.raises(GenerationError, match="2 entries failed after retry") as exc_info:
         generate_files(
-            cfdict, cc, human_p, llm_p, config(), "v", limit=0, post=bad_post
+            base, cc, human_p, llm_p, config(), "v", limit=0, post=bad_post
         )
     assert "Causes:" in str(exc_info.value) and "boom" in str(exc_info.value)
     assert json.loads(llm_p.read_text(encoding="utf-8")) == {}
@@ -194,7 +194,7 @@ def test_total_failure_writes_nothing_and_raises(tmp_path):
 def test_poison_entry_isolated_rest_written_and_reported(tmp_path):
     # 國 always fails, even alone: its batch-mate 行 must still be written,
     # and the error must name the poison key for resume.
-    cfdict, cc, human_p, llm_p = dataset_files(tmp_path)
+    base, cc, human_p, llm_p = dataset_files(tmp_path)
     good_post = fake_post_factory([])
 
     def flaky_post(endpoint, model, system, user, timeout_s):
@@ -204,7 +204,7 @@ def test_poison_entry_isolated_rest_written_and_reported(tmp_path):
 
     with pytest.raises(GenerationError, match="國\\|国\\|Guo2"):
         generate_files(
-            cfdict, cc, human_p, llm_p, config(), "v", limit=0,
+            base, cc, human_p, llm_p, config(), "v", limit=0,
             post=flaky_post, generation_date="T",
         )
     llm_generated = json.loads(llm_p.read_text(encoding="utf-8"))
@@ -212,7 +212,7 @@ def test_poison_entry_isolated_rest_written_and_reported(tmp_path):
     # Resume skips the written entry and fails again only on the poison one.
     with pytest.raises(GenerationError, match="國\\|国\\|Guo2"):
         generate_files(
-            cfdict, cc, human_p, llm_p, config(), "v", limit=0,
+            base, cc, human_p, llm_p, config(), "v", limit=0,
             post=flaky_post, generation_date="T",
         )
     llm_generated = json.loads(llm_p.read_text(encoding="utf-8"))
@@ -220,7 +220,7 @@ def test_poison_entry_isolated_rest_written_and_reported(tmp_path):
 
 
 def test_transient_failure_recovers_in_retry_pass(tmp_path):
-    cfdict, cc, human_p, llm_p = dataset_files(tmp_path)
+    base, cc, human_p, llm_p = dataset_files(tmp_path)
     calls = []
     good_post = fake_post_factory(calls)
     state = {"failed_once": False}
@@ -232,7 +232,7 @@ def test_transient_failure_recovers_in_retry_pass(tmp_path):
         return good_post(*args)
 
     report = generate_files(
-        cfdict, cc, human_p, llm_p, config(), "v", limit=0,
+        base, cc, human_p, llm_p, config(), "v", limit=0,
         post=transient_post, generation_date="T",
     )
     assert report.llm_new == 2
@@ -419,7 +419,7 @@ def test_partial_batch_writes_good_and_defers_bad(tmp_path):
     # bogus one goes to single retry and names itself in the final error.
     import io
 
-    cfdict, cc, human_p, llm_p = dataset_files(tmp_path)
+    base, cc, human_p, llm_p = dataset_files(tmp_path)
 
     def partial_post(endpoint, model, system, user, timeout_s):
         import json as _json
@@ -440,7 +440,7 @@ def test_partial_batch_writes_good_and_defers_bad(tmp_path):
     stream = io.StringIO()
     with pytest.raises(GenerationError, match="國\\|国\\|Guo2"):
         generate_files(
-            cfdict, cc, human_p, llm_p, config(), "v", limit=0,
+            base, cc, human_p, llm_p, config(), "v", limit=0,
             post=partial_post, generation_date="T", stream=stream,
         )
     llm_generated = json.loads(llm_p.read_text(encoding="utf-8"))
@@ -498,7 +498,7 @@ def test_cli_reports_generation_error_without_traceback(tmp_path, capsys, monkey
     import cfdict_next.cli.generate as cli_mod
     from cfdict_next.cli.generate import main as cli_main
 
-    cfdict, cc, human_p, llm_p = dataset_files(tmp_path)
+    base, cc, human_p, llm_p = dataset_files(tmp_path)
     env = tmp_path / ".env"
     env.write_text(
         "LLM_API_ENDPOINT=http://x:1/y\nLLM_MODEL_NAME=m\n", encoding="utf-8"
@@ -509,7 +509,7 @@ def test_cli_reports_generation_error_without_traceback(tmp_path, capsys, monkey
 
     monkeypatch.setattr(cli_mod, "generate_files", failing_generate)
     rc = cli_main(
-        ["--env", str(env), "--cfdict", str(cfdict), "--cc-cedict", str(cc),
+        ["--env", str(env), "--cfdict", str(base), "--cc-cedict", str(cc),
          "--human", str(human_p), "--llm-generated", str(llm_p)]
     )
     assert rc == 1
@@ -520,13 +520,13 @@ def test_cli_reports_generation_error_without_traceback(tmp_path, capsys, monkey
 def test_cli_dry_run(tmp_path, capsys):
     from cfdict_next.cli.generate import main as cli_main
 
-    cfdict, cc, human_p, llm_p = dataset_files(tmp_path)
+    base, cc, human_p, llm_p = dataset_files(tmp_path)
     env = tmp_path / ".env"
     env.write_text(
         "LLM_API_ENDPOINT=http://x:1/y\nLLM_MODEL_NAME=m\n", encoding="utf-8"
     )
     rc = cli_main(
-        ["--env", str(env), "--cfdict", str(cfdict), "--cc-cedict", str(cc),
+        ["--env", str(env), "--cfdict", str(base), "--cc-cedict", str(cc),
          "--human", str(human_p), "--llm-generated", str(llm_p),
          "--dry-run"]
     )

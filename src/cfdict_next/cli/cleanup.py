@@ -1,9 +1,9 @@
-"""Cleanup CLI: maintain human and LLM datasets as deltas over CFDICT.
+"""Cleanup CLI: maintain human and LLM datasets as deltas over the base dictionary.
 
 Usage:
     python scripts/cleanup.py [--dry-run] [--cfdict PATH] [--human PATH] [--llm-generated PATH]
 
-Applies spec §9 precedence (CFDICT > human.u8 > llm_generated.json),
+Applies spec §9 precedence (base > human.u8 > llm_generated.json),
 rewriting the datasets atomically unless --dry-run is given.
 """
 
@@ -36,11 +36,11 @@ def main(argv: list[str] | None = None) -> int:
     print(f"cleanup done ({mode}):")
     print(
         f"  human: {report.human_before} -> {report.human_after} "
-        f"(removed {report.human_removed_cfdict} now in CFDICT)"
+        f"(removed {report.human_removed_base} now in base)"
     )
     print(
         f"  llm_generated: {report.llm_before} -> {report.llm_after} "
-        f"(removed {report.llm_removed_cfdict} now in CFDICT, "
+        f"(removed {report.llm_removed_base} now in base, "
         f"{report.llm_removed_human} now human)"
     )
     return 0

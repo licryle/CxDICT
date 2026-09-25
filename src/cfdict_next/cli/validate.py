@@ -40,7 +40,7 @@ def main(argv: list[str] | None = None) -> int:
         check_outputs(
             out_human,
             args.out_full,
-            data["cfdict_ids"],
+            data["base_ids"],
             data["human_ids"],
             set(data["llm_generated"]),
             report,

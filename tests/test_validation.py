@@ -20,7 +20,7 @@ from cfdict_next.validation import (
 
 REPO = Path(__file__).resolve().parent.parent
 
-CFDICT_SAMPLE = (
+BASE_SAMPLE = (
     "# sample\n"
     "中國 中国 [Zhong1 guo2] /Chine/\n"
     "行 行 [Xing2] /marcher/\n"
@@ -56,16 +56,16 @@ def write(path, content):
     return path
 
 
-def fixture_files(tmp_path, cc=CC_SAMPLE, cfdict=CFDICT_SAMPLE,
+def fixture_files(tmp_path, cc=CC_SAMPLE, base=BASE_SAMPLE,
                   human="", llm_generated=None):
-    cfdict_p = write(tmp_path / "cfdict.u8", cfdict)
+    base_p = write(tmp_path / "cfdict.u8", base)
     cc_p = write(tmp_path / "cc.u8", cc)
     human_p = write(tmp_path / "human.u8", human)
     llm_p = write(
         tmp_path / "llm_generated.json",
         json.dumps(llm_generated if llm_generated is not None else {}, ensure_ascii=False),
     )
-    return cfdict_p, cc_p, human_p, llm_p
+    return base_p, cc_p, human_p, llm_p
 
 
 def test_happy_path_passes(tmp_path):
@@ -77,12 +77,12 @@ def test_happy_path_passes(tmp_path):
     assert set(data["llm_generated"]) == {BEAUTY}
 
 
-def test_malformed_cfdict_fails(tmp_path):
-    paths = fixture_files(tmp_path, cfdict="not an entry\n")
+def test_malformed_base_fails(tmp_path):
+    paths = fixture_files(tmp_path, base="not an entry\n")
     report, data = validate_inputs(*paths)
     assert not report.passed
     assert data is None
-    assert any(c.name == "cfdict.u8 parses" and not c.passed for c in report.checks)
+    assert any(c.name == "base parses" and not c.passed for c in report.checks)
 
 
 def test_malformed_human_fails(tmp_path):
@@ -94,20 +94,20 @@ def test_malformed_human_fails(tmp_path):
 
 
 def test_invalid_llm_json_fails(tmp_path):
-    cfdict_p, cc_p, human_p, _ = fixture_files(tmp_path)
+    base_p, cc_p, human_p, _ = fixture_files(tmp_path)
     llm_p = write(tmp_path / "llm_generated.json", "{bad")
-    report, data = validate_inputs(cfdict_p, cc_p, human_p, llm_p)
+    report, data = validate_inputs(base_p, cc_p, human_p, llm_p)
     assert not report.passed and data is None
 
 
 def test_each_overlap_pair_fails():
-    for human_ids, llm_generated, cfdict_ids, name in (
-        ({CHINA}, {}, {CHINA}, "CFDICT/human"),
-        ({}, {CHINA: {}}, {CHINA}, "CFDICT/LLM"),
+    for human_ids, llm_generated, base_ids, name in (
+        ({CHINA}, {}, {CHINA}, "base/human"),
+        ({}, {CHINA: {}}, {CHINA}, "base/LLM"),
         ({BEAUTY}, {BEAUTY: {}}, set(), "human/LLM"),
     ):
         report = ValidationReport()
-        check_no_overlap(cfdict_ids, human_ids, llm_generated, report)
+        check_no_overlap(base_ids, human_ids, llm_generated, report)
         assert not report.passed, name
         assert any(c.name == f"no {name} overlap" and not c.passed for c in report.checks)
 
@@ -161,7 +161,7 @@ def test_human_valid_cc_entry_passes(tmp_path):
 def test_scope_info_consistency():
     sources = ReleaseSources(
         cc_cedict_version="v", cc_cedict_ids={"A", "B"},
-        cfdict_version="v", cfdict_ids={"A"},
+        base_version="v", base_ids={"A"},
         human_version="v", human_ids=set(),
         llm_generated_version="v", llm_generated_ids=set(),
     )
@@ -176,19 +176,19 @@ def test_scope_info_consistency():
 
 
 def test_outputs_content_checked(tmp_path):
-    cfdict_p, cc_p, human_p, llm_p = fixture_files(tmp_path)
-    report, data = validate_inputs(cfdict_p, cc_p, human_p, llm_p)
+    base_p, cc_p, human_p, llm_p = fixture_files(tmp_path)
+    report, data = validate_inputs(base_p, cc_p, human_p, llm_p)
     assert report.passed
     # Assemble empty-human/LLM outputs and validate them end to end.
     from cfdict_next.parser.u8 import parse_u8_file
 
-    entries, _ = parse_u8_file(cfdict_p)
+    entries, _ = parse_u8_file(base_p)
     human_entries, full_entries = assemble(entries, [], {})
     out_c, out_f = tmp_path / "c.u8", tmp_path / "f.u8"
     write_u8_file(out_c, human_entries)
     write_u8_file(out_f, full_entries)
     out_report = ValidationReport()
-    check_outputs(out_c, out_f, data["cfdict_ids"], set(), set(), out_report)
+    check_outputs(out_c, out_f, data["base_ids"], set(), set(), out_report)
     assert out_report.passed
 
 
@@ -223,7 +223,7 @@ def test_cli_exit_codes(tmp_path, capsys):
     )
     assert rc == 0
     assert "validation passed" in capsys.readouterr().out
-    bad = fixture_files(tmp_path, cfdict="junk\n")
+    bad = fixture_files(tmp_path, base="junk\n")
     rc = cli_main(
         ["--cfdict", str(bad[0]), "--cc-cedict", str(bad[1]),
          "--human", str(bad[2]), "--llm-generated", str(bad[3])]

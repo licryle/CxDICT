@@ -43,10 +43,10 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     try:
-        cfdict_entries, errors = parse_u8_file(args.cfdict)
+        base_entries, errors = parse_u8_file(args.cfdict)
         if errors:
             preview = "; ".join(f"line {n}: {msg}" for n, msg in errors[:5])
-            raise ValueError(f"cfdict.u8 has {len(errors)} malformed line(s): {preview}")
+            raise ValueError(f"base dictionary has {len(errors)} malformed line(s): {preview}")
         cc_entries, errors = parse_u8_file(args.cc_cedict)
         if errors:
             preview = "; ".join(f"line {n}: {msg}" for n, msg in errors[:5])
@@ -66,8 +66,8 @@ def main(argv: list[str] | None = None) -> int:
     sources = ReleaseSources(
         cc_cedict_version=args.cc_cedict_version or sha256_file(args.cc_cedict),
         cc_cedict_ids={e.lexical_id() for e in cc_entries},
-        cfdict_version=args.cfdict_version or sha256_file(args.cfdict),
-        cfdict_ids={e.lexical_id() for e in cfdict_entries},
+        base_version=args.cfdict_version or sha256_file(args.cfdict),
+        base_ids={e.lexical_id() for e in base_entries},
         human_version=args.human_version or sha256_file(args.human),
         human_ids={e.lexical_id() for e in human_entries},
         llm_generated_version=args.llm_generated_version

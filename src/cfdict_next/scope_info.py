@@ -1,7 +1,7 @@
 """Release scope information (spec §12, §16).
 
 Each release describes its source and resulting coverage: the CC-CEDICT
-scope, the contributions of authoritative CFDICT / human curation / LLM
+scope, the contributions of the authoritative base / human curation / LLM
 data, and the two assembled dictionaries. Every figure derives from
 the exact inputs of that release — versions are content hashes unless the
 caller supplies explicit labels — so a release is traceable to the source
@@ -30,8 +30,8 @@ class ReleaseSources:
 
     cc_cedict_version: str
     cc_cedict_ids: set[str] = field(default_factory=set)
-    cfdict_version: str = ""
-    cfdict_ids: set[str] = field(default_factory=set)
+    base_version: str = ""
+    base_ids: set[str] = field(default_factory=set)
     human_version: str = ""
     human_ids: set[str] = field(default_factory=set)
     llm_generated_version: str = ""
@@ -66,7 +66,7 @@ def build_scope_info(
         generated_at = datetime.now(timezone.utc).isoformat()
     statistics = compute_scope_statistics(
         sources.cc_cedict_ids,
-        sources.cfdict_ids,
+        sources.base_ids,
         sources.human_ids,
         sources.llm_generated_ids,
     )
@@ -77,9 +77,9 @@ def build_scope_info(
                 "version": sources.cc_cedict_version,
                 "entries": statistics["cc_cedict_total"],
             },
-            "cfdict": {
-                "version": sources.cfdict_version,
-                "entries": statistics["cfdict_total"],
+            "base": {
+                "version": sources.base_version,
+                "entries": statistics["base_total"],
             },
             "human": {
                 "version": sources.human_version,
@@ -112,8 +112,8 @@ def render_scope_markdown(info: dict[str, Any]) -> str:
         "| --- | --- | --- |",
         f"| CC-CEDICT (scope) | {sources['cc_cedict']['version']} "
         f"| {sources['cc_cedict']['entries']} |",
-        f"| CFDICT (authoritative) | {sources['cfdict']['version']} "
-        f"| {sources['cfdict']['entries']} |",
+        f"| Base (authoritative) | {sources['base']['version']} "
+        f"| {sources['base']['entries']} |",
         f"| Human (curated) | {sources['human']['version']} "
         f"| {sources['human']['entries']} |",
         f"| LLM generated | {sources['llm_generated']['version']} "
@@ -124,7 +124,7 @@ def render_scope_markdown(info: dict[str, Any]) -> str:
         f"- Missing scope (still to generate): {coverage['missing_scope_total']}",
         f"- Human dictionary: {coverage['human_dictionary_total']} entries",
         f"- Full dictionary: {coverage['full_dictionary_total']} entries",
-        f"- CFDICT covers {coverage['cfdict_covers_cc_cedict']} CC-CEDICT entries",
+        f"- Base covers {coverage['base_covers_cc_cedict']} CC-CEDICT entries",
         f"- Human covers {coverage['human_covers_cc_cedict']} CC-CEDICT entries",
         f"- LLM covers {coverage['llm_covers_cc_cedict']} CC-CEDICT entries",
         "",

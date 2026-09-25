@@ -63,7 +63,7 @@ def _failures(report: ValidationReport) -> str:
 
 def run_pipeline(
     *,
-    cfdict_path: str | Path,
+    base_path: str | Path,
     cc_cedict_path: str | Path,
     human_path: str | Path,
     llm_generated_path: str | Path,
@@ -80,7 +80,7 @@ def run_pipeline(
     generation_date: str | None = None,
 ) -> PipelineReport:
     """Run the full local pipeline; raise PipelineError on any failure."""
-    cfdict_path, cc_cedict_path = Path(cfdict_path), Path(cc_cedict_path)
+    base_path, cc_cedict_path = Path(base_path), Path(cc_cedict_path)
     human_path, llm_generated_path = Path(human_path), Path(llm_generated_path)
 
     def _announce(text: str) -> None:
@@ -100,7 +100,7 @@ def run_pipeline(
         # will process; costs one extra parse, negligible next to LLM calls.
         try:
             pre = generate_files(
-                cfdict_path,
+                base_path,
                 cc_cedict_path,
                 human_path,
                 llm_generated_path,
@@ -122,7 +122,7 @@ def run_pipeline(
         else:
             try:
                 gen_report = generate_files(
-                    cfdict_path,
+                    base_path,
                     cc_cedict_path,
                     human_path,
                     llm_generated_path,
@@ -141,7 +141,7 @@ def run_pipeline(
     if dry_run:
         # Read-only assessment of the current datasets; nothing downstream.
         report, _ = validate_inputs(
-            cfdict_path, cc_cedict_path, human_path, llm_generated_path
+            base_path, cc_cedict_path, human_path, llm_generated_path
         )
         return PipelineReport(
             dry_run=True,
@@ -157,25 +157,25 @@ def run_pipeline(
     _announce("[cleanup] start")
     try:
         cleanup_report = cleanup_files(
-            cfdict_path, human_path, llm_generated_path
+            base_path, human_path, llm_generated_path
         )
     except (ValueError, OSError) as exc:
         raise PipelineError("cleanup", str(exc)) from exc
     dropped = (
-        cleanup_report.human_removed_cfdict
-        + cleanup_report.llm_removed_cfdict
+        cleanup_report.human_removed_base
+        + cleanup_report.llm_removed_base
         + cleanup_report.llm_removed_human
     )
     _announce(f"[cleanup] done: dropped {dropped}")
 
     _announce("[validate-inputs] start")
     report, data = validate_inputs(
-        cfdict_path, cc_cedict_path, human_path, llm_generated_path
+        base_path, cc_cedict_path, human_path, llm_generated_path
     )
     if data is None or not report.passed:
         raise PipelineError("validate-inputs", _failures(report))
     _announce(
-        f"[validate-inputs] done: {len(data['cfdict_ids'])} CFDICT, "
+        f"[validate-inputs] done: {len(data['base_ids'])} base, "
         f"{len(data['human_ids'])} human, "
         f"{len(data['llm_generated'])} generated"
     )
@@ -183,7 +183,7 @@ def run_pipeline(
     _announce("[assemble] start")
     try:
         human_n, full_n = assemble_files(
-            cfdict_path,
+            base_path,
             human_path,
             llm_generated_path,
             out_human_path,
@@ -198,7 +198,7 @@ def run_pipeline(
     check_outputs(
         out_human_path,
         out_full_path,
-        data["cfdict_ids"],
+        data["base_ids"],
         data["human_ids"],
         set(data["llm_generated"]),
         out_report,
@@ -210,7 +210,7 @@ def run_pipeline(
     _announce("[scope] start")
     models, prompts = collect_llm_provenance(data["llm_generated"])
     try:
-        cfdict_version = sha256_file(cfdict_path)
+        base_version = sha256_file(base_path)
         human_version = sha256_file(human_path)
         llm_generated_version = sha256_file(llm_generated_path)
     except OSError as exc:
@@ -218,8 +218,8 @@ def run_pipeline(
     sources = ReleaseSources(
         cc_cedict_version=cc_version,
         cc_cedict_ids=set(data["cc_glosses"]),
-        cfdict_version=cfdict_version,
-        cfdict_ids=data["cfdict_ids"],
+        base_version=base_version,
+        base_ids=data["base_ids"],
         human_version=human_version,
         human_ids=data["human_ids"],
         llm_generated_version=llm_generated_version,
@@ -290,7 +290,7 @@ def main(argv: list[str] | None = None) -> int:
         config = dataclasses.replace(config, batch_size=args.batch_size)
     try:
         report = run_pipeline(
-            cfdict_path=args.cfdict,
+            base_path=args.cfdict,
             cc_cedict_path=args.cc_cedict,
             human_path=args.human,
             llm_generated_path=args.llm_generated,
@@ -316,8 +316,8 @@ def main(argv: list[str] | None = None) -> int:
         dropped = 0
         if report.cleanup is not None:
             dropped = (
-                report.cleanup.human_removed_cfdict
-                + report.cleanup.llm_removed_cfdict
+                report.cleanup.human_removed_base
+                + report.cleanup.llm_removed_base
                 + report.cleanup.llm_removed_human
             )
         print(

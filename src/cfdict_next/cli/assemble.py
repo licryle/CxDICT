@@ -5,7 +5,7 @@ Usage:
                                 [--out-human PATH] [--out-full PATH]
 
 Inputs must already satisfy the precedence rules (run scripts/cleanup.py
-and validation first): any CFDICT∩human, CFDICT∩LLM or human∩LLM overlap
+and validation first): any base∩human, base∩LLM or human∩LLM overlap
 fails the run instead of silently overriding (spec §14).
 """
 

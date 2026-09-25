@@ -18,7 +18,7 @@ import yaml
 REPO = Path(__file__).resolve().parent.parent
 WORKFLOW = REPO / ".github" / "workflows" / "assemble.yml"
 
-CFDICT_SAMPLE = "中國 中国 [Zhong1 guo2] /Chine/\n"
+BASE_SAMPLE = "中國 中国 [Zhong1 guo2] /Chine/\n"
 HUMAN_SAMPLE = "美 美 [Mei3] /beau/\n"
 CC_SAMPLE = (
     "中國 中国 [Zhong1 guo2] /China/Middle Kingdom/\n"
@@ -118,7 +118,7 @@ def run(*args, cwd):
 
 @pytest.fixture()
 def pipeline_data(tmp_path):
-    (tmp_path / "cfdict.u8").write_text(CFDICT_SAMPLE, encoding="utf-8")
+    (tmp_path / "cfdict.u8").write_text(BASE_SAMPLE, encoding="utf-8")
     (tmp_path / "cc.u8").write_text(CC_SAMPLE, encoding="utf-8")
     (tmp_path / "human.u8").write_text(HUMAN_SAMPLE, encoding="utf-8")
     (tmp_path / "llm_generated.json").write_text(
@@ -184,7 +184,7 @@ def test_pipeline_end_to_end(pipeline_data, tmp_path):
     )
     assert r.returncode == 0, r.stderr or r.stdout
     text = scope.read_text(encoding="utf-8")
-    assert "Human dictionary: 2 entries" in text  # CFDICT + human
+    assert "Human dictionary: 2 entries" in text  # base + human
     assert "Full dictionary: 3 entries" in text  # + llm
     assert "Missing scope (still to generate): 1" in text  # 學 only
     # 5. assembled content is exactly what was validated

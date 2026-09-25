@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 
 from cfdict_next.assembly import (
-    CFDICT_SECTION_HEADER,
+    BASE_SECTION_HEADER,
     HUMAN_SECTION_HEADER,
     LLM_SECTION_HEADER,
     assemble,
@@ -26,7 +26,7 @@ from cfdict_next.assembly import (
 from cfdict_next.parser.u8 import DictionaryEntry, iter_u8_lines, parse_u8_line, parse_u8_file
 
 REPO = Path(__file__).resolve().parent.parent
-CFDICT = REPO / "data" / "cfdict.u8"
+BASE = REPO / "data" / "cfdict.u8"
 CEDICT_GZ = REPO / "data" / "cc-cedict" / "cedict_1_0_ts_utf-8_mdbg.txt.gz"
 
 
@@ -55,35 +55,35 @@ def llm_record(senses=(("China", "Chine"),)):
     return llm_record_for("美|美|Mei3", senses)
 
 
-def test_cfdict_always_wins_and_overlap_raises():
-    cfdict = [entry()]
+def test_base_always_wins_and_overlap_raises():
+    base = [entry()]
     human = [entry()]
-    with pytest.raises(ValueError, match="overlap CFDICT"):
-        assemble(cfdict, human, {})
+    with pytest.raises(ValueError, match="overlap base"):
+        assemble(base, human, {})
     llm = {"中國|中国|Zhong1 guo2": llm_record()}
-    with pytest.raises(ValueError, match="overlap CFDICT"):
-        assemble(cfdict, [], llm)
+    with pytest.raises(ValueError, match="overlap base"):
+        assemble(base, [], llm)
 
 
 def test_human_beats_llm_and_overlap_raises():
     human = [entry("美", "美", "Mei3", ("beau",))]
     llm = {"美|美|Mei3": llm_record()}
-    with pytest.raises(ValueError, match="overlap CFDICT/human"):
+    with pytest.raises(ValueError, match="overlap base/human"):
         assemble([], human, llm)
 
 
-def test_llm_overlapping_cfdict_raises():
-    cfdict = [entry()]
+def test_llm_overlapping_base_raises():
+    base = [entry()]
     llm = {"中國|中国|Zhong1 guo2": llm_record()}
-    with pytest.raises(ValueError, match="overlap CFDICT/human"):
-        assemble(cfdict, [], llm)
+    with pytest.raises(ValueError, match="overlap base/human"):
+        assemble(base, [], llm)
 
 
 def test_human_dict_excludes_llm_full_includes_it():
-    cfdict = [entry()]
+    base = [entry()]
     human = [entry("美", "美", "Mei3", ("beau",))]
     llm = {"好|好|Hao3": llm_record_for("好|好|Hao3")}
-    human_entries, full_entries = assemble(cfdict, human, llm)
+    human_entries, full_entries = assemble(base, human, llm)
     assert [e.lexical_id() for e in human_entries] == [
         "中國|中国|Zhong1 guo2",
         "美|美|Mei3",
@@ -96,16 +96,16 @@ def test_human_dict_excludes_llm_full_includes_it():
     assert full_entries[2].definitions == ("Chine",)
 
 
-def test_order_is_cfdict_then_human_then_sorted_llm():
-    cfdict = [entry("中", "中", "Zhong1", ("milieu",)), entry()]
+def test_order_is_base_then_human_then_sorted_llm():
+    base = [entry("中", "中", "Zhong1", ("milieu",)), entry()]
     human = [entry("美", "美", "Mei3", ("beau",))]
     llm = {
         "行|行|Xing2": llm_record_for("行|行|Xing2"),
         "好|好|Hao3": llm_record_for("好|好|Hao3"),
     }
-    human_entries, _ = assemble(cfdict, human, llm)
+    human_entries, _ = assemble(base, human, llm)
     assert [e.simplified for e in human_entries] == ["中", "中国", "美"]
-    _, full = assemble(cfdict, human, llm)
+    _, full = assemble(base, human, llm)
     assert [e.simplified for e in full] == ["中", "中国", "美", "好", "行"]
 
 
@@ -130,7 +130,7 @@ def test_real_files_round_trip_without_loss():
     #     (the writer loses no information), and
     #  2. format(parse(line)) is byte-exact for every clean line —
     #     including the U+3000 headword the writer must restore.
-    for path in (CFDICT, CEDICT_GZ):
+    for path in (BASE, CEDICT_GZ):
         seen: set[str] = set()
         dup_ids: set[str] = set()
         checked = exact = quirks = 0
@@ -172,22 +172,22 @@ def test_real_files_round_trip_without_loss():
 
 
 def test_assemble_is_deterministic(tmp_path):
-    cfdict = [entry(), entry("中", "中", "Zhong1", ("milieu",))]
+    base = [entry(), entry("中", "中", "Zhong1", ("milieu",))]
     human = [entry("美", "美", "Mei3", ("beau",))]
     llm = {"好|好|Hao3": llm_record_for("好|好|Hao3")}
     out1_c, out1_f = tmp_path / "c1.u8", tmp_path / "f1.u8"
     out2_c, out2_f = tmp_path / "c2.u8", tmp_path / "f2.u8"
-    ce, fe = assemble(cfdict, human, llm)
+    ce, fe = assemble(base, human, llm)
     write_u8_file(out1_c, ce)
     write_u8_file(out1_f, fe)
-    ce2, fe2 = assemble(cfdict, human, llm)
+    ce2, fe2 = assemble(base, human, llm)
     write_u8_file(out2_c, ce2)
     write_u8_file(out2_f, fe2)
     assert out1_c.read_bytes() == out2_c.read_bytes()
     assert out1_f.read_bytes() == out2_f.read_bytes()
 
 
-def test_assemble_files_with_empty_llm_round_trips_cfdict(tmp_path):
+def test_assemble_files_with_empty_llm_round_trips_base(tmp_path):
     # No human/LLM data: both outputs equal CFDICT content modulo dup-merge +
     # newline normalization — verified entry by entry.
     out_c = tmp_path / "human.u8"
@@ -195,10 +195,10 @@ def test_assemble_files_with_empty_llm_round_trips_cfdict(tmp_path):
     (tmp_path / "h.u8").write_text("", encoding="utf-8")
     (tmp_path / "l.json").write_text("{}", encoding="utf-8")
     human_n, full_n = assemble_files(
-        CFDICT, tmp_path / "h.u8", tmp_path / "l.json", out_c, out_f
+        BASE, tmp_path / "h.u8", tmp_path / "l.json", out_c, out_f
     )
     assert human_n == full_n
-    source_entries, errors = parse_u8_file(CFDICT)
+    source_entries, errors = parse_u8_file(BASE)
     assert errors == []
     out_entries, out_errors = parse_u8_file(out_c)
     assert out_errors == []
@@ -211,7 +211,7 @@ def test_assemble_files_with_empty_llm_round_trips_cfdict(tmp_path):
 
 
 def test_outputs_carry_section_headers_in_order(tmp_path):
-    cfdict = [entry()]
+    base = [entry()]
     human = [entry("美", "美", "Mei3", ("beau",))]
     llm = {"好|好|Hao3": llm_record_for("好|好|Hao3")}
     c, f = tmp_path / "c.u8", tmp_path / "f.u8"
@@ -225,11 +225,11 @@ def test_outputs_carry_section_headers_in_order(tmp_path):
     assemble_files(tmp_path / "cfdict.u8", tmp_path / "h.u8",
                      tmp_path / "l.json", c, f)
     c_lines = c.read_text(encoding="utf-8").splitlines()
-    assert c_lines[0] == CFDICT_SECTION_HEADER
+    assert c_lines[0] == BASE_SECTION_HEADER
     assert c_lines[2] == HUMAN_SECTION_HEADER
     assert LLM_SECTION_HEADER not in c_lines
     f_lines = f.read_text(encoding="utf-8").splitlines()
-    assert f_lines[0] == CFDICT_SECTION_HEADER
+    assert f_lines[0] == BASE_SECTION_HEADER
     assert f_lines[2] == HUMAN_SECTION_HEADER
     assert f_lines[4] == LLM_SECTION_HEADER
     # Headers parse as comments: entry content is unchanged.
@@ -243,23 +243,23 @@ def test_outputs_carry_section_headers_in_order(tmp_path):
 def test_empty_sections_omit_their_header(tmp_path):
     out = tmp_path / "o.u8"
     write_sectioned_u8_file(out, [
-        (CFDICT_SECTION_HEADER, [entry()]),
+        (BASE_SECTION_HEADER, [entry()]),
         (HUMAN_SECTION_HEADER, []),
         (LLM_SECTION_HEADER, []),
     ])
     lines = out.read_text(encoding="utf-8").splitlines()
-    assert lines == [CFDICT_SECTION_HEADER, format_u8_entry(entry()).strip()]
+    assert lines == [BASE_SECTION_HEADER, format_u8_entry(entry()).strip()]
 
 
 def test_sections_match_assemble_splits():
-    cfdict = [entry()]
+    base = [entry()]
     human = [entry("美", "美", "Mei3", ("beau",))]
     llm = {"好|好|Hao3": llm_record_for("好|好|Hao3")}
-    c, he, le = assemble_sections(cfdict, human, llm)
-    assert c == cfdict
+    c, he, le = assemble_sections(base, human, llm)
+    assert c == base
     assert [e.lexical_id() for e in he] == ["美|美|Mei3"]
     assert [e.lexical_id() for e in le] == ["好|好|Hao3"]
-    flat_c, flat_f = assemble(cfdict, human, llm)
+    flat_c, flat_f = assemble(base, human, llm)
     assert flat_c == c + he and flat_f == c + he + le
 
 
