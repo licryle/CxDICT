@@ -130,7 +130,7 @@ def render_scope_markdown(
         "",
         "| Category | Total | In CC-CEDICT (% of Ref) | Out of CC-CEDICT |",
         "| --- | --- | --- | --- |",
-        f"| CC-CEDICT Reference | {ref_total} | - | - |",
+        f"| CC-CEDICT Reference (Under license CC BY-SA 4.0) | {ref_total} | - | - |",
         _row(
             f"{base_label} (authoritative)",
             coverage["base_total"],

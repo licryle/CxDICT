@@ -132,7 +132,7 @@ def test_scope_markdown_golden_text():
         "\n"
         "| Category | Total | In CC-CEDICT (% of Ref) | Out of CC-CEDICT |\n"
         "| --- | --- | --- | --- |\n"
-        "| CC-CEDICT Reference | 4 | - | - |\n"
+        "| CC-CEDICT Reference (Under license CC BY-SA 4.0) | 4 | - | - |\n"
         "| CFDICT (authoritative) | 1 | 1 (25.0%) | 0 |\n"
         "| Human (curated) | 1 | 1 (25.0%) | 0 |\n"
         "| LLM generated | 1 | 1 (25.0%) | 0 |\n"

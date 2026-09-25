@@ -53,7 +53,7 @@ def test_markdown_contains_figures_and_versions():
     for needle in (
         "| CFDICT (authoritative) |",
         "| Category | Total | In CC-CEDICT (% of Ref) | Out of CC-CEDICT |",
-        "| CC-CEDICT Reference | 4 | - | - |",
+        "| CC-CEDICT Reference (Under license CC BY-SA 4.0) | 4 | - | - |",
         "| CFDICT (authoritative) | 1 | 1 (25.0%) | 0 |",
         "| Human (curated) | 1 | 1 (25.0%) | 0 |",
         "| LLM generated | 1 | 1 (25.0%) | 0 |",
