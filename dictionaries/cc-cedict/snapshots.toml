@@ -1,9 +1,11 @@
-# CC-CEDICT snapshot log, newest first.
+# CC-CEDICT snapshot log.
 #
 # Each snapshot is stored decompressed as YYYY-MM-DD.u8, dated by the
 # upstream #! date header (not the download date). Updated by
 # scripts/fetch_cc_cedict.py; the pipeline only ever reads committed files.
-# sha256 is over the stored file bytes as committed.
+# Entries may be appended in any order; tooling sorts by date.
+# upstream_sha256 is the downloaded .gz bytes; content_sha256 identifies
+# the snapshot content (see dictionaries/README.md).
 
 [[snapshot]]
 date = "2026-09-12"

@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import hashlib
 import tomllib
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -105,6 +106,15 @@ def latest_snapshot(cc_dir: str | Path) -> Snapshot:
     return snapshots[0]
 
 
+def canonical_hash_of_rows(rows: Iterable[str]) -> str:
+    """SHA-256 over entry rows: sorted, LF-joined.
+
+    Callers pass raw row strings (line breaks stripped, comments and blank
+    lines already excluded); see canonical_content_hash for files.
+    """
+    return hashlib.sha256("\n".join(sorted(rows)).encode("utf-8")).hexdigest()
+
+
 def canonical_content_hash(path: str | Path) -> str:
     """SHA-256 over normalized entry rows: sorted, LF-joined, no comments.
 
@@ -112,12 +122,12 @@ def canonical_content_hash(path: str | Path) -> str:
     comment headers, and row order — so it identifies the upstream snapshot
     rather than our copy of it.
     """
-    rows = sorted(
+    rows = [
         line.rstrip("\r\n")
         for line in iter_u8_lines(path)
         if line.strip() and not line.lstrip().startswith("#")
-    )
-    return hashlib.sha256("\n".join(rows).encode("utf-8")).hexdigest()
+    ]
+    return canonical_hash_of_rows(rows)
 
 
 def snapshot_version(snapshot: Snapshot) -> str:
@@ -172,3 +182,49 @@ def interpret_version(
         if len(matches) == 1:
             return matches[0]
     return None
+
+
+def format_snapshot_block(snapshot: Snapshot) -> str:
+    """Render one [[snapshot]] table in manifest style."""
+    return (
+        "[[snapshot]]\n"
+        f'date = "{snapshot.date}"\n'
+        f'file = "{snapshot.file}"\n'
+        f'upstream_date = "{snapshot.upstream_date}"\n'
+        f"upstream_time = {snapshot.upstream_time}\n"
+        f'upstream_sha256 = "{snapshot.upstream_sha256}"\n'
+        f'content_sha256 = "{snapshot.content_sha256}"\n'
+        f"entries = {snapshot.entries}\n"
+        f"pairs = {snapshot.pairs}\n"
+    )
+
+
+def append_snapshot(cc_dir: str | Path, snapshot: Snapshot) -> Path:
+    """Append one [[snapshot]] block, creating the log when missing.
+
+    Refuses duplicate filenames and duplicate content hashes (a snapshot
+    already logged under another name). Existing file bytes are otherwise
+    preserved verbatim — the block is appended, never rewritten.
+    """
+    cc_dir = Path(cc_dir)
+    manifest = cc_dir / MANIFEST_FILENAME
+    if manifest.is_file():
+        existing = load_manifest(cc_dir)  # corrupt logs raise: never append blindly
+        if any(s.file == snapshot.file for s in existing):
+            raise ValueError(f"snapshot file already logged: {snapshot.file}")
+        if any(s.content_sha256 == snapshot.content_sha256 for s in existing):
+            other = next(
+                s.date for s in existing if s.content_sha256 == snapshot.content_sha256
+            )
+            raise ValueError(f"snapshot content already logged as {other}")
+        text = manifest.read_text(encoding="utf-8").rstrip("\n") + "\n\n"
+    else:
+        cc_dir.mkdir(parents=True, exist_ok=True)
+        text = (
+            "# CC-CEDICT snapshot log.\n"
+            "#\n"
+            "# Entries may be appended in any order; tooling sorts by date.\n"
+            "# See dictionaries/README.md.\n\n"
+        )
+    manifest.write_text(text + format_snapshot_block(snapshot), encoding="utf-8")
+    return manifest

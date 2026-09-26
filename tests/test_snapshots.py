@@ -6,6 +6,7 @@ import re
 import pytest
 
 from cxdict.snapshots import (
+    append_snapshot,
     canonical_content_hash,
     interpret_version,
     latest_snapshot,
@@ -162,3 +163,33 @@ def test_interpret_version_current_and_legacy(tmp_path):
     assert interpret_version("sha256:deadbeef", snapshots, legacy) == "2026-09-12"
     assert interpret_version("sha256:0000", snapshots, legacy) is None
     assert interpret_version("whatever", snapshots, legacy) is None
+
+
+def _snapshot(date, filename, content):
+    from cxdict.snapshots import Snapshot
+
+    return Snapshot(
+        date=date, file=filename, upstream_date=f"{date}T00:00:00Z",
+        upstream_time=0, upstream_sha256="ff", content_sha256=content,
+        entries=1, pairs=1,
+    )
+
+
+def test_append_snapshot_creates_log_when_missing(tmp_path):
+    cc = tmp_path / "cc"
+    append_snapshot(cc, _snapshot("2026-09-20", "2026-09-20.u8", "c1"))
+    assert [s.date for s in load_manifest(cc)] == ["2026-09-20"]
+
+
+def test_append_snapshot_preserves_existing_bytes_and_refuses_dupes(tmp_path):
+    cc = _write_layout(tmp_path, "\n".join(LINES) + "\n", LINES[2] + "\n")
+    before = (cc / "snapshots.toml").read_text(encoding="utf-8")
+    append_snapshot(cc, _snapshot("2026-09-20", "2026-09-20.u8", "c1"))
+    after = (cc / "snapshots.toml").read_text(encoding="utf-8")
+    assert after.startswith(before.rstrip("\n"))
+    assert [s.date for s in load_manifest(cc)][0] == "2026-09-20"
+    with pytest.raises(ValueError):
+        append_snapshot(cc, _snapshot("2026-09-21", "2026-09-20.u8", "c2"))
+    old_content = load_manifest(cc)[-1].content_sha256
+    with pytest.raises(ValueError):
+        append_snapshot(cc, _snapshot("2026-09-21", "2026-09-21.u8", old_content))

@@ -2,20 +2,22 @@
 
 ## CC-CEDICT snapshot
 
-1. Download the current snapshot from the URL recorded in
-   `dictionaries/README.md` and store it decompressed as
-   `dictionaries/cc-cedict/YYYY-MM-DD.u8` (dated by the upstream `#! date`
-   header, not the download date); log it in
-   `dictionaries/cc-cedict/snapshots.toml`.
-2. Record the download date and new SHA-256 in `dictionaries/README.md`.
-3. Run `python scripts/validate.py --language fr` (and
-   `--language zh-CN-HSK03`) — gloss changes surface as coverage
-   mismatches against existing LLM records; regenerate or correct the
-   affected records.
-4. Run the pipeline through `scope_info.py` and commit data + README.
-
-The missing scope recomputes automatically from the new snapshot, so the
-next `generate` run picks up exactly the new entries.
+1. Run `python scripts/fetch_cc_cedict.py [--dry-run]` — downloads the
+   current MDBG snapshot (URL in `dictionaries/README.md`) and, when its
+   content changed, stores it decompressed as
+   `dictionaries/cc-cedict/YYYY-MM-DD.u8`, logs it in `snapshots.toml`,
+   and prints a pair-level change summary (new / retired / changed pairs).
+   The pipeline itself never touches the network; it only reads committed
+   files. No README edit is needed for the snapshot itself — the manifest
+   is the log.
+2. Run `python scripts/validate.py --language fr` (and
+   `--language zh-CN-HSK03`) — records whose pinyin or gloss set no longer
+   matches fail the coverage checks; regenerate or correct the affected
+   records (rule-3 pruning of the LLM datasets lands with scope_sync).
+3. Run `python scripts/pipeline.py --language <code>` (the missing scope
+   picks up exactly the entries the datasets still lack) and refresh the
+   notes with `python scripts/scope_info.py --language <code>`; review the
+   git diff, then commit data + manifest.
 
 ## CFDICT fork (`dictionaries/fr/data/cfdict.u8`)
 
