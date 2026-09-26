@@ -157,7 +157,8 @@ def run_pipeline(
     if dry_run:
         # Read-only assessment of the current datasets; nothing downstream.
         report, _ = validate_inputs(
-            base_path, cc_cedict_path, human_path, llm_generated_path
+            base_path, cc_cedict_path, human_path, llm_generated_path,
+            cc_cedict_dir=cc_cedict_dir,
         )
         return PipelineReport(
             dry_run=True,
@@ -186,7 +187,8 @@ def run_pipeline(
 
     _announce("[validate-inputs] start")
     report, data = validate_inputs(
-        base_path, cc_cedict_path, human_path, llm_generated_path
+        base_path, cc_cedict_path, human_path, llm_generated_path,
+        cc_cedict_dir=cc_cedict_dir,
     )
     if data is None or not report.passed:
         raise PipelineError("validate-inputs", _failures(report))

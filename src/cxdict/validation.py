@@ -15,6 +15,10 @@ overriding or discarding data. Checks:
    if CC-CEDICT knows the (traditional, simplified) pair, the human
    pinyin must be one of its observed readings; a novel pair mixing a
    known traditional with a wrong simplified (or vice versa) fails.
+   Scope: entries come from the pair-level superset over every logged
+   snapshot by default, or from the newest snapshot alone with
+   scope="latest" — latest-only mismatches land in report.warnings
+   (advisory) instead of failing checks.
 6. Scope information is consistent with the inputs it claims to describe.
 7. Assembled outputs parse cleanly and contain exactly the expected
    identity sets (human = base+human, full = +LLM), with no
@@ -27,9 +31,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from .languages import resolve_cc_cedict
 from .parser.json import LLMDataError, assert_gloss_coverage, load_llm_json
 from .parser.u8 import parse_u8_file, parse_u8_line
 from .scope_info import ReleaseSources, build_scope_info
+from .snapshots import MANIFEST_FILENAME
+from .superset import build_superset, load_layers
 
 
 @dataclass
@@ -46,6 +53,7 @@ class ValidationReport:
     """Outcome of a validation run."""
 
     checks: list[Check] = field(default_factory=list)
+    warnings: list[Check] = field(default_factory=list)
 
     @property
     def passed(self) -> bool:
@@ -131,6 +139,54 @@ def check_gloss_coverage(
                 f"{len(llm_generated)} record(s) match CC-CEDICT",
             )
         )
+
+
+def base_scope_warnings(
+    base_entries: list[Any],
+    cc_pair_pinyins: dict[tuple[str, str], set[str]],
+    cc_trad_to_simp: dict[str, set[str]],
+    cc_simp_to_trad: dict[str, set[str]],
+) -> list[Check]:
+    """Advisory divergences between the authoritative base and CC scope.
+
+    The base is human-curated and always ships, so contradictions can only
+    ever warn, never fail. Only contradicting rows are reported, summarized
+    by category with samples: pairs whose reading differs from every
+    observed CC reading, and novel pairs mixing a known side. Base-only
+    vocabulary (both sides unseen) is legitimate base content, not a
+    divergence, and stays silent.
+    """
+    pinyin_mismatch: list[str] = []
+    mixed_pair: list[str] = []
+    for entry in base_entries:
+        pair = (entry.traditional, entry.simplified)
+        if pair in cc_pair_pinyins:
+            if entry.pinyin.strip() not in cc_pair_pinyins[pair]:
+                pinyin_mismatch.append(entry.lexical_id())
+        elif pair[0] in cc_trad_to_simp or pair[1] in cc_simp_to_trad:
+            mixed_pair.append(entry.lexical_id())
+    warnings = []
+    if pinyin_mismatch:
+        sample = ", ".join(repr(k) for k in sorted(pinyin_mismatch)[:3])
+        warnings.append(
+            Check(
+                "base scope divergence",
+                False,
+                f"{len(pinyin_mismatch)} base row(s) read differently from "
+                f"CC-CEDICT, e.g. {sample}",
+            )
+        )
+    if mixed_pair:
+        sample = ", ".join(repr(k) for k in sorted(mixed_pair)[:3])
+        warnings.append(
+            Check(
+                "base scope divergence",
+                False,
+                f"{len(mixed_pair)} base row(s) mix hanzi pairs unseen "
+                f"together in CC-CEDICT, e.g. {sample}",
+            )
+        )
+    return warnings
 
 
 def check_human_hanzi_pinyin(
@@ -273,8 +329,22 @@ def validate_inputs(
     cc_cedict_path: str | Path,
     human_path: str | Path,
     llm_generated_path: str | Path,
+    cc_cedict_dir: str | Path | None = None,
+    scope: str = "superscope",
 ) -> tuple[ValidationReport, dict[str, Any] | None]:
-    """Validate all release inputs; return (report, loaded data or None)."""
+    """Validate all release inputs; return (report, loaded data or None).
+
+    CC-CEDICT entries come from the pair-level superset over every logged
+    snapshot in `cc_cedict_dir` (newest rows win), or from the single
+    `cc_cedict_path` file when no directory is given (fixture escape
+    hatch). `scope` selects severity as well as source in directory mode:
+    "superscope" (default) builds the superset and fails loudly;
+    "latest" checks the newest snapshot alone and demotes mismatches to
+    report.warnings (advisory — report.passed stays True). With an
+    explicit file, scope selects severity only.
+    """
+    if scope not in ("superscope", "latest"):
+        raise ValueError(f"unknown scope {scope!r} (want 'superscope' or 'latest')")
     report = ValidationReport()
     if base_path is None:
         # Languages without an authoritative base: vacuous pass, zero entries.
@@ -282,7 +352,33 @@ def validate_inputs(
         base_entries: list = []
     else:
         base_entries = _parse_or_fail(base_path, "base", report)
-    cc_entries = _parse_or_fail(cc_cedict_path, "CC-CEDICT", report)
+    if cc_cedict_dir is not None:
+        cc_dir = Path(cc_cedict_dir)
+        if (cc_dir / MANIFEST_FILENAME).is_file():
+            try:
+                layers = load_layers(cc_dir)
+            except ValueError as exc:
+                report.checks.append(Check("CC-CEDICT parses", False, str(exc)))
+                return report, None
+            if scope == "superscope":
+                cc_entries = build_superset(layers).entries
+                scope_detail = (
+                    f"superset: {len(cc_entries)} entries "
+                    f"from {len(layers)} snapshot(s)"
+                )
+            else:
+                cc_entries = layers[0][1]
+                scope_detail = (
+                    f"latest snapshot {layers[0][0]}: {len(cc_entries)} entries"
+                )
+            report.checks.append(Check("CC-CEDICT parses", True, scope_detail))
+        else:
+            # Log-less directory (fixtures): newest file is the whole scope.
+            cc_entries = _parse_or_fail(
+                resolve_cc_cedict(cc_dir), "CC-CEDICT", report
+            )
+    else:
+        cc_entries = _parse_or_fail(cc_cedict_path, "CC-CEDICT", report)
     human_entries = _parse_or_fail(human_path, "human.u8", report)
     llm_generated = _load_or_fail(llm_generated_path, "llm_generated.json", report)
     if None in (base_entries, cc_entries, human_entries, llm_generated):
@@ -303,14 +399,37 @@ def validate_inputs(
         cc_trad_to_simp.setdefault(e.traditional, set()).add(e.simplified)
         cc_simp_to_trad.setdefault(e.simplified, set()).add(e.traditional)
     check_no_overlap(base_ids, human_ids, llm_generated, report)
-    check_gloss_coverage(cc_glosses, llm_generated, report)
-    check_human_hanzi_pinyin(
-        human_entries,
-        cc_pair_pinyins,
-        cc_trad_to_simp,
-        cc_simp_to_trad,
-        report,
+    # The authoritative base always ships: its CC-scope divergences are
+    # advisory in every mode, never gating.
+    report.warnings.extend(
+        base_scope_warnings(
+            base_entries,
+            cc_pair_pinyins,
+            cc_trad_to_simp,
+            cc_simp_to_trad,
+        )
     )
+    if scope == "latest":
+        scope_report = ValidationReport()
+        check_gloss_coverage(cc_glosses, llm_generated, scope_report)
+        check_human_hanzi_pinyin(
+            human_entries,
+            cc_pair_pinyins,
+            cc_trad_to_simp,
+            cc_simp_to_trad,
+            scope_report,
+        )
+        # Advisory only: mismatches warn, never fail the run.
+        report.warnings.extend(scope_report.failures())
+    else:
+        check_gloss_coverage(cc_glosses, llm_generated, report)
+        check_human_hanzi_pinyin(
+            human_entries,
+            cc_pair_pinyins,
+            cc_trad_to_simp,
+            cc_simp_to_trad,
+            report,
+        )
     return report, {
         "base_ids": base_ids,
         "human_ids": human_ids,

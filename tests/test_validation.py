@@ -100,6 +100,169 @@ def test_invalid_llm_json_fails(tmp_path):
     assert not report.passed and data is None
 
 
+def snapshot_dir(tmp_path):
+    """Two-snapshot log: newest drops the R pair (retired via older layer)."""
+    cc = tmp_path / "cc-cedict"
+    cc.mkdir()
+    (cc / "2026-09-12.u8").write_text("N N [NG] /outtake/\n", encoding="utf-8")
+    (cc / "2025-08-08.u8").write_text(
+        "N N [N G] /outtake/\nR R [P1] /gone/\n", encoding="utf-8"
+    )
+    (cc / "snapshots.toml").write_text(
+        "[[snapshot]]\n"
+        'date = "2026-09-12"\nfile = "2026-09-12.u8"\n'
+        'upstream_date = "2026-09-12T07:35:13Z"\nupstream_time = 1\n'
+        'upstream_sha256 = "aa"\ncontent_sha256 = "abcdef1234567890"\n'
+        "entries = 1\npairs = 1\n"
+        "[[snapshot]]\n"
+        'date = "2025-08-08"\nfile = "2025-08-08.u8"\n'
+        'upstream_date = "2025-08-08T05:26:26Z"\nupstream_time = 0\n'
+        'upstream_sha256 = "bb"\ncontent_sha256 = "1234567890abcdef"\n'
+        "entries = 2\npairs = 2\n",
+        encoding="utf-8",
+    )
+    return cc
+
+
+def retired_record():
+    return {"R|R|P1": record_for("R|R|P1", ["gone"])}
+
+
+def test_superset_dir_accepts_retired_pair_record(tmp_path):
+    cc = snapshot_dir(tmp_path)
+    base_p = write(tmp_path / "cfdict.u8", "")
+    human_p = write(tmp_path / "human.u8", "")
+    llm_p = write(
+        tmp_path / "llm_generated.json",
+        json.dumps(retired_record(), ensure_ascii=False),
+    )
+    report, data = validate_inputs(
+        base_p, cc / "2026-09-12.u8", human_p, llm_p, cc_cedict_dir=cc
+    )
+    assert report.passed, [(c.name, c.detail) for c in report.failures()]
+    assert report.warnings == []
+    assert "superset: 2 entries from 2 snapshot(s)" in [
+        c.detail for c in report.checks if c.name == "CC-CEDICT parses"
+    ]
+
+
+def test_latest_scope_demotes_retired_mismatch_to_warnings(tmp_path):
+    cc = snapshot_dir(tmp_path)
+    base_p = write(tmp_path / "cfdict.u8", "")
+    human_p = write(tmp_path / "human.u8", "")
+    llm_p = write(
+        tmp_path / "llm_generated.json",
+        json.dumps(retired_record(), ensure_ascii=False),
+    )
+    report, data = validate_inputs(
+        base_p, cc / "2026-09-12.u8", human_p, llm_p,
+        cc_cedict_dir=cc, scope="latest",
+    )
+    assert report.passed  # advisory only: exit stays 0
+    assert [w.name for w in report.warnings] == ["LLM gloss coverage"]
+    assert "outside CC-CEDICT scope" in report.warnings[0].detail
+    assert data is not None and set(data["llm_generated"]) == {"R|R|P1"}
+
+
+def test_invalid_scope_raises(tmp_path):
+    paths = fixture_files(tmp_path)
+    with pytest.raises(ValueError):
+        validate_inputs(*paths, scope="nonsense")
+
+
+def test_base_scope_divergence_warns_without_failing(tmp_path):
+    base = "行 行 [Hang2] /marcher/\n中國 美 [Zhong1 guo2] /chine/\n"
+    paths = fixture_files(tmp_path, base=base)
+    report, data = validate_inputs(*paths)
+    assert report.passed  # advisory only: the base always ships
+    base_warns = [w for w in report.warnings if w.name == "base scope divergence"]
+    assert len(base_warns) == 2
+    assert all("1 base row(s)" in w.detail for w in base_warns)
+    assert "Hang2" in base_warns[0].detail  # pinyin mismatch sampled
+
+
+def test_clean_base_produces_no_base_warnings(tmp_path):
+    paths = fixture_files(tmp_path)
+    report, _ = validate_inputs(*paths)
+    assert report.passed
+    assert [w for w in report.warnings if w.name == "base scope divergence"] == []
+
+
+def test_logless_dir_falls_back_to_newest_file(tmp_path):
+    cc = tmp_path / "cc-cedict"
+    cc.mkdir()
+    (cc / "2025-08-08.u8").write_text("R R [P1] /gone/\n", encoding="utf-8")
+    base_p = write(tmp_path / "cfdict.u8", "")
+    human_p = write(tmp_path / "human.u8", "")
+    llm_p = write(
+        tmp_path / "llm_generated.json",
+        json.dumps(retired_record(), ensure_ascii=False),
+    )
+    report, data = validate_inputs(
+        base_p, cc / "2025-08-08.u8", human_p, llm_p, cc_cedict_dir=cc
+    )
+    assert report.passed, [(c.name, c.detail) for c in report.failures()]
+
+
+def test_cli_latest_scope_warns_without_failing(tmp_path, capsys):
+    from cxdict.cli.validate import main as cli_main
+
+    cc = snapshot_dir(tmp_path)
+    human_p = write(tmp_path / "human.u8", "")
+    llm_p = write(
+        tmp_path / "llm_generated.json",
+        json.dumps(retired_record(), ensure_ascii=False),
+    )
+    rc = cli_main([
+        "--language", "fr",
+        "--base", str(write(tmp_path / "cfdict.u8", "")),
+        "--cc-cedict-dir", str(cc),
+        "--human", str(human_p),
+        "--llm-generated", str(llm_p),
+        "--scope", "latest",
+    ])
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "warn  LLM gloss coverage" in out
+    assert "validation passed" in out
+
+
+def test_cli_latest_scope_filters_output_expectations(tmp_path, capsys):
+    from cxdict.cli.validate import main as cli_main
+    from cxdict.assembly import write_u8_file
+    from cxdict.parser.u8 import DictionaryEntry
+
+    cc = snapshot_dir(tmp_path)
+    human_p = write(tmp_path / "human.u8", "")
+    llm_p = write(
+        tmp_path / "llm_generated.json",
+        json.dumps(
+            {
+                "N|N|NG": record_for("N|N|NG", ["outtake"]),
+                **retired_record(),
+            },
+            ensure_ascii=False,
+        ),
+    )
+    # LatestFull ships only the newest-valid record; the retired row is
+    # correctly absent and must not fail the outputs check.
+    out_human = tmp_path / "h.u8"
+    out_full = tmp_path / "f.u8"
+    write_u8_file(out_human, [])
+    write_u8_file(out_full, [DictionaryEntry("N", "N", "NG", ("fr-outtake",))])
+    rc = cli_main([
+        "--language", "fr",
+        "--base", str(write(tmp_path / "cfdict.u8", "")),
+        "--cc-cedict-dir", str(cc),
+        "--human", str(human_p),
+        "--llm-generated", str(llm_p),
+        "--out-human", str(out_human),
+        "--out-full", str(out_full),
+        "--scope", "latest",
+    ])
+    assert rc == 0, capsys.readouterr().out
+
+
 def test_each_overlap_pair_fails():
     for human_ids, llm_generated, base_ids, name in (
         ({CHINA}, {}, {CHINA}, "base/human"),
