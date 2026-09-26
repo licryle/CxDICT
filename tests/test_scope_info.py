@@ -41,6 +41,73 @@ def test_scope_info_matches_exact_inputs():
     assert info["coverage"]["missing_scope_total"] == 1  # D only
     assert info["coverage"]["human_dictionary_total"] == 2
     assert info["coverage"]["full_dictionary_total"] == 3
+    assert info["reference"] == []
+    assert "latest_coverage" not in info
+    assert "latest_cc_cedict" not in info["sources"]
+
+
+def test_reference_section_renders_in_format_and_sums_to_total():
+    info = build_scope_info(
+        sources(
+            cc_cedict_ids={"A", "B", "C", "D", "R"},
+            reference=(("2026-09-12", 4), ("2025-08-08", 1)),
+        ),
+        generated_at="T",
+    )
+    assert info["reference"] == [
+        {"label": "2026-09-12", "rows": 4},
+        {"label": "2025-08-08", "rows": 1},
+    ]
+    markdown = render_scope_markdown(info, "CFDICT", "French")
+    assert "Total CEDICT records: 5" in markdown
+    assert "CEDICT 2026-09-12: 4" in markdown
+    assert "CEDICT 2025-08-08: 1" in markdown
+    # Reference sits right after Coverage, before Outputs.
+    assert markdown.index("## CC-CEDICT Reference") > markdown.index("## Coverage")
+    assert markdown.index("## CC-CEDICT Reference") < markdown.index("## Outputs")
+
+
+def test_reference_rows_must_sum_to_scope_total():
+    with pytest.raises(ValueError):
+        build_scope_info(
+            sources(reference=(("2026-09-12", 3),)), generated_at="T"
+        )
+
+
+def test_latest_scope_adds_dual_columns_and_exact_latestfull_row():
+    info = build_scope_info(
+        sources(
+            cc_cedict_ids={"A", "B", "C", "D", "R"},
+            latest_cc_cedict_version="cc-cedict:2026-09-12:abcdef123456",
+            latest_cc_cedict_ids={"A", "B", "C", "D"},
+            latest_llm_ids={"C"},
+            reference=(("2026-09-12", 4), ("2025-08-08", 1)),
+        ),
+        generated_at="T",
+    )
+    latest = info["latest_coverage"]
+    assert latest["cc_cedict_total"] == 4
+    assert latest["full_dictionary_total"] == 3  # A + B + C: exact LatestFull
+    assert latest["missing_scope_total"] == 1  # D still uncovered
+    assert info["sources"]["latest_cc_cedict"] == {
+        "version": "cc-cedict:2026-09-12:abcdef123456", "entries": 4,
+    }
+    markdown = render_scope_markdown(info, "CFDICT", "French")
+    assert "## Latest scope" not in markdown  # folded into the tables
+    # Coverage table: dual columns, SuperFull-relevant cross cells.
+    assert "| LLM generated | 1 | 1 (20.0%) | 1 (25.0%) | 0 | 0 |" in markdown
+    assert "Total CEDICT records: 5" in markdown
+    # Outputs table: SuperFull, LatestFull, Human — in that order.
+    assert markdown.index("SuperFull") < markdown.index("LatestFull")
+    assert markdown.index("LatestFull") < markdown.index("CxDICT-French-Human")
+    assert "| CxDICT-French-LatestFull | 3 | 3 (60.0%) | 3 (75.0%) | 0 | 0 |" in markdown
+    assert "| CxDICT-French-Human | 2 | 2 (40.0%) | 2 (50.0%) | 0 | 0 |" in markdown
+    # Without latest data: legacy single-column tables, no LatestFull row.
+    plain = render_scope_markdown(build_scope_info(sources(), generated_at="T"),
+                                  "CFDICT", "French")
+    assert "In Latest-CEDICT" not in plain
+    assert "CxDICT-French-LatestFull |" not in plain
+    assert "## CC-CEDICT Reference" not in plain
 
 
 def test_markdown_contains_figures_and_versions():
@@ -48,7 +115,7 @@ def test_markdown_contains_figures_and_versions():
         build_scope_info(sources(), generated_at="T"), "CFDICT", "French"
     )
     # Source versions are intentionally omitted from the notes.
-    for absent in ("cc-v1", "base-v1", "human-v1", "llm-v1", "## Scope", "Generated at"):
+    for absent in ("cc-v1", "base-v1", "human-v1", "llm-v1", "## Scope\n", "Generated at"):
         assert absent not in markdown, absent
     for needle in (
         "| CFDICT (authoritative) |",
@@ -60,7 +127,7 @@ def test_markdown_contains_figures_and_versions():
         "| Missing scope (still to generate) | 1 | 1 (25.0%) | N/A |",
         "| Output | Total | In CC-CEDICT (% of Ref) | Out of CC-CEDICT |",
         "| CxDICT-French-Human | 2 | 2 (50.0%) | 0 |",
-        "| CxDICT-French-Full | 3 | 3 (75.0%) | 0 |",
+        "| CxDICT-French-SuperFull | 3 | 3 (75.0%) | 0 |",
         "LLM models: m1",
         "Prompt versions: p1",
     ):
@@ -81,7 +148,7 @@ def test_output_percentage_capped_while_scope_missing():
     assert info["coverage"]["missing_scope_total"] == 1  # id-1999 only
     markdown = render_scope_markdown(info, "CFDICT", "French")
     # 1999/2000 rounds to 100.0% but scope remains: downgraded to 99.9+%.
-    assert "| CxDICT-French-Full | 1999 | 1999 (99.9+%) | 0 |" in markdown
+    assert "| CxDICT-French-SuperFull | 1999 | 1999 (99.9+%) | 0 |" in markdown
     # 1998/2000 is genuinely 99.9%: untouched.
     assert "| CxDICT-French-Human | 1998 | 1998 (99.9%) | 0 |" in markdown
 
@@ -98,7 +165,7 @@ def test_output_percentage_full_100_when_nothing_missing():
     )
     assert info["coverage"]["missing_scope_total"] == 0
     markdown = render_scope_markdown(info, "CFDICT", "French")
-    assert "| CxDICT-French-Full | 2 | 2 (100.0%) | 0 |" in markdown
+    assert "| CxDICT-French-SuperFull | 2 | 2 (100.0%) | 0 |" in markdown
 
 
 def test_markdown_uses_base_label():
@@ -124,7 +191,7 @@ def test_markdown_reports_out_of_cc_entries():
     assert "| CFDICT (authoritative) | 2 | 1 (100.0%) | 1 |" in markdown
     assert "| Human (curated) | 1 | 0 (0.0%) | 1 |" in markdown
     assert "| CxDICT-French-Human | 3 | 1 (100.0%) | 2 |" in markdown
-    assert "| CxDICT-French-Full | 3 | 1 (100.0%) | 2 |" in markdown
+    assert "| CxDICT-French-SuperFull | 3 | 1 (100.0%) | 2 |" in markdown
 
 
 def test_empty_llm_data_renders_na_provenance():
@@ -180,7 +247,7 @@ def test_cli_on_real_data(tmp_path):
     assert rc == 0
     text = out.read_text(encoding="utf-8")
     assert "sha256:" not in text  # versions omitted from notes by design
-    assert "## Scope" not in text
+    assert "## Scope\n" not in text
     assert "56300" in text or "56,300" in text or "56279" in text
     assert "| CFDICT (Under license CC BY-SA 3.0) (authoritative) |" in text
 

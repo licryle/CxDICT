@@ -229,9 +229,12 @@ def test_pipeline_end_to_end(pipeline_data, tmp_path):
     )
     assert r.returncode == 0, r.stderr or r.stdout
     text = scope.read_text(encoding="utf-8")
-    assert "| CxDICT-French-Human | 2 | 2 (50.0%) | 0 |" in text  # base + human
-    assert "| CxDICT-French-Full | 3 | 3 (75.0%) | 0 |" in text  # + llm
-    assert "| Missing scope (still to generate) | 1 | 1 (25.0%) | N/A |" in text  # 學 only
+    assert "| CxDICT-French-Human | 2 | 2 (50.0%) | 2 (50.0%) | 0 | 0 |" in text
+    assert "| CxDICT-French-SuperFull | 3 | 3 (75.0%) | 3 (75.0%) | 0 | 0 |" in text
+    assert "| CxDICT-French-LatestFull | 3 | 3 (75.0%) | 3 (75.0%) | 0 | 0 |" in text
+    assert "Total CEDICT records: 4" in text
+    assert "## Scopes" in text
+    assert "| Missing scope (still to generate) | 1 | 1 (25.0%) | 1 (25.0%) | N/A | N/A |" in text
     # 5. assembled content is exactly what was validated
     assert "美 美 [Mei3] /beau/" in out_c.read_text(encoding="utf-8")
     assert "行 行 [Xing2] /fr-to walk/" in out_f.read_text(encoding="utf-8")

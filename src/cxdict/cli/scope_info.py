@@ -29,7 +29,9 @@ from ..scope_info import (
     render_scope_markdown,
     sha256_file,
 )
-from ..snapshots import version_for_snapshot_file
+from ..snapshots import load_manifest, snapshot_version, version_for_snapshot_file
+from ..superset import attribute_contribution, build_superset, load_layers
+from ..scope import latest_valid_llm_ids
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -73,10 +75,29 @@ def main(argv: list[str] | None = None) -> int:
             if errors:
                 preview = "; ".join(f"line {n}: {msg}" for n, msg in errors[:5])
                 raise ValueError(f"base dictionary has {len(errors)} malformed line(s): {preview}")
-        cc_entries, errors = parse_u8_file(paths.cc_cedict)
-        if errors:
-            preview = "; ".join(f"line {n}: {msg}" for n, msg in errors[:5])
-            raise ValueError(f"CC-CEDICT has {len(errors)} malformed line(s): {preview}")
+        if args.cc_cedict:
+            cc_entries, errors = parse_u8_file(paths.cc_cedict)
+            if errors:
+                preview = "; ".join(f"line {n}: {msg}" for n, msg in errors[:5])
+                raise ValueError(f"CC-CEDICT has {len(errors)} malformed line(s): {preview}")
+            latest_entries = cc_entries
+            latest_version = (
+                args.cc_cedict_version or version_for_snapshot_file(paths.cc_cedict)
+            )
+            reference: list[tuple[str, int]] = [(latest_version, len(cc_entries))]
+        else:
+            layers = load_layers(paths.cc_cedict_dir)
+            superset = build_superset(layers)
+            cc_entries = superset.entries
+            latest_entries = layers[0][1]
+            latest_version = snapshot_version(
+                next(s for s in load_manifest(paths.cc_cedict_dir)
+                     if s.date == layers[0][0])
+            )
+            contribution = attribute_contribution(superset)
+            reference = [
+                (date, contribution[date]["rows"]) for date in contribution
+            ]
         human_entries, human_errors = parse_u8_file(paths.human)
         if human_errors:
             preview = "; ".join(f"line {n}: {msg}" for n, msg in human_errors[:5])
@@ -88,9 +109,12 @@ def main(argv: list[str] | None = None) -> int:
         print(f"scope info failed: {exc}", file=sys.stderr)
         return 1
 
+    latest_glosses: dict[str, set[str]] = {}
+    for entry in latest_entries:
+        latest_glosses.setdefault(entry.lexical_id(), set()).update(entry.definitions)
     models, prompts = collect_llm_provenance(llm_generated)
     sources = ReleaseSources(
-        cc_cedict_version=args.cc_cedict_version or version_for_snapshot_file(paths.cc_cedict),
+        cc_cedict_version=args.cc_cedict_version or latest_version,
         cc_cedict_ids={e.lexical_id() for e in cc_entries},
         base_version=args.base_version or (sha256_file(paths.base) if paths.base else "n/a"),
         base_ids={e.lexical_id() for e in base_entries},
@@ -101,6 +125,10 @@ def main(argv: list[str] | None = None) -> int:
         llm_generated_ids=set(llm_generated),
         llm_models=models,
         prompt_versions=prompts,
+        latest_cc_cedict_version=latest_version,
+        latest_cc_cedict_ids={e.lexical_id() for e in latest_entries},
+        latest_llm_ids=latest_valid_llm_ids(llm_generated, latest_glosses),
+        reference=tuple(reference),
     )
     markdown = render_scope_markdown(
         build_scope_info(sources), base_label, release_name

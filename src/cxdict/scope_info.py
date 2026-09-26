@@ -38,6 +38,14 @@ class ReleaseSources:
     llm_generated_ids: set[str] = field(default_factory=set)
     llm_models: tuple[str, ...] = ()
     prompt_versions: tuple[str, ...] = ()
+    # Latest-scope companions (absent = single-scope release): the newest
+    # snapshot's version and identities, the LLM identities valid against
+    # it (same identity, same gloss set — the exact LatestFull record set),
+    # and the per-version contribution rows (label, rows) newest-first.
+    latest_cc_cedict_version: str = ""
+    latest_cc_cedict_ids: set[str] | None = None
+    latest_llm_ids: set[str] | None = None
+    reference: tuple[tuple[str, int], ...] = ()
 
 
 def sha256_file(path: str | Path) -> str:
@@ -70,7 +78,37 @@ def build_scope_info(
         sources.human_ids,
         sources.llm_generated_ids,
     )
-    return {
+    if sources.reference:
+        contributed = sum(rows for _, rows in sources.reference)
+        if contributed != statistics["cc_cedict_total"]:
+            raise ValueError(
+                f"CC-CEDICT reference rows ({contributed}) do not sum to "
+                f"the scope total ({statistics['cc_cedict_total']})"
+            )
+    latest_statistics = None
+    scope_detail: dict[str, int] = {}
+    if sources.latest_cc_cedict_ids is not None:
+        latest_ids = sources.latest_cc_cedict_ids
+        latest_llm = (
+            sources.latest_llm_ids
+            if sources.latest_llm_ids is not None
+            else sources.llm_generated_ids
+        )
+        latest_statistics = compute_scope_statistics(
+            latest_ids,
+            sources.base_ids,
+            sources.human_ids,
+            latest_llm,
+        )
+        full_ids = sources.base_ids | sources.human_ids | sources.llm_generated_ids
+        latest_full_ids = sources.base_ids | sources.human_ids | latest_llm
+        scope_detail = {
+            # Cross-scope cells neither stats object has alone (all exact):
+            "llm_covers_latest": len(sources.llm_generated_ids & latest_ids),
+            "superfull_covers_latest": len(full_ids & latest_ids),
+            "latestfull_covers_super": len(latest_full_ids & sources.cc_cedict_ids),
+        }
+    info: dict[str, Any] = {
         "generated_at": generated_at,
         "sources": {
             "cc_cedict": {
@@ -95,7 +133,18 @@ def build_scope_info(
             "prompt_versions": list(sources.prompt_versions),
         },
         "coverage": statistics,
+        "reference": [
+            {"label": label, "rows": rows} for label, rows in sources.reference
+        ],
     }
+    if latest_statistics is not None:
+        info["sources"]["latest_cc_cedict"] = {
+            "version": sources.latest_cc_cedict_version,
+            "entries": latest_statistics["cc_cedict_total"],
+        }
+        info["latest_coverage"] = latest_statistics
+        info["scope_detail"] = scope_detail
+    return info
 
 
 def _in_cell(in_count: int, ref_total: int) -> str:
@@ -126,11 +175,14 @@ def render_scope_markdown(
     """Render scope information as the release-notes body.
 
     `base_label` names the authoritative base row from the language
-    registry; `release_name` names the `CxDICT-<Name>-Human/Full` output
+    registry; `release_name` names the `CxDICT-<Name>-SuperFull` output
     rows (defaults to `base_label` so older callers keep working).
 
-    Only Coverage / Outputs / Provenance are rendered — source versions
-    and generation timestamps are intentionally omitted from the notes.
+    Only Scopes / Coverage / CC-CEDICT Reference / Outputs / LLM
+    Generation details are rendered — source versions and generation
+    timestamps are intentionally omitted from the notes. With
+    latest-scope data present, both tables gain Latest-CEDICT columns;
+    otherwise they use the legacy single-column layout.
     """
     coverage = info["coverage"]
     provenance = info["provenance"]
@@ -141,50 +193,171 @@ def render_scope_markdown(
     def _row(label: str, total: int, in_cc: int) -> str:
         return f"| {label} | {total} | {_in_cell(in_cc, ref_total)} | {total - in_cc} |"
 
-    def _out_row(label: str, total: int, in_cc: int) -> str:
+    def _out_row(
+        label: str, total: int, in_cc: int,
+        ref: int = ref_total, miss: int = missing,
+    ) -> str:
         return (
             f"| {label} | {total} | "
-            f"{_out_cell(in_cc, ref_total, missing)} | {total - in_cc} |"
+            f"{_out_cell(in_cc, ref, miss)} | {total - in_cc} |"
         )
 
     lines = [
+        "## Scopes",
+        "",
+        "- SuperFull: base + human + every LLM record — Super-CEDICT scope "
+        "(all snapshots combined, retired words included).",
+        "- LatestFull: base + human + only newest-valid LLM records — "
+        "Latest-CEDICT scope (newest snapshot alone).",
+        "- Human: base + human curation, no LLM content (scope-free).",
+        "",
         "## Coverage",
         "",
-        "| Category | Total | In CC-CEDICT (% of Ref) | Out of CC-CEDICT |",
-        "| --- | --- | --- | --- |",
-        f"| CC-CEDICT Reference (Under license CC BY-SA 4.0) | {ref_total} | - | - |",
-        _row(
-            f"{base_label} (authoritative)",
-            coverage["base_total"],
-            coverage["base_covers_cc_cedict"],
-        ),
-        _row(
-            "Human (curated)",
-            coverage["human_total"],
-            coverage["human_covers_cc_cedict"],
-        ),
-        _row(
-            "LLM generated",
-            coverage["llm_generated_total"],
-            coverage["llm_covers_cc_cedict"],
-        ),
-        f"| Missing scope (still to generate) | {missing} | "
-        f"{_in_cell(missing, ref_total)} | N/A |",
-        "",
-        "## Outputs",
-        "",
-        "| Output | Total | In CC-CEDICT (% of Ref) | Out of CC-CEDICT |",
-        "| --- | --- | --- | --- |",
-        _out_row(
-            f"CxDICT-{name}-Human",
-            coverage["human_dictionary_total"],
-            coverage["human_dictionary_covers_cc_cedict"],
-        ),
-        _out_row(
-            f"CxDICT-{name}-Full",
-            coverage["full_dictionary_total"],
-            coverage["full_dictionary_covers_cc_cedict"],
-        ),
+    ]
+    latest = info.get("latest_coverage")
+    if latest is None:
+        lines += [
+            "| Category | Total | In CC-CEDICT (% of Ref) | Out of CC-CEDICT |",
+            "| --- | --- | --- | --- |",
+            f"| CC-CEDICT Reference (Under license CC BY-SA 4.0) | {ref_total} | - | - |",
+            _row(
+                f"{base_label} (authoritative)",
+                coverage["base_total"],
+                coverage["base_covers_cc_cedict"],
+            ),
+            _row(
+                "Human (curated)",
+                coverage["human_total"],
+                coverage["human_covers_cc_cedict"],
+            ),
+            _row(
+                "LLM generated",
+                coverage["llm_generated_total"],
+                coverage["llm_covers_cc_cedict"],
+            ),
+            f"| Missing scope (still to generate) | {missing} | "
+            f"{_in_cell(missing, ref_total)} | N/A |",
+            "",
+        ]
+    else:
+        latest_total = latest["cc_cedict_total"]
+        latest_missing = latest["missing_scope_total"]
+        detail = info.get("scope_detail", {})
+
+        def _dual(
+            label: str, total: int, in_super: int, in_latest: int,
+            out_na: bool = False,
+        ) -> str:
+            cells = (
+                f"| {label} | {total} | "
+                f"{_in_cell(in_super, ref_total)} | "
+                f"{_in_cell(in_latest, latest_total)} | "
+            )
+            if out_na:
+                return cells + "N/A | N/A |"
+            return cells + f"{total - in_super} | {total - in_latest} |"
+
+        lines += [
+            "| Category | Total | In Super-CEDICT (% of Ref) | "
+            "In Latest-CEDICT (% of Ref) | Out of Super-CEDICT | "
+            "Out of Latest-CEDICT |",
+            "| --- | --- | --- | --- | --- | --- |",
+            _dual(
+                "CC-CEDICT Reference (Under license CC BY-SA 4.0)",
+                ref_total, ref_total, latest_total,
+            ),
+            _dual(
+                f"{base_label} (authoritative)",
+                coverage["base_total"],
+                coverage["base_covers_cc_cedict"],
+                latest["base_covers_cc_cedict"],
+            ),
+            _dual(
+                "Human (curated)",
+                coverage["human_total"],
+                coverage["human_covers_cc_cedict"],
+                latest["human_covers_cc_cedict"],
+            ),
+            _dual(
+                "LLM generated",
+                coverage["llm_generated_total"],
+                coverage["llm_covers_cc_cedict"],
+                detail.get("llm_covers_latest", 0),
+            ),
+            _dual(
+                "Missing scope (still to generate)",
+                missing, missing, latest_missing, out_na=True,
+            ),
+            "",
+        ]
+    if info.get("reference"):
+        lines += [
+            "## CC-CEDICT Reference",
+            "",
+            f"Total CEDICT records: {ref_total}",
+        ] + [
+            f"CEDICT {row['label']}: {row['rows']}"
+            for row in info["reference"]
+        ] + [""]
+    if latest is None:
+        lines += [
+            "## Outputs",
+            "",
+            "| Output | Total | In CC-CEDICT (% of Ref) | Out of CC-CEDICT |",
+            "| --- | --- | --- | --- |",
+            _out_row(
+                f"CxDICT-{name}-Human",
+                coverage["human_dictionary_total"],
+                coverage["human_dictionary_covers_cc_cedict"],
+            ),
+            _out_row(
+                f"CxDICT-{name}-SuperFull",
+                coverage["full_dictionary_total"],
+                coverage["full_dictionary_covers_cc_cedict"],
+            ),
+        ]
+    else:
+        latest_total = latest["cc_cedict_total"]
+        latest_missing = latest["missing_scope_total"]
+        detail = info.get("scope_detail", {})
+
+        def _dual_out(
+            label: str, total: int, in_super: int, in_latest: int,
+        ) -> str:
+            return (
+                f"| {label} | {total} | "
+                f"{_out_cell(in_super, ref_total, missing)} | "
+                f"{_out_cell(in_latest, latest_total, latest_missing)} | "
+                f"{total - in_super} | {total - in_latest} |"
+            )
+
+        lines += [
+            "## Outputs",
+            "",
+            "| Output | Total | In Super-CEDICT (% of Ref) | "
+            "In Latest-CEDICT (% of Ref) | Out of Super-CEDICT | "
+            "Out of Latest-CEDICT |",
+            "| --- | --- | --- | --- | --- | --- |",
+            _dual_out(
+                f"CxDICT-{name}-SuperFull",
+                coverage["full_dictionary_total"],
+                coverage["full_dictionary_covers_cc_cedict"],
+                detail.get("superfull_covers_latest", 0),
+            ),
+            _dual_out(
+                f"CxDICT-{name}-LatestFull",
+                latest["full_dictionary_total"],
+                detail.get("latestfull_covers_super", 0),
+                latest["full_dictionary_covers_cc_cedict"],
+            ),
+            _dual_out(
+                f"CxDICT-{name}-Human",
+                coverage["human_dictionary_total"],
+                coverage["human_dictionary_covers_cc_cedict"],
+                latest["human_dictionary_covers_cc_cedict"],
+            ),
+        ]
+    lines += [
         "",
         "## LLM Generation details",
         "",

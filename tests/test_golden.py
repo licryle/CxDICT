@@ -128,6 +128,14 @@ def test_scope_markdown_golden_text():
         build_scope_info(sources, generated_at="T"), "CFDICT"
     )
     assert markdown == (
+        "## Scopes\n"
+        "\n"
+        "- SuperFull: base + human + every LLM record — Super-CEDICT scope "
+        "(all snapshots combined, retired words included).\n"
+        "- LatestFull: base + human + only newest-valid LLM records — "
+        "Latest-CEDICT scope (newest snapshot alone).\n"
+        "- Human: base + human curation, no LLM content (scope-free).\n"
+        "\n"
         "## Coverage\n"
         "\n"
         "| Category | Total | In CC-CEDICT (% of Ref) | Out of CC-CEDICT |\n"
@@ -143,7 +151,7 @@ def test_scope_markdown_golden_text():
         "| Output | Total | In CC-CEDICT (% of Ref) | Out of CC-CEDICT |\n"
         "| --- | --- | --- | --- |\n"
         "| CxDICT-CFDICT-Human | 2 | 2 (50.0%) | 0 |\n"
-        "| CxDICT-CFDICT-Full | 3 | 3 (75.0%) | 0 |\n"
+        "| CxDICT-CFDICT-SuperFull | 3 | 3 (75.0%) | 0 |\n"
         "\n"
         "## LLM Generation details\n"
         "\n"

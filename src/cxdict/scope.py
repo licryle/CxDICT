@@ -12,6 +12,27 @@ lexical identity (spec §15), which is what makes the set arithmetic valid.
 
 from __future__ import annotations
 
+from typing import Any
+
+from .parser.json import record_glosses
+
+
+def latest_valid_llm_ids(
+    llm_generated: dict[str, dict[str, Any]],
+    cc_glosses: dict[str, set[str]],
+) -> set[str]:
+    """LLM identities valid against one snapshot: same identity, same gloss set.
+
+    The single membership rule behind the LatestFull asset (assembly),
+    latest-scoped output checks (validation), and latest coverage (scope
+    info) — one implementation so the three can never disagree.
+    """
+    return {
+        key
+        for key, record in llm_generated.items()
+        if key in cc_glosses and record_glosses(record) == cc_glosses[key]
+    }
+
 
 def compute_missing_scope(
     cc_cedict_ids: set[str],
