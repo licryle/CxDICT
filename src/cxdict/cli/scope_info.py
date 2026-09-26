@@ -43,7 +43,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--llm-generated", default=None,
                         help="LLM dataset file (default: dictionaries/<language>/data/llm_generated.json)")
     parser.add_argument("--cc-cedict", default=None,
-                        help="CC-CEDICT file (default: dictionaries/cc-cedict/…)")
+                        help="CC-CEDICT file (overrides the snapshot directory)")
+    parser.add_argument("--cc-cedict-dir", default=None,
+                        help="CC-CEDICT snapshot directory (default: dictionaries/cc-cedict/)")
     parser.add_argument("--cc-cedict-version", default=None)
     parser.add_argument("--base-version", default=None)
     parser.add_argument("--human-version", default=None)
@@ -57,6 +59,7 @@ def main(argv: list[str] | None = None) -> int:
         paths = resolve_paths(
             args.language, base=args.base, human=args.human,
             llm_generated=args.llm_generated, cc_cedict=args.cc_cedict,
+            cc_cedict_dir=args.cc_cedict_dir,
         )
     except (ValueError, OSError) as exc:
         print(f"scope info failed: {exc}", file=sys.stderr)

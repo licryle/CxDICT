@@ -74,6 +74,23 @@ def test_load_manifest_newest_first_with_all_fields(tmp_path):
     assert latest_snapshot(cc).date == "2026-09-12"
 
 
+def test_load_manifest_sorts_by_date_not_file_position(tmp_path):
+    cc = tmp_path / "cc"
+    cc.mkdir()
+    # Oldest logged first: an appended entry must still become the newest.
+    (cc / "snapshots.toml").write_text(
+        '[[snapshot]]\ndate = "2024-01-01"\nfile = "2024-01-01.u8"\n'
+        'upstream_date = "x"\nupstream_time = 0\nupstream_sha256 = ""\n'
+        'content_sha256 = "a"\nentries = 0\npairs = 0\n'
+        '[[snapshot]]\ndate = "2026-09-12"\nfile = "2026-09-12.u8"\n'
+        'upstream_date = "x"\nupstream_time = 1\nupstream_sha256 = ""\n'
+        'content_sha256 = "b"\nentries = 0\npairs = 0\n',
+        encoding="utf-8",
+    )
+    assert [s.date for s in load_manifest(cc)] == ["2026-09-12", "2024-01-01"]
+    assert latest_snapshot(cc).date == "2026-09-12"
+
+
 def test_load_manifest_missing_file_and_empty_log(tmp_path):
     with pytest.raises(FileNotFoundError):
         load_manifest(tmp_path / "nope")

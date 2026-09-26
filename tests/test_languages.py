@@ -9,7 +9,12 @@ from pathlib import Path
 
 import pytest
 
-from cxdict.languages import get_language, resolve_paths
+from cxdict.languages import (
+    CC_CEDICT_FALLBACK_FILE,
+    get_language,
+    resolve_cc_cedict,
+    resolve_paths,
+)
 
 REPO = Path(__file__).resolve().parent.parent
 
@@ -147,3 +152,57 @@ def test_explicit_overrides_win_over_language_defaults(tmp_path):
     assert paths.llm_generated == (
         tmp_path / "dictionaries" / "fr" / "data" / "llm_generated.json"
     )
+
+
+def test_repo_cc_cedict_dir_resolves_to_logged_latest():
+    paths = resolve_paths("fr", repo_root=REPO)
+    assert paths.cc_cedict_dir == REPO / "dictionaries" / "cc-cedict"
+    # The logged latest snapshot, not a hardcoded filename.
+    assert paths.cc_cedict == REPO / "dictionaries" / "cc-cedict" / "2026-09-12.u8"
+    assert paths.cc_cedict.is_file()
+
+
+def test_resolve_cc_cedict_prefers_manifest_then_dated_then_fallback(tmp_path):
+    cc = tmp_path / "cc"
+    cc.mkdir()
+    # No log, no dated file: legacy fallback filename.
+    assert resolve_cc_cedict(cc) == cc / CC_CEDICT_FALLBACK_FILE
+    # Dated files, no log: newest by name (legacy tree).
+    (cc / "2024-01-01.u8").write_text("", encoding="utf-8")
+    (cc / "2026-09-12.u8").write_text("", encoding="utf-8")
+    assert resolve_cc_cedict(cc) == cc / "2026-09-12.u8"
+    # Log present: newest logged entry wins over any stray dated file.
+    (cc / "2027-01-01.u8").write_text("", encoding="utf-8")
+    (cc / "snapshots.toml").write_text(
+        "[[snapshot]]\n"
+        'date = "2024-01-01"\nfile = "2024-01-01.u8"\n'
+        'upstream_date = "x"\nupstream_time = 0\n'
+        'upstream_sha256 = ""\ncontent_sha256 = "a"\nentries = 0\npairs = 0\n'
+        "[[snapshot]]\n"
+        'date = "2026-09-12"\nfile = "2026-09-12.u8"\n'
+        'upstream_date = "x"\nupstream_time = 1\n'
+        'upstream_sha256 = ""\ncontent_sha256 = "b"\nentries = 0\npairs = 0\n',
+        encoding="utf-8",
+    )
+    assert resolve_cc_cedict(cc) == cc / "2026-09-12.u8"
+
+
+def test_resolve_cc_cedict_raises_on_corrupt_log(tmp_path):
+    cc = tmp_path / "cc"
+    cc.mkdir()
+    (cc / "2026-09-12.u8").write_text("", encoding="utf-8")
+    (cc / "snapshots.toml").write_text("this is not = valid = toml", encoding="utf-8")
+    with pytest.raises(ValueError):
+        resolve_cc_cedict(cc)
+
+
+def test_explicit_cc_cedict_dir_and_file_win(tmp_path):
+    paths = resolve_paths("fr", repo_root=tmp_path, cc_cedict_dir=tmp_path / "snap")
+    assert paths.cc_cedict_dir == tmp_path / "snap"
+    assert paths.cc_cedict == tmp_path / "snap" / CC_CEDICT_FALLBACK_FILE
+    # An explicit file beats the directory entirely (fixture escape hatch).
+    paths = resolve_paths(
+        "fr", repo_root=tmp_path, cc_cedict_dir=tmp_path / "snap",
+        cc_cedict=tmp_path / "snap" / "one.u8",
+    )
+    assert paths.cc_cedict == tmp_path / "snap" / "one.u8"

@@ -279,7 +279,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--base", default=None,
                         help="base dictionary file (default: dictionaries/<language>/data/…)")
     parser.add_argument("--cc-cedict", default=None,
-                        help="CC-CEDICT file (default: dictionaries/cc-cedict/…)")
+                        help="CC-CEDICT file (overrides the snapshot directory)")
+    parser.add_argument("--cc-cedict-dir", default=None,
+                        help="CC-CEDICT snapshot directory (default: dictionaries/cc-cedict/)")
     parser.add_argument("--human", default=None,
                         help="human curation file (default: dictionaries/<language>/data/human.u8)")
     parser.add_argument("--llm-generated", default=None,
@@ -300,6 +302,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         paths = resolve_paths(
             args.language, base=args.base, cc_cedict=args.cc_cedict,
+            cc_cedict_dir=args.cc_cedict_dir,
             human=args.human, llm_generated=args.llm_generated,
             out_human=args.out_human, out_full=args.out_full,
             scope_out=args.scope_out,

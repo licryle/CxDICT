@@ -17,9 +17,18 @@ import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from .snapshots import MANIFEST_FILENAME, latest_snapshot
+
 # CC-CEDICT is the shared Chinese lexical scope for every language —
-# a dict.toml-less directory under ``dictionaries/``.
-CC_CEDICT_REL = Path("dictionaries/cc-cedict/2026-09-12.u8")
+# a dict.toml-less directory under ``dictionaries/``. The directory holds
+# one YYYY-MM-DD.u8 file per upstream snapshot plus snapshots.toml (newest
+# first); the latest entry of that log is the default scope source.
+CC_CEDICT_DIR_REL = Path("dictionaries/cc-cedict")
+
+#: Fallback for trees with no snapshot log at all (empty fixtures): the pin
+#: used before snapshots.toml existed. Never used in a logged tree.
+CC_CEDICT_FALLBACK_FILE = "2026-09-12.u8"
+CC_CEDICT_REL = CC_CEDICT_DIR_REL / CC_CEDICT_FALLBACK_FILE
 
 #: Language units directory (CWD-relative).
 DICTIONARIES_DIR = Path("dictionaries")
@@ -129,9 +138,27 @@ class ResolvedPaths:
     human: Path
     llm_generated: Path
     cc_cedict: Path
+    cc_cedict_dir: Path
     out_human: Path
     out_full: Path
     scope_out: Path
+
+
+def resolve_cc_cedict(cc_dir: str | Path) -> Path:
+    """Newest CC-CEDICT snapshot in ``cc_dir``.
+
+    Resolution order: the newest entry of ``snapshots.toml`` (corrupt or
+    empty logs raise — silence there would hide a data-integrity problem);
+    else the newest ``YYYY-MM-DD.u8`` file present (legacy tree predating
+    the log); else the hardcoded fallback filename.
+    """
+    cc_dir = Path(cc_dir)
+    if (cc_dir / MANIFEST_FILENAME).is_file():
+        return cc_dir / latest_snapshot(cc_dir).file
+    dated = sorted(cc_dir.glob("????-??-??.u8"))
+    if dated:
+        return dated[-1]
+    return cc_dir / CC_CEDICT_FALLBACK_FILE
 
 
 def resolve_paths(
@@ -142,6 +169,7 @@ def resolve_paths(
     human: str | Path | None = None,
     llm_generated: str | Path | None = None,
     cc_cedict: str | Path | None = None,
+    cc_cedict_dir: str | Path | None = None,
     out_human: str | Path | None = None,
     out_full: str | Path | None = None,
     scope_out: str | Path | None = None,
@@ -158,6 +186,10 @@ def resolve_paths(
     resolve ``base`` to None unless an explicit ``base=`` override is given;
     downstream stages treat None as "no base identities" (empty set).
     Empty-string overrides count as not given.
+
+    CC-CEDICT resolves to the newest snapshot in its directory: an explicit
+    ``cc_cedict=`` file wins (single-file escape hatch for fixtures), then
+    an explicit ``cc_cedict_dir=``, then ``<repo_root>/dictionaries/cc-cedict``.
     """
     cfg = get_language(code)
     root = Path(repo_root)
@@ -169,13 +201,20 @@ def resolve_paths(
         resolved_base = None
     else:
         resolved_base = data_dir / cfg.base_filename
+    resolved_cc_dir = (
+        Path(cc_cedict_dir) if cc_cedict_dir else root / CC_CEDICT_DIR_REL
+    )
+    resolved_cc = (
+        Path(cc_cedict) if cc_cedict else resolve_cc_cedict(resolved_cc_dir)
+    )
     return ResolvedPaths(
         base=resolved_base,
         human=Path(human) if human else data_dir / "human.u8",
         llm_generated=(
             Path(llm_generated) if llm_generated else data_dir / "llm_generated.json"
         ),
-        cc_cedict=Path(cc_cedict) if cc_cedict else root / CC_CEDICT_REL,
+        cc_cedict=resolved_cc,
+        cc_cedict_dir=resolved_cc_dir,
         out_human=(
             Path(out_human)
             if out_human

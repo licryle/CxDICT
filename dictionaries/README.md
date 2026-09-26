@@ -33,6 +33,10 @@ be traceable to exact source versions).
   the log fall back to `sha256:<12-hex-file-bytes>`. Per-record
   `cc_cedict_version` stamps use this scheme from here on; older stamps
   (full `.gz` byte hashes) resolve via `legacy_shas` in `snapshots.toml`.
+- Resolution: tooling defaults to the newest snapshot — the newest
+  `snapshots.toml` entry, else the newest `YYYY-MM-DD.u8` file present.
+  `--cc-cedict` pins a single file (escape hatch for fixtures);
+  `--cc-cedict-dir` points at another snapshot directory.
 
 ## CFDICT (authoritative French definitions, `fr` only)
 

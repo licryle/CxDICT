@@ -52,7 +52,12 @@ _REQUIRED_FIELDS = (
 
 
 def load_manifest(cc_dir: str | Path) -> list[Snapshot]:
-    """Read snapshots.toml newest-first; raise on missing file or bad rows."""
+    """Read snapshots.toml, sorted newest (date) first.
+
+    Sorting is by the ``date`` field, not file position: an appended entry
+    (the natural way to log a fresh fetch) still becomes the newest
+    snapshot, so nothing downstream can silently build on a stale layer.
+    """
     manifest = Path(cc_dir) / MANIFEST_FILENAME
     try:
         data = tomllib.loads(manifest.read_text(encoding="utf-8"))
@@ -74,6 +79,8 @@ def load_manifest(cc_dir: str | Path) -> list[Snapshot]:
                 upstream_sha256=raw.get("upstream_sha256", ""),
             )
         )
+    # ISO dates sort chronologically; newest first regardless of file order.
+    snapshots.sort(key=lambda s: s.date, reverse=True)
     return snapshots
 
 
