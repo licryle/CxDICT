@@ -7,7 +7,8 @@ name: Assemble and release
 #   or a single language via the `language` input.
 # Each released language owns ONE release object: tag latest-<code>
 #   (e.g. latest-fr), refreshed in place every run with stably-named
-#   assets CxDICT-<Name>-{Human,Full}.u8 (<Name> from dict.toml) and the
+#   assets CxDICT-<Name>-Human.u8, CxDICT-<Name>-SuperFull.u8 and
+#   CxDICT-<Name>-LatestFull.u8 (<Name> from dict.toml) and the
 #   scope notes as body. Our own per-language `:latest`, since GitHub's
 #   "Latest" badge is repo-wide. The release commit additionally carries
 #   two git tags (no extra release objects): the moving latest-<code>
@@ -109,7 +110,8 @@ jobs:
           {
             echo "relname=$NAME"
             echo "human=CxDICT-${NAME}-Human.u8"
-            echo "full=CxDICT-${NAME}-Full.u8"
+            echo "superfull=CxDICT-${NAME}-SuperFull.u8"
+            echo "latestfull=CxDICT-${NAME}-LatestFull.u8"
           } >> "$GITHUB_OUTPUT"
 
       # 1. Gate on inputs first: any violated data relationship fails the
@@ -119,21 +121,31 @@ jobs:
       - name: Validate inputs
         run: nix develop --command python scripts/validate.py --language "${{ matrix.code }}"
 
-      # 2. Assemble both dictionaries (spec §10): CC-CEDICT scope is an
-      #    input to assembly via --cc-cedict for provenance; precedence
-      #    base > human > llm_generated is enforced, overlaps fail (spec §14).
+      # 2. Assemble three dictionaries (spec §10): the Human dictionary
+      #    (base + human, scope-free) plus two Full scopes — superscope
+      #    (every LLM record) and latest (only newest-valid LLM records).
+      #    Precedence base > human > llm_generated is enforced, overlaps
+      #    fail (spec §14).
       - name: Assemble dictionaries
         run: >-
           nix develop --command python scripts/assemble.py --language "${{ matrix.code }}"
           --out-human "output/${{ matrix.code }}/${{ steps.meta.outputs.human }}"
-          --out-full "output/${{ matrix.code }}/${{ steps.meta.outputs.full }}"
+          --out-full "output/${{ matrix.code }}/${{ steps.meta.outputs.superfull }}"
+          && nix develop --command python scripts/assemble.py --language "${{ matrix.code }}"
+          --scope latest --skip-human
+          --out-full "output/${{ matrix.code }}/${{ steps.meta.outputs.latestfull }}"
 
-      # 3. Validate the assembled outputs against the inputs.
+      # 3. Validate the assembled outputs against the inputs (latest Full
+      #    against latest-valid expectations; Human is scope-free so the
+      #    second run checks only its Full).
       - name: Validate outputs
         run: >-
           nix develop --command python scripts/validate.py --language "${{ matrix.code }}"
           --out-human "output/${{ matrix.code }}/${{ steps.meta.outputs.human }}"
-          --out-full "output/${{ matrix.code }}/${{ steps.meta.outputs.full }}"
+          --out-full "output/${{ matrix.code }}/${{ steps.meta.outputs.superfull }}"
+          && nix develop --command python scripts/validate.py --language "${{ matrix.code }}"
+          --scope latest
+          --out-full "output/${{ matrix.code }}/${{ steps.meta.outputs.latestfull }}"
 
       # 4. Scope information for the release notes (spec §12, §16).
       - name: Scope information
@@ -147,8 +159,8 @@ jobs:
       #    the notes body. Generated files are release outputs, never
       #    committed sources (spec §13). Stable download URLs, Docker
       #    `:latest`-style:
-      #    github/<owner>/<repo>/releases/download/latest-fr/CxDICT-French-Full.u8
-      #    or: gh release download latest-fr --pattern '*-Full.u8'
+      #    github/<owner>/<repo>/releases/download/latest-fr/CxDICT-French-SuperFull.u8
+      #    or: gh release download latest-fr --pattern '*-SuperFull.u8'
       #    The release commit then gets TWO git tags — the moving
       #    latest-<code> pointer and an immutable CxDICT-<Name>-YYYYMMDD
       #    daily marker — and no other release objects are created.
@@ -166,7 +178,8 @@ jobs:
   
           for f in \
             "output/${CODE}/${{ steps.meta.outputs.human }}" \
-            "output/${CODE}/${{ steps.meta.outputs.full }}"
+            "output/${CODE}/${{ steps.meta.outputs.superfull }}" \
+            "output/${CODE}/${{ steps.meta.outputs.latestfull }}"
           do
             if [ -s "$f" ]; then
               ASSETS+=("$f")

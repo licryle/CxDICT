@@ -31,7 +31,7 @@ from pathlib import Path
 from typing import Any
 
 from .languages import get_language
-from .parser.json import load_llm_json
+from .parser.json import load_llm_json, record_glosses
 from .parser.u8 import DictionaryEntry, iter_u8_lines, parse_u8_file
 
 
@@ -146,13 +146,26 @@ def assemble_files(
     out_human_path: str | Path,
     out_full_path: str | Path,
     language: str,
+    scope: str = "superscope",
+    latest_cc_path: str | Path | None = None,
+    skip_human: bool = False,
 ) -> tuple[int, int]:
     """Full assembly from on-disk sources; return (human_n, full_n).
 
     `language` is required (no default): it selects the base section
     header. `base_path` may be None for languages without an
     authoritative base (the base section is then empty and omitted).
+    `scope` selects the LLM record set: "superscope" (default) ships every
+    record; "latest" ships only records whose full identity is present in
+    the newest snapshot with an identical gloss set. Base and human rows
+    are unfiltered in both modes, so the Human dictionary is scope-free.
+    Latest mode requires `latest_cc_path` (the newest snapshot file).
+    `skip_human` omits the Human write (counts still returned) for runs
+    that only need the Full output — the Human bytes are scope-free, so
+    rewriting them per scope is pure waste.
     """
+    if scope not in ("superscope", "latest"):
+        raise ValueError(f"unknown scope {scope!r} (want 'superscope' or 'latest')")
     if base_path is None:
         entries, errors = [], []
     else:
@@ -167,16 +180,35 @@ def assemble_files(
             f"human.u8 has {len(human_errors)} malformed line(s): {preview}"
         )
     llm_generated = load_llm_json(llm_generated_path)
+    if scope == "latest":
+        if latest_cc_path is None:
+            raise ValueError("latest scope needs latest_cc_path (newest snapshot file)")
+        latest_entries, latest_errors = parse_u8_file(latest_cc_path)
+        if latest_errors:
+            preview = "; ".join(f"line {n}: {msg}" for n, msg in latest_errors[:5])
+            raise ValueError(
+                f"latest snapshot has {len(latest_errors)} malformed line(s): {preview}"
+            )
+        latest_glosses = {
+            e.lexical_id(): frozenset(e.definitions) for e in latest_entries
+        }
+        llm_generated = {
+            key: record
+            for key, record in llm_generated.items()
+            if key in latest_glosses
+            and record_glosses(record) == latest_glosses[key]
+        }
     base, human_extra, llm_extra = assemble_sections(
         entries, human_entries, llm_generated
     )
-    write_sectioned_u8_file(
-        out_human_path,
-        [
-            (section_header_for(language), base),
-            (HUMAN_SECTION_HEADER, human_extra),
-        ],
-    )
+    if not skip_human:
+        write_sectioned_u8_file(
+            out_human_path,
+            [
+                (section_header_for(language), base),
+                (HUMAN_SECTION_HEADER, human_extra),
+            ],
+        )
     write_sectioned_u8_file(
         out_full_path,
         [

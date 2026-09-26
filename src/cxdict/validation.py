@@ -258,18 +258,26 @@ def check_scope_info(
 
 
 def check_outputs(
-    human_u8: str | Path,
-    full_u8: str | Path,
+    human_u8: str | Path | None,
+    full_u8: str | Path | None,
     base_ids: set[str],
     human_ids: set[str],
     llm_ids: set[str],
     report: ValidationReport,
 ) -> None:
-    """Check 7: assembled outputs contain exactly the expected identities."""
-    for label, path, expected in (
+    """Check 7: assembled outputs contain exactly the expected identities.
+
+    Either path may be None to skip that output (the latest-scope run
+    revalidates only its Full: Human bytes are scope-free and already
+    checked with the superscope run).
+    """
+    outputs: list[tuple[str, str | Path | None, set[str]]] = [
         ("human output", human_u8, base_ids | human_ids),
         ("full output", full_u8, base_ids | human_ids | llm_ids),
-    ):
+    ]
+    for label, path, expected in outputs:
+        if path is None:
+            continue
         ids: list[str] = []
         try:
             with open(path, encoding="utf-8") as f:

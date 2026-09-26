@@ -82,7 +82,10 @@ def test_release_is_matrix_per_detected_language():
 def test_release_assets_follow_naming_scheme():
     steps = " ".join(str(step) for step in workflow()["jobs"]["release"]["steps"])
     assert "CxDICT-" in steps
-    assert "-Human.u8" in steps and "-Full.u8" in steps
+    assert "-Human.u8" in steps
+    assert "-SuperFull.u8" in steps and "-LatestFull.u8" in steps
+    assert "--scope latest" in steps  # latest Full is a filtered assembly
+    assert "--skip-human" in steps  # Human bytes are scope-free: built once
     assert "release_name" in steps  # display name comes from dict.toml
 
 
@@ -233,6 +236,35 @@ def test_pipeline_end_to_end(pipeline_data, tmp_path):
     assert "美 美 [Mei3] /beau/" in out_c.read_text(encoding="utf-8")
     assert "行 行 [Xing2] /fr-to walk/" in out_f.read_text(encoding="utf-8")
     assert "行 行" not in out_c.read_text(encoding="utf-8")
+    # 6. latest scope: fixture LLM record is newest-valid, so LatestFull
+    #    matches SuperFull here and validates against filtered expectations.
+    out_l = tmp_path / "out_latest.u8"
+    r = run(
+        "scripts/assemble.py",
+        "--language", "fr",
+        "--base", str(d / "cfdict.u8"),
+        "--human", str(d / "human.u8"),
+        "--llm-generated", str(d / "llm_generated.json"),
+        "--cc-cedict", str(d / "cc.u8"),
+        "--scope", "latest",
+        "--skip-human",
+        "--out-full", str(out_l),
+        cwd=REPO,
+    )
+    assert r.returncode == 0, r.stderr or r.stdout
+    assert out_l.read_bytes() == out_f.read_bytes()
+    r = run(
+        "scripts/validate.py",
+        "--language", "fr",
+        "--base", str(d / "cfdict.u8"),
+        "--cc-cedict", str(d / "cc.u8"),
+        "--human", str(d / "human.u8"),
+        "--llm-generated", str(d / "llm_generated.json"),
+        "--scope", "latest",
+        "--out-full", str(out_l),
+        cwd=REPO,
+    )
+    assert r.returncode == 0, r.stderr or r.stdout
 
 
 def test_pipeline_fails_fast_on_overlap(pipeline_data):

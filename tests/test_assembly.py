@@ -284,6 +284,123 @@ def test_cli_requires_language(tmp_path):
     assert cli_main(["--language", "xx-unknown", "--base", str(tmp_path / "cfdict.u8")]) == 1
 
 
+def latest_scope_files(tmp_path):
+    """Base + human + 3 LLM records vs a newest snapshot that retires R
+    and rewrites K's gloss; N stays valid."""
+    (tmp_path / "cfdict.u8").write_text(
+        format_u8_entry(entry()), encoding="utf-8"
+    )
+    (tmp_path / "h.u8").write_text(
+        format_u8_entry(entry("美", "美", "Mei3", ("beau",))), encoding="utf-8"
+    )
+    llm = {
+        "好|好|Hao3": llm_record_for("好|好|Hao3", senses=(("fine", "bien"),)),
+        "R|R|P1": llm_record_for("R|R|P1", senses=(("gone", "parti"),)),
+        "K|K|P1": llm_record_for("K|K|P1", senses=(("ancient", "ancien"),)),
+    }
+    (tmp_path / "l.json").write_text(json.dumps(llm), encoding="utf-8")
+    latest = tmp_path / "latest.u8"
+    latest.write_text(
+        "好 好 [Hao3] /fine/\n"
+        "K K [P1] /modern/\n",
+        encoding="utf-8",
+    )
+    return latest
+
+
+def test_assemble_latest_scope_filters_llm_only(tmp_path):
+    latest = latest_scope_files(tmp_path)
+    out_c, out_f = tmp_path / "c.u8", tmp_path / "f.u8"
+    human_n, full_n = assemble_files(
+        tmp_path / "cfdict.u8", tmp_path / "h.u8", tmp_path / "l.json",
+        out_c, out_f, "fr", scope="latest", latest_cc_path=latest,
+    )
+    # Base + human unfiltered; only the newest-valid LLM record ships.
+    assert (human_n, full_n) == (2, 3)
+    out_entries, errors = parse_u8_file(out_f)
+    assert errors == []
+    assert [e.lexical_id() for e in out_entries] == [
+        "中國|中国|Zhong1 guo2", "美|美|Mei3", "好|好|Hao3",
+    ]
+
+
+def test_assemble_superscope_ships_everything(tmp_path):
+    latest = latest_scope_files(tmp_path)
+    out_c, out_f = tmp_path / "c.u8", tmp_path / "f.u8"
+    human_n, full_n = assemble_files(
+        tmp_path / "cfdict.u8", tmp_path / "h.u8", tmp_path / "l.json",
+        out_c, out_f, "fr",
+    )
+    assert (human_n, full_n) == (2, 5)
+
+
+def test_assemble_human_identical_across_scopes(tmp_path):
+    # Invariant behind --skip-human: Human bytes never depend on scope.
+    latest = latest_scope_files(tmp_path)
+    out_s, out_l = tmp_path / "s.u8", tmp_path / "l.u8"
+    assemble_files(
+        tmp_path / "cfdict.u8", tmp_path / "h.u8", tmp_path / "l.json",
+        out_s, tmp_path / "sf.u8", "fr",
+    )
+    assemble_files(
+        tmp_path / "cfdict.u8", tmp_path / "h.u8", tmp_path / "l.json",
+        out_l, tmp_path / "lf.u8", "fr", scope="latest",
+        latest_cc_path=latest,
+    )
+    assert out_s.read_bytes() == out_l.read_bytes()
+
+
+def test_assemble_skip_human_omits_write_but_counts(tmp_path):
+    latest = latest_scope_files(tmp_path)
+    out_c, out_f = tmp_path / "c.u8", tmp_path / "f.u8"
+    human_n, full_n = assemble_files(
+        tmp_path / "cfdict.u8", tmp_path / "h.u8", tmp_path / "l.json",
+        out_c, out_f, "fr", scope="latest", latest_cc_path=latest,
+        skip_human=True,
+    )
+    assert (human_n, full_n) == (2, 3)
+    assert not out_c.exists()
+    assert out_f.is_file()
+
+
+def test_assemble_rejects_bad_scope_and_missing_latest(tmp_path):
+    latest = latest_scope_files(tmp_path)
+    out_c, out_f = tmp_path / "c.u8", tmp_path / "f.u8"
+    with pytest.raises(ValueError):
+        assemble_files(
+            tmp_path / "cfdict.u8", tmp_path / "h.u8", tmp_path / "l.json",
+            out_c, out_f, "fr", scope="nonsense", latest_cc_path=latest,
+        )
+    with pytest.raises(ValueError):
+        assemble_files(
+            tmp_path / "cfdict.u8", tmp_path / "h.u8", tmp_path / "l.json",
+            out_c, out_f, "fr", scope="latest",
+        )
+
+
+def test_cli_latest_scope_assembles_filtered_full(tmp_path, capsys):
+    from cxdict.cli.assemble import main as cli_main
+
+    latest = latest_scope_files(tmp_path)
+    out_c, out_f = tmp_path / "c.u8", tmp_path / "f.u8"
+    rc = cli_main([
+        "--language", "fr",
+        "--base", str(tmp_path / "cfdict.u8"),
+        "--human", str(tmp_path / "h.u8"),
+        "--llm-generated", str(tmp_path / "l.json"),
+        "--cc-cedict", str(latest),
+        "--scope", "latest",
+        "--out-human", str(out_c),
+        "--out-full", str(out_f),
+    ])
+    assert rc == 0, capsys.readouterr().out
+    out_entries, errors = parse_u8_file(out_f)
+    assert errors == []
+    assert [e.lexical_id() for e in out_entries] == [
+        "中國|中国|Zhong1 guo2", "美|美|Mei3", "好|好|Hao3",
+    ]
+
+
 def test_sections_match_assemble_splits():
     base = [entry()]
     human = [entry("美", "美", "Mei3", ("beau",))]

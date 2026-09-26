@@ -66,7 +66,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"validation failed: {exc}", file=sys.stderr)
         return 1
     out_human = args.out_human
-    if data is not None and out_human and args.out_full:
+    if data is not None and (out_human or args.out_full):
         llm_ids = set(data["llm_generated"])
         if args.scope == "latest":
             # LatestFull ships only records valid against the newest

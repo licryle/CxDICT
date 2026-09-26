@@ -2,12 +2,16 @@
 
 Usage:
     python scripts/assemble.py --language CODE [--base PATH] [--human PATH]
-                                [--llm-generated PATH]
+                                [--llm-generated PATH] [--cc-cedict PATH]
+                                [--cc-cedict-dir DIR] [--scope SCOPE]
                                 [--out-human PATH] [--out-full PATH]
 
 Inputs must already satisfy the precedence rules (run scripts/cleanup.py
 and validation first): any base∩human, base∩LLM or human∩LLM overlap
 fails the run instead of silently overriding (spec §14).
+Scope defaults to the full superset; --scope latest ships only LLM
+records valid against the newest snapshot (base and human rows are
+unfiltered in both modes, so the Human dictionary is scope-free).
 """
 
 from __future__ import annotations
@@ -31,15 +35,25 @@ def main(argv: list[str] | None = None) -> int:
                         help="human curation file (default: dictionaries/<language>/data/human.u8)")
     parser.add_argument("--llm-generated", default=None,
                         help="LLM dataset file (default: dictionaries/<language>/data/llm_generated.json)")
+    parser.add_argument("--cc-cedict", default=None,
+                        help="newest-snapshot file for --scope latest (default: resolved snapshot directory)")
+    parser.add_argument("--cc-cedict-dir", default=None,
+                        help="CC-CEDICT snapshot directory (default: dictionaries/cc-cedict/)")
+    parser.add_argument("--scope", default="superscope",
+                        choices=("superscope", "latest"),
+                        help="ship all LLM records or only newest-valid ones")
     parser.add_argument("--out-human", default=None,
                         help="human dictionary output (default: output/<language>/…)")
     parser.add_argument("--out-full", default=None,
                         help="full dictionary output (default: output/<language>/…)")
+    parser.add_argument("--skip-human", action="store_true",
+                        help="omit the Human write (scope-free bytes; only needed once)")
     args = parser.parse_args(argv)
     try:
         paths = resolve_paths(
             args.language, base=args.base, human=args.human,
-            llm_generated=args.llm_generated, out_human=args.out_human,
+            llm_generated=args.llm_generated, cc_cedict=args.cc_cedict,
+            cc_cedict_dir=args.cc_cedict_dir, out_human=args.out_human,
             out_full=args.out_full,
         )
     except (ValueError, OSError) as exc:
@@ -50,12 +64,17 @@ def main(argv: list[str] | None = None) -> int:
         human_n, full_n = assemble_files(
             paths.base, paths.human, paths.llm_generated,
             paths.out_human, paths.out_full, args.language,
+            scope=args.scope, latest_cc_path=paths.cc_cedict,
+            skip_human=args.skip_human,
         )
     except (ValueError, OSError) as exc:
         print(f"assembly failed: {exc}", file=sys.stderr)
         return 1
-    print(f"assembly done: human {human_n} entries -> {paths.out_human}, "
-          f"full {full_n} entries -> {paths.out_full}")
+    if args.skip_human:
+        print(f"assembly done: full {full_n} entries -> {paths.out_full}")
+    else:
+        print(f"assembly done: human {human_n} entries -> {paths.out_human}, "
+              f"full {full_n} entries -> {paths.out_full}")
     return 0
 
 
