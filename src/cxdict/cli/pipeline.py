@@ -19,11 +19,13 @@ from typing import Any, Callable
 
 from ..assembly import assemble_files
 from ..cleanup import CleanupReport, cleanup_files
+from .fetch import main as fetch_main
 from ..generation.config import LLMConfig
 from ..generation.llm import GenerationError
 from ..generation.orchestrator import generate_files
 from ..generation.llm import post_chat_completions
-from ..languages import get_language, resolve_paths
+from ..languages import CC_CEDICT_DIR_REL, get_language, resolve_paths
+from ..parser.u8 import parse_u8_file
 from ..parser.u8 import parse_u8_file
 from ..scope import latest_valid_llm_ids
 from ..scope_info import (
@@ -349,9 +351,23 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--skip-generate", action="store_true")
     parser.add_argument("--no-progress", action="store_true")
+    parser.add_argument("--fetch", action="store_true",
+                        help="fetch the current MDBG snapshot first "
+                             "(default: offline, committed files only)")
     parser.add_argument("--scope-out", default=None,
                         help="scope notes output (default: output/<language>/scope.md)")
     args = parser.parse_args(argv)
+    if args.fetch:
+        # Opt-in network step before anything resolves paths, so a fresh
+        # snapshot is visible to the whole run. Failure aborts loudly.
+        cc_dir = (
+            Path(args.cc_cedict_dir) if args.cc_cedict_dir
+            else Path(CC_CEDICT_DIR_REL)
+        )
+        print("[fetch] start: checking MDBG snapshot", flush=True)
+        if fetch_main(["--cc-cedict-dir", str(cc_dir)]) != 0:
+            print("pipeline failed: [fetch] snapshot fetch failed")
+            return 1
     try:
         paths = resolve_paths(
             args.language, base=args.base, cc_cedict=args.cc_cedict,

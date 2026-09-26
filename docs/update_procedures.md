@@ -22,7 +22,9 @@
    base-scope divergences of the authoritative base.
 4. Run `python scripts/pipeline.py --language <code>` (the missing scope
    picks up exactly the entries the datasets still lack, retired pairs
-   included) and refresh the notes with
+   included; add `--fetch` to pull the current snapshot first, or
+   `--scope latest` to generate the newest snapshot's scope only) and
+   refresh the notes with
    `python scripts/scope_info.py --language <code>`; review the git diff,
    then commit data + manifest. The release publishes three assets —
    Human, SuperFull, LatestFull (see `docs/workflow.md`).

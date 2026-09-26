@@ -5,6 +5,7 @@ fail-fast stage attribution, and --skip-generate.
 """
 
 import json
+from pathlib import Path
 
 import pytest
 
@@ -105,6 +106,69 @@ def test_abbreviated_flags_are_rejected():
     with pytest.raises(SystemExit) as exc:
         cli_main(["--language", "fr", "--scope-ou", "x"])
     assert exc.value.code == 2
+
+
+def fetch_tree(tmp_path):
+    """Skeleton tree for CLI runs: fr language + one logged snapshot."""
+    import shutil
+
+    repo = Path(__file__).resolve().parent.parent
+    src_lang = repo / "dictionaries" / "fr"
+    dst_lang = tmp_path / "dictionaries" / "fr"
+    shutil.copytree(src_lang / "assets", dst_lang / "assets")
+    shutil.copy(src_lang / "dict.toml", dst_lang / "dict.toml")
+    (tmp_path / "dictionaries" / "fr" / "data").mkdir(parents=True)
+    (tmp_path / "dictionaries" / "fr" / "data" / "cfdict.u8").write_text(
+        "", encoding="utf-8"
+    )
+    (tmp_path / "dictionaries" / "fr" / "data" / "human.u8").write_text(
+        "", encoding="utf-8"
+    )
+    (tmp_path / "dictionaries" / "fr" / "data" / "llm_generated.json").write_text(
+        "{}", encoding="utf-8"
+    )
+    cc = tmp_path / "dictionaries" / "cc-cedict"
+    cc.mkdir(parents=True)
+    (cc / "2026-09-12.u8").write_text("N N [NG] /outtake/\n", encoding="utf-8")
+    (cc / "snapshots.toml").write_text(
+        "[[snapshot]]\n"
+        'date = "2026-09-12"\nfile = "2026-09-12.u8"\n'
+        'upstream_date = "2026-09-12T07:35:13Z"\nupstream_time = 1\n'
+        'upstream_sha256 = "aa"\ncontent_sha256 = "bb"\nentries = 1\npairs = 1\n',
+        encoding="utf-8",
+    )
+    (tmp_path / ".env").write_text(
+        "LLM_API_ENDPOINT=http://x:1/y\nLLM_MODEL_NAME=m\n", encoding="utf-8"
+    )
+    return cc
+
+
+def test_fetch_flag_runs_fetch_before_pipeline(tmp_path, monkeypatch, capsys):
+    import cxdict.cli.pipeline as pipe_mod
+    from cxdict.cli.pipeline import main as cli_main
+
+    fetch_tree(tmp_path)
+    monkeypatch.chdir(tmp_path)
+    calls = []
+    monkeypatch.setattr(
+        pipe_mod, "fetch_main", lambda argv: calls.append(argv) or 0
+    )
+    rc = cli_main(["--language", "fr", "--fetch", "--dry-run", "--skip-generate"])
+    assert rc == 0, capsys.readouterr().out
+    assert calls == [["--cc-cedict-dir", str(Path("dictionaries/cc-cedict"))]]
+    assert "[fetch] start" in capsys.readouterr().out
+
+
+def test_fetch_failure_aborts_before_pipeline(tmp_path, monkeypatch, capsys):
+    import cxdict.cli.pipeline as pipe_mod
+    from cxdict.cli.pipeline import main as cli_main
+
+    fetch_tree(tmp_path)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(pipe_mod, "fetch_main", lambda argv: 1)
+    rc = cli_main(["--language", "fr", "--fetch", "--dry-run", "--skip-generate"])
+    assert rc == 1
+    assert "[fetch]" in capsys.readouterr().out
 
 
 def snapshot_dir(tmp_path):
