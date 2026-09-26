@@ -10,7 +10,8 @@ date = "2026-09-12"
 file = "2026-09-12.u8"
 upstream_date = "2026-09-12T07:35:13Z"
 upstream_time = 1789198513
-sha256 = "96cdce44faf7266a5705531c858f0a46402acbbf3a18be5bd62a19e36cb368b9"
+upstream_sha256 = "b8c062da61ed1709c52a2a26370f18dfc0fcd4d4c487a9628fa73eb336e341e4"
+content_sha256 = "e8ea278d97e47df42c16911e0622ffaac8efcbe6bbc008cec791d333a0c44fb2"
 entries = 125047
 pairs = 122552
 
@@ -19,7 +20,9 @@ date = "2025-08-08"
 file = "2025-08-08.u8"
 upstream_date = "2025-08-08T05:26:26Z"
 upstream_time = 1754630786
-sha256 = "d58dd23ad4ee8d0a50c2522daa693f2e0c6041bc101ca7b84da493ba2daeaad5"
+# Base version predates fetch logging; the upstream .gz bytes are unavailable.
+upstream_sha256 = ""
+content_sha256 = "967dd609c6805f116d265281732916507a22f792c39d9d5a5d8fb03d00eff458"
 entries = 123596
 pairs = 121149
 

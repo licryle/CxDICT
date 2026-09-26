@@ -29,6 +29,7 @@ from ..scope_info import (
     render_scope_markdown,
     sha256_file,
 )
+from ..snapshots import version_for_snapshot_file
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -86,7 +87,7 @@ def main(argv: list[str] | None = None) -> int:
 
     models, prompts = collect_llm_provenance(llm_generated)
     sources = ReleaseSources(
-        cc_cedict_version=args.cc_cedict_version or sha256_file(paths.cc_cedict),
+        cc_cedict_version=args.cc_cedict_version or version_for_snapshot_file(paths.cc_cedict),
         cc_cedict_ids={e.lexical_id() for e in cc_entries},
         base_version=args.base_version or (sha256_file(paths.base) if paths.base else "n/a"),
         base_ids={e.lexical_id() for e in base_entries},

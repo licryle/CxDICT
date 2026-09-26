@@ -26,7 +26,7 @@ from ..generation.config import load_config
 from ..generation.llm import GenerationError
 from ..generation.orchestrator import generate_files
 from ..languages import resolve_paths
-from ..scope_info import sha256_file
+from ..snapshots import version_for_snapshot_file
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -73,7 +73,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"generate failed: {exc}", file=sys.stderr)
         return 1
     try:
-        cc_version = args.cc_version or sha256_file(paths.cc_cedict)
+        cc_version = args.cc_version or version_for_snapshot_file(paths.cc_cedict)
         report = generate_files(
             paths.base,
             paths.cc_cedict,

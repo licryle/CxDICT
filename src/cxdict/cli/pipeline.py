@@ -31,6 +31,7 @@ from ..scope_info import (
     render_scope_markdown,
     sha256_file,
 )
+from ..snapshots import version_for_snapshot_file
 from ..validation import ValidationReport, check_outputs, validate_inputs
 
 
@@ -98,7 +99,7 @@ def run_pipeline(
             print(text, flush=True)
 
     try:
-        cc_version = cc_version or sha256_file(cc_cedict_path)
+        cc_version = cc_version or version_for_snapshot_file(cc_cedict_path)
     except OSError as exc:
         raise PipelineError("setup", f"cannot hash CC-CEDICT: {exc}") from exc
 
