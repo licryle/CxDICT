@@ -88,6 +88,9 @@ def main(argv: list[str] | None = None) -> int:
             dry_run=args.dry_run,
             progress=not args.no_progress,
             language=args.language,
+            # An explicit file is the single-file escape hatch; otherwise
+            # scope and stamps come from the whole snapshot directory.
+            cc_cedict_dir=None if args.cc_cedict else paths.cc_cedict_dir,
         )
     except (ValueError, OSError, GenerationError) as exc:
         print(f"generate failed: {exc}", file=sys.stderr)

@@ -827,7 +827,7 @@ def test_entry_without_glosses_is_rejected():
 
 
 def provenance():
-    return Provenance(cc_cedict_version="mdbg-test", llm_model="test-model",
+    return Provenance(cc_cedict_version="cc-cedict:2026-09-12:abcdef123456", llm_model="test-model",
                         prompt_version="v6")
 
 
@@ -851,7 +851,7 @@ def test_build_records_groups_single_mapping():
     assert set(records) == {"中國|中国|Zhong1 guo2", "行|行|Xing2"}
     record = records["中國|中国|Zhong1 guo2"]
     assert [s["source_gloss"] for s in record["senses"]] == ["China", "Middle Kingdom"]
-    assert record["cc_cedict_version"] == "mdbg-test"
+    assert record["cc_cedict_version"] == "cc-cedict:2026-09-12:abcdef123456"
     assert record["llm_model"] == "test-model"
     assert record["prompt_version"] == "v6"
     assert record["generation_date"] == "2025-01-01T00:00:00+00:00"

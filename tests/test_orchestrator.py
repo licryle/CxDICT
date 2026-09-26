@@ -99,7 +99,7 @@ def test_generate_all_batches_and_groups():
     records, failed, _causes = generate_all(
         items,
         config(),
-        Provenance(cc_cedict_version="v", llm_model="m", prompt_version="v"),
+        Provenance(cc_cedict_version="cc-cedict:2026-09-12:abcdef123456", llm_model="m", prompt_version="v"),
         generation_date="T",
         language="fr",
         post=fake_post_factory(calls),
@@ -136,7 +136,7 @@ def test_generate_files_end_to_end(tmp_path):
     calls = []
     report = generate_files(
         base, cc, human_p, llm_p,
-        config(), "cc-v1", limit=0, post=fake_post_factory(calls),
+        config(), "cc-cedict:2026-09-12:abcdef123456", limit=0, post=fake_post_factory(calls),
         generation_date="T",
         language="fr",
     )
@@ -144,7 +144,7 @@ def test_generate_files_end_to_end(tmp_path):
     assert report.llm_new == 2
     llm_generated = json.loads(llm_p.read_text(encoding="utf-8"))
     assert set(llm_generated) == {"國|国|Guo2", "行|行|Xing2"}
-    assert llm_generated["國|国|Guo2"]["cc_cedict_version"] == "cc-v1"
+    assert llm_generated["國|国|Guo2"]["cc_cedict_version"] == "cc-cedict:2026-09-12:abcdef123456"
     assert llm_generated["國|国|Guo2"]["llm_model"] == "m"
 
 
@@ -153,13 +153,13 @@ def test_limit_truncates_and_resumes(tmp_path):
     calls = []
     post = fake_post_factory(calls)
     first = generate_files(
-        base, cc, human_p, llm_p, config(), "v", limit=1, post=post,
+        base, cc, human_p, llm_p, config(), "cc-cedict:2026-09-12:abcdef123456", limit=1, post=post,
         generation_date="T",
         language="fr",
     )
     assert first.plan.limited_to == 1 and first.llm_new == 1
     second = generate_files(
-        base, cc, human_p, llm_p, config(), "v", limit=0, post=post,
+        base, cc, human_p, llm_p, config(), "cc-cedict:2026-09-12:abcdef123456", limit=0, post=post,
         generation_date="T",
         language="fr",
     )
@@ -173,7 +173,7 @@ def test_dry_run_calls_no_batches_and_writes_nothing(tmp_path):
     before = (human_p.read_bytes(), llm_p.read_bytes())
     calls = []
     report = generate_files(
-        base, cc, human_p, llm_p, config(), "v", dry_run=True,
+        base, cc, human_p, llm_p, config(), "cc-cedict:2026-09-12:abcdef123456", dry_run=True,
         post=fake_post_factory(calls), language="fr",
     )
     assert calls == []
@@ -189,7 +189,7 @@ def test_total_failure_writes_nothing_and_raises(tmp_path):
 
     with pytest.raises(GenerationError, match="2 entries failed after retry") as exc_info:
         generate_files(
-            base, cc, human_p, llm_p, config(), "v", limit=0, post=bad_post,
+            base, cc, human_p, llm_p, config(), "cc-cedict:2026-09-12:abcdef123456", limit=0, post=bad_post,
             language="fr",
         )
     assert "Causes:" in str(exc_info.value) and "boom" in str(exc_info.value)
@@ -209,7 +209,7 @@ def test_poison_entry_isolated_rest_written_and_reported(tmp_path):
 
     with pytest.raises(GenerationError, match="國\\|国\\|Guo2"):
         generate_files(
-            base, cc, human_p, llm_p, config(), "v", limit=0,
+            base, cc, human_p, llm_p, config(), "cc-cedict:2026-09-12:abcdef123456", limit=0,
             post=flaky_post, generation_date="T", language="fr",
         )
     llm_generated = json.loads(llm_p.read_text(encoding="utf-8"))
@@ -217,7 +217,7 @@ def test_poison_entry_isolated_rest_written_and_reported(tmp_path):
     # Resume skips the written entry and fails again only on the poison one.
     with pytest.raises(GenerationError, match="國\\|国\\|Guo2"):
         generate_files(
-            base, cc, human_p, llm_p, config(), "v", limit=0,
+            base, cc, human_p, llm_p, config(), "cc-cedict:2026-09-12:abcdef123456", limit=0,
             post=flaky_post, generation_date="T", language="fr",
         )
     llm_generated = json.loads(llm_p.read_text(encoding="utf-8"))
@@ -237,7 +237,7 @@ def test_transient_failure_recovers_in_retry_pass(tmp_path):
         return good_post(*args)
 
     report = generate_files(
-        base, cc, human_p, llm_p, config(), "v", limit=0,
+        base, cc, human_p, llm_p, config(), "cc-cedict:2026-09-12:abcdef123456", limit=0,
         post=transient_post, generation_date="T", language="fr",
     )
     assert report.llm_new == 2
@@ -254,7 +254,7 @@ def test_progress_lines_report_counts_percent_and_elapsed():
     records, failed, _causes = generate_all(
         items,
         config(),
-        Provenance(cc_cedict_version="v", llm_model="m", prompt_version="v"),
+        Provenance(cc_cedict_version="cc-cedict:2026-09-12:abcdef123456", llm_model="m", prompt_version="v"),
         generation_date="T",
         language="fr",
         post=fake_post_factory([]),
@@ -287,7 +287,7 @@ def test_progress_colors_only_on_tty_without_no_color(monkeypatch):
         generate_all(
             compute_missing_items(CC, set(), set()),
             config(),
-            Provenance(cc_cedict_version="v", llm_model="m", prompt_version="v"),
+            Provenance(cc_cedict_version="cc-cedict:2026-09-12:abcdef123456", llm_model="m", prompt_version="v"),
             generation_date="T",
         language="fr",
             post=fake_post_factory([]),
@@ -318,7 +318,7 @@ def test_progress_marks_failed_batches_and_retries():
     records, failed, _causes = generate_all(
         compute_missing_items(CC, set(), set()),
         config(),
-        Provenance(cc_cedict_version="v", llm_model="m", prompt_version="v"),
+        Provenance(cc_cedict_version="cc-cedict:2026-09-12:abcdef123456", llm_model="m", prompt_version="v"),
         generation_date="T",
         language="fr",
         post=poison_post,
@@ -365,7 +365,7 @@ def test_retry_success_moves_entry_from_errors_to_done():
     records, failed, _causes = generate_all(
         items,
         config(),
-        Provenance(cc_cedict_version="v", llm_model="m", prompt_version="v"),
+        Provenance(cc_cedict_version="cc-cedict:2026-09-12:abcdef123456", llm_model="m", prompt_version="v"),
         generation_date="T",
         language="fr",
         post=batch_only_post,
@@ -405,7 +405,7 @@ def test_failed_lines_carry_truncated_single_line_cause():
     generate_all(
         compute_missing_items(CC, set(), set())[:1],
         config(),
-        Provenance(cc_cedict_version="v", llm_model="m", prompt_version="v"),
+        Provenance(cc_cedict_version="cc-cedict:2026-09-12:abcdef123456", llm_model="m", prompt_version="v"),
         generation_date="T",
         language="fr",
         post=bad_post,
@@ -450,7 +450,7 @@ def test_partial_batch_writes_good_and_defers_bad(tmp_path):
     stream = io.StringIO()
     with pytest.raises(GenerationError, match="國\\|国\\|Guo2"):
         generate_files(
-            base, cc, human_p, llm_p, config(), "v", limit=0,
+            base, cc, human_p, llm_p, config(), "cc-cedict:2026-09-12:abcdef123456", limit=0,
             post=partial_post, generation_date="T", language="fr", stream=stream,
         )
     llm_generated = json.loads(llm_p.read_text(encoding="utf-8"))
@@ -478,7 +478,7 @@ def test_no_progress_prints_nothing():
     generate_all(
         compute_missing_items(CC, set(), set()),
         config(),
-        Provenance(cc_cedict_version="v", llm_model="m", prompt_version="v"),
+        Provenance(cc_cedict_version="cc-cedict:2026-09-12:abcdef123456", llm_model="m", prompt_version="v"),
         generation_date="T",
         language="fr",
         post=fake_post_factory([]),
@@ -494,7 +494,7 @@ def test_on_batch_fires_per_successful_batch():
     records, failed, _causes = generate_all(
         items,
         config(),
-        Provenance(cc_cedict_version="v", llm_model="m", prompt_version="v"),
+        Provenance(cc_cedict_version="cc-cedict:2026-09-12:abcdef123456", llm_model="m", prompt_version="v"),
         generation_date="T",
         language="fr",
         post=fake_post_factory([]),
@@ -561,7 +561,7 @@ def test_prompt_version_comes_from_registry(tmp_path):
     base, cc, human_p, llm_p = dataset_files(tmp_path)
     calls = []
     report = generate_files(
-        base, cc, human_p, llm_p, config(), "v", limit=1,
+        base, cc, human_p, llm_p, config(), "cc-cedict:2026-09-12:abcdef123456", limit=1,
         post=fake_post_factory(calls), generation_date="T", language="fr",
     )
     assert report.llm_new == 1
@@ -576,7 +576,7 @@ def test_hsk3_generates_without_base(tmp_path):
     _base, cc, human_p, llm_p = dataset_files(tmp_path)
     calls = []
     report = generate_files(
-        None, cc, human_p, llm_p, config(), "v", limit=1,
+        None, cc, human_p, llm_p, config(), "cc-cedict:2026-09-12:abcdef123456", limit=1,
         post=fake_post_factory(calls), generation_date="T",
         language="zh-CN-HSK03",
     )
@@ -591,7 +591,81 @@ def test_hsk3_generates_without_base(tmp_path):
 def test_none_base_dry_run_plans_whole_scope(tmp_path):
     _base, cc, human_p, llm_p = dataset_files(tmp_path)
     report = generate_files(
-        None, cc, human_p, llm_p, config(), "v", dry_run=True,
+        None, cc, human_p, llm_p, config(), "cc-cedict:2026-09-12:abcdef123456", dry_run=True,
         language="zh-CN-HSK03",
     )
     assert report.plan.scoped == 3 and report.llm_new == 0
+
+
+def snapshot_dir(tmp_path):
+    """Two-snapshot log: newest drops the R pair (retired via older layer)."""
+    cc = tmp_path / "cc-cedict"
+    cc.mkdir()
+    (cc / "2026-09-12.u8").write_text(
+        "N N [NG] /outtake/\n", encoding="utf-8"
+    )
+    (cc / "2025-08-08.u8").write_text(
+        "N N [N G] /outtake/\nR R [P1] /gone/\n", encoding="utf-8"
+    )
+    (cc / "snapshots.toml").write_text(
+        "[[snapshot]]\n"
+        'date = "2026-09-12"\nfile = "2026-09-12.u8"\n'
+        'upstream_date = "2026-09-12T07:35:13Z"\nupstream_time = 1\n'
+        'upstream_sha256 = "aa"\ncontent_sha256 = "abcdef1234567890"\n'
+        "entries = 1\npairs = 1\n"
+        "[[snapshot]]\n"
+        'date = "2025-08-08"\nfile = "2025-08-08.u8"\n'
+        'upstream_date = "2025-08-08T05:26:26Z"\nupstream_time = 0\n'
+        'upstream_sha256 = "bb"\ncontent_sha256 = "1234567890abcdef"\n'
+        "entries = 2\npairs = 2\n",
+        encoding="utf-8",
+    )
+    return cc
+
+
+def test_generate_files_dir_mode_covers_superset_with_per_row_stamps(tmp_path):
+    cc = snapshot_dir(tmp_path)
+    human_p = write(tmp_path / "human.u8", "")
+    llm_p = write(tmp_path / "llm_generated.json", json.dumps({}))
+    calls = []
+    report = generate_files(
+        None, cc / "2026-09-12.u8", human_p, llm_p, config(), "ignored",
+        limit=0, post=fake_post_factory(calls), generation_date="T",
+        language="fr", cc_cedict_dir=cc,
+    )
+    # Superset scope: newest row plus the retired pair (re-keyed N excluded:
+    # same pair, newest row wins).
+    assert report.plan.scoped == 2
+    assert report.llm_new == 2
+    records = json.loads(llm_p.read_text(encoding="utf-8"))
+    assert set(records) == {"N|N|NG", "R|R|P1"}
+    assert records["N|N|NG"]["cc_cedict_version"] == "cc-cedict:2026-09-12:abcdef123456"
+    assert records["R|R|P1"]["cc_cedict_version"] == "cc-cedict:2025-08-08:1234567890ab"
+
+
+def test_generate_files_dir_mode_dry_run_plans_superset_scope(tmp_path):
+    cc = snapshot_dir(tmp_path)
+    human_p = write(tmp_path / "human.u8", "")
+    llm_p = write(tmp_path / "llm_generated.json", json.dumps({}))
+    report = generate_files(
+        None, cc / "2026-09-12.u8", human_p, llm_p, config(), "ignored",
+        dry_run=True, language="fr", cc_cedict_dir=cc,
+    )
+    assert report.plan.scoped == 2 and report.llm_new == 0
+
+
+def test_generate_all_per_key_versions_with_provenance_fallback():
+    items = compute_missing_items(CC, set(), set())
+    calls = []
+    records, failed, _causes = generate_all(
+        items,
+        config(),
+        Provenance(cc_cedict_version="cc-cedict:2025-08-08:1234567890ab", llm_model="m", prompt_version="v"),
+        generation_date="T",
+        language="fr",
+        post=fake_post_factory(calls),
+        cc_versions={"國|国|Guo2": "cc-cedict:2026-09-12:abcdef123456"},
+    )
+    assert failed == ()
+    assert records["國|国|Guo2"]["cc_cedict_version"] == "cc-cedict:2026-09-12:abcdef123456"
+    assert records["中|中|Zhong1"]["cc_cedict_version"] == "cc-cedict:2025-08-08:1234567890ab"

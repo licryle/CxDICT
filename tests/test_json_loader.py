@@ -19,7 +19,7 @@ def make_record(**overrides):
                 "definition": "nom historique de la Chine",
             },
         ],
-        "cc_cedict_version": "mdbg-2025-09-12",
+        "cc_cedict_version": "cc-cedict:2026-09-12:abcdef123456",
         "llm_model": "test-model-v1",
         "prompt_version": "p1",
         "generation_date": "2025-09-12T00:00:00Z",

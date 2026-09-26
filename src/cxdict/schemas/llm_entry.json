@@ -46,8 +46,8 @@
         },
         "cc_cedict_version": {
             "type": "string",
-            "minLength": 1,
-            "description": "Version of CC-CEDICT source used"
+            "pattern": "^cc-cedict:\\d{4}-\\d{2}-\\d{2}:[0-9a-f]{12}$",
+            "description": "Newest-holder snapshot of the superset row, as cc-cedict:YYYY-MM-DD:<12-hex-content-hash> (sole permitted shape)"
         },
         "llm_model": {
             "type": "string",

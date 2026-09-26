@@ -37,7 +37,7 @@ def _record(trad, simp, pinyin, glosses):
         "senses": [
             {"source_gloss": g, "definition": f"def-{g}"} for g in glosses
         ],
-        "cc_cedict_version": "v",
+        "cc_cedict_version": "cc-cedict:2026-09-12:abcdef123456",
         "llm_model": "m",
         "prompt_version": "p",
         "generation_date": "2025-01-01T00:00:00+00:00",

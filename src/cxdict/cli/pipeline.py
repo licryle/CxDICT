@@ -74,6 +74,7 @@ def run_pipeline(
     config: LLMConfig,
     language: str,
     cc_version: str | None = None,
+    cc_cedict_dir: str | Path | None = None,
     limit: int = 0,
     dry_run: bool = False,
     skip_generate: bool = False,
@@ -122,6 +123,7 @@ def run_pipeline(
                 post=post,
                 progress=False,
                 language=language,
+                cc_cedict_dir=cc_cedict_dir,
             )
         except (ValueError, OSError, GenerationError) as exc:
             raise PipelineError("generate", str(exc)) from exc
@@ -146,6 +148,7 @@ def run_pipeline(
                     post=post,
                     progress=progress,
                     language=language,
+                    cc_cedict_dir=cc_cedict_dir,
                 )
             except (ValueError, OSError, GenerationError) as exc:
                 raise PipelineError("generate", str(exc)) from exc
@@ -335,6 +338,7 @@ def main(argv: list[str] | None = None) -> int:
             config=config,
             language=args.language,
             cc_version=args.cc_version,
+            cc_cedict_dir=None if args.cc_cedict else paths.cc_cedict_dir,
             limit=args.limit,
             dry_run=args.dry_run,
             skip_generate=args.skip_generate,

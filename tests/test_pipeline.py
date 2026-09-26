@@ -76,7 +76,7 @@ def base_kwargs(tmp_paths, **overrides):
         "out_human_path": tmp_paths[0].parent / "c.u8",
         "out_full_path": tmp_paths[0].parent / "f.u8",
         "config": config(),
-        "cc_version": "cc-test",
+        "cc_version": "cc-cedict:2026-09-12:abcdef123456",
         "limit": 0,
         "post": fake_post,
         "generation_date": "T",
@@ -132,7 +132,7 @@ def test_validation_failure_stops_before_assembly(tmp_path):
         "美|美|Mei3": {
             "traditional": "美", "simplified": "美", "pinyin": "Mei3",
             "senses": [{"source_gloss": "pretty", "definition": "joli"}],
-            "cc_cedict_version": "v",
+            "cc_cedict_version": "cc-cedict:2026-09-12:abcdef123456",
             "llm_model": "m", "prompt_version": "p",
             "generation_date": "2025-01-01T00:00:00+00:00",
         }

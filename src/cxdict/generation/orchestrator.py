@@ -34,6 +34,8 @@ from ..cleanup import base_identities
 from ..languages import get_language
 from ..parser.json import load_llm_json
 from ..parser.u8 import DictionaryEntry, parse_u8_file
+from ..snapshots import load_manifest, snapshot_version
+from ..superset import build_superset, load_layers
 from .config import LLMConfig
 from .llm import (
     GenerationError,
@@ -92,7 +94,11 @@ def compute_missing_items(
     base_ids: set[str],
     existing_ids: set[str],
 ) -> list[GenerationItem]:
-    """Build one generation item per missing-scope entry, in CC-CEDICT order."""
+    """Build one generation item per missing-scope entry, in scope order.
+
+    Scope order is the input order: newest-snapshot rows first, then
+    retired pairs (superset), or single-file order.
+    """
     items: list[GenerationItem] = []
     seen: set[str] = set()
     for entry in cc_entries:
@@ -132,6 +138,7 @@ def generate_all(
     stream: Any | None = None,
     *,
     language: str,
+    cc_versions: dict[str, str] | None = None,
 ) -> tuple[dict[str, dict[str, Any]], tuple[str, ...], dict[str, str]]:
     """Generate all items in batches; return (records, failed, causes).
 
@@ -140,6 +147,10 @@ def generate_all(
 
     Every successful batch is converted to records and reported through
     `on_batch` immediately, so callers can persist progress as they go.
+    `cc_versions` optionally maps record keys to their own
+    cc_cedict_version stamp (superset rows carry their newest-holder
+    snapshot's version); without it every record shares the provenance
+    version.
     A failed batch is deferred to a retry pass that runs each of its items
     alone (batch size 1): batch-mates of a poison entry still succeed, and
     only persistently failing keys land in `failed_keys`. Both transport
@@ -188,7 +199,9 @@ def generate_all(
 
     def _absorb(results: list[GenerationResult]) -> None:
         nonlocal done
-        new_records = build_records(results, provenance, generation_date)
+        new_records = build_records(
+            results, provenance, generation_date, cc_version_for=cc_versions
+        )
         records.update(new_records)
         done += len(new_records)
         if on_batch is not None:
@@ -259,20 +272,39 @@ def generate_files(
     stream: Any | None = None,
     *,
     language: str,
+    cc_cedict_dir: str | Path | None = None,
 ) -> GenerationReport:
     """Run generation against on-disk datasets; rewrite them unless dry_run.
 
     `language` is required (no default): it selects the prompt template and
     the prompt version stamped on new records. `base_path` may be None for
     languages without an authoritative base (no base identities then).
+    With `cc_cedict_dir`, the missing scope is the pair-level superset over
+    every logged snapshot (newest rows win) and each record is stamped with
+    its row's newest-holder snapshot version; otherwise scope and stamp
+    come from the single `cc_cedict_path` file plus `cc_cedict_version`.
     """
     base_ids = base_identities(base_path)
-    cc_entries, errors = parse_u8_file(cc_cedict_path)
-    if errors:
-        preview = "; ".join(f"line {n}: {msg}" for n, msg in errors[:5])
-        raise ValueError(
-            f"CC-CEDICT has {len(errors)} malformed line(s): {preview}"
-        )
+    if cc_cedict_dir is not None:
+        layers = load_layers(cc_cedict_dir)
+        superset = build_superset(layers)
+        cc_entries = superset.entries
+        date_versions = {
+            snapshot.date: snapshot_version(snapshot)
+            for snapshot in load_manifest(Path(cc_cedict_dir))
+        }
+        cc_versions: dict[str, str] | None = {
+            key: date_versions.get(date, cc_cedict_version)
+            for key, date in superset.holder.items()
+        }
+    else:
+        cc_entries, errors = parse_u8_file(cc_cedict_path)
+        if errors:
+            preview = "; ".join(f"line {n}: {msg}" for n, msg in errors[:5])
+            raise ValueError(
+                f"CC-CEDICT has {len(errors)} malformed line(s): {preview}"
+            )
+        cc_versions = None
     human_entries, human_errors = parse_u8_file(human_path)
     if human_errors:
         preview = "; ".join(f"line {n}: {msg}" for n, msg in human_errors[:5])
@@ -310,7 +342,7 @@ def generate_files(
     new_records, failed_keys, causes = generate_all(
         limited, config, provenance, generation_date, post,
         on_batch=_persist, progress=progress, stream=stream,
-        language=language,
+        language=language, cc_versions=cc_versions,
     )
     if failed_keys:
         shown = "; ".join(f"{key}: {causes[key]}" for key in failed_keys[:3])

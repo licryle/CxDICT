@@ -32,11 +32,15 @@ def build_records(
     results: list[GenerationResult],
     provenance: Provenance,
     generation_date: str | None = None,
+    cc_version_for: dict[str, str] | None = None,
 ) -> dict[str, dict[str, Any]]:
     """Group per-entry results into an identity -> record mapping.
 
     `generation_date` defaults to the current UTC time in ISO 8601; pass an
-    explicit value for deterministic output (tests).
+    explicit value for deterministic output (tests). `cc_version_for` maps
+    record keys to their own cc_cedict_version stamp (superset rows carry
+    their newest-holder snapshot's version); unmapped keys fall back to
+    the shared provenance version.
     """
     if generation_date is None:
         generation_date = datetime.now(timezone.utc).isoformat()
@@ -46,12 +50,17 @@ def build_records(
             {"source_gloss": s.gloss, "definition": s.definition}
             for s in result.senses
         ]
+        version = (
+            cc_version_for.get(result.key, provenance.cc_cedict_version)
+            if cc_version_for is not None
+            else provenance.cc_cedict_version
+        )
         records[result.key] = {
             "traditional": result.traditional,
             "simplified": result.simplified,
             "pinyin": result.pinyin,
             "senses": senses,
-            "cc_cedict_version": provenance.cc_cedict_version,
+            "cc_cedict_version": version,
             "llm_model": provenance.llm_model,
             "prompt_version": provenance.prompt_version,
             "generation_date": generation_date,

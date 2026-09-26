@@ -26,7 +26,7 @@ def record(trad, simp, pin, glosses=("d",)):
     return {
         "traditional": trad, "simplified": simp, "pinyin": pin,
         "senses": [{"source_gloss": g, "definition": "x"} for g in glosses],
-        "cc_cedict_version": "v", "llm_model": "m",
+        "cc_cedict_version": "cc-cedict:2026-09-12:abcdef123456", "llm_model": "m",
         "prompt_version": "p", "generation_date": "2026-01-01T00:00:00+00:00",
     }
 

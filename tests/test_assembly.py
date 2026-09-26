@@ -46,7 +46,7 @@ def llm_record_for(key, senses=(("China", "Chine"),)):
         "senses": [
             {"source_gloss": g, "definition": d} for g, d in senses
         ],
-        "cc_cedict_version": "v",
+        "cc_cedict_version": "cc-cedict:2026-09-12:abcdef123456",
         "llm_model": "m",
         "prompt_version": "p",
         "generation_date": "2025-01-01T00:00:00+00:00",

@@ -34,7 +34,7 @@ Every record MUST carry all of these fields:
 | `simplified`        | Simplified Chinese form                              |
 | `pinyin`            | Pinyin with tone numbers                             |
 | `senses`            | List of `{source_gloss, definition}` — one sense per CEDICT gloss (see gloss parity below) |
-| `cc_cedict_version` | CC-CEDICT snapshot the gloss came from (e.g. SHA-256 + date in `data/README.md`) |
+| `cc_cedict_version` | Newest-holder snapshot of the superset row, as `cc-cedict:YYYY-MM-DD:<12-hex-content-hash>` (sole permitted shape, enforced by schema) |
 | `llm_model`         | LLM model **and version** used                       |
 | `prompt_version`    | Prompt template version used                         |
 | `generation_date`   | ISO 8601 timestamp of generation                     |
