@@ -105,6 +105,21 @@ def _in_cell(in_count: int, ref_total: int) -> str:
     return f"{in_count} (n/a)"
 
 
+def _out_cell(in_count: int, ref_total: int, missing_scope_total: int) -> str:
+    """Format an output-row 'In CC-CEDICT' cell.
+
+    An output can never honestly claim 100.0% while scope remains
+    missing (out-of-scope extras can round it up there), so in that
+    case the display is downgraded to 99.9+%.
+    """
+    if ref_total > 0:
+        pct = f"{in_count / ref_total * 100:.1f}"
+        if missing_scope_total > 0 and pct == "100.0":
+            pct = "99.9+"
+        return f"{in_count} ({pct}%)"
+    return f"{in_count} (n/a)"
+
+
 def render_scope_markdown(
     info: dict[str, Any], base_label: str, release_name: str | None = None
 ) -> str:
@@ -121,9 +136,16 @@ def render_scope_markdown(
     provenance = info["provenance"]
     name = release_name or base_label
     ref_total = coverage["cc_cedict_total"]
+    missing = coverage["missing_scope_total"]
 
     def _row(label: str, total: int, in_cc: int) -> str:
         return f"| {label} | {total} | {_in_cell(in_cc, ref_total)} | {total - in_cc} |"
+
+    def _out_row(label: str, total: int, in_cc: int) -> str:
+        return (
+            f"| {label} | {total} | "
+            f"{_out_cell(in_cc, ref_total, missing)} | {total - in_cc} |"
+        )
 
     lines = [
         "## Coverage",
@@ -146,19 +168,19 @@ def render_scope_markdown(
             coverage["llm_generated_total"],
             coverage["llm_covers_cc_cedict"],
         ),
-        "",
-        f"- Missing scope (still to generate): {coverage['missing_scope_total']}",
+        f"| Missing scope (still to generate) | {missing} | "
+        f"{_in_cell(missing, ref_total)} | N/A |",
         "",
         "## Outputs",
         "",
         "| Output | Total | In CC-CEDICT (% of Ref) | Out of CC-CEDICT |",
         "| --- | --- | --- | --- |",
-        _row(
+        _out_row(
             f"CxDICT-{name}-Human",
             coverage["human_dictionary_total"],
             coverage["human_dictionary_covers_cc_cedict"],
         ),
-        _row(
+        _out_row(
             f"CxDICT-{name}-Full",
             coverage["full_dictionary_total"],
             coverage["full_dictionary_covers_cc_cedict"],

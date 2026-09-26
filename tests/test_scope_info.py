@@ -57,14 +57,48 @@ def test_markdown_contains_figures_and_versions():
         "| CFDICT (authoritative) | 1 | 1 (25.0%) | 0 |",
         "| Human (curated) | 1 | 1 (25.0%) | 0 |",
         "| LLM generated | 1 | 1 (25.0%) | 0 |",
+        "| Missing scope (still to generate) | 1 | 1 (25.0%) | N/A |",
         "| Output | Total | In CC-CEDICT (% of Ref) | Out of CC-CEDICT |",
         "| CxDICT-French-Human | 2 | 2 (50.0%) | 0 |",
         "| CxDICT-French-Full | 3 | 3 (75.0%) | 0 |",
-        "Missing scope (still to generate): 1",
         "LLM models: m1",
         "Prompt versions: p1",
     ):
         assert needle in markdown, needle
+
+
+def test_output_percentage_capped_while_scope_missing():
+    cc = {f"id-{i}" for i in range(2000)}
+    info = build_scope_info(
+        sources(
+            cc_cedict_ids=cc,
+            base_ids={f"id-{i}" for i in range(1998)},
+            human_ids=set(),
+            llm_generated_ids={"id-1998"},
+        ),
+        generated_at="T",
+    )
+    assert info["coverage"]["missing_scope_total"] == 1  # id-1999 only
+    markdown = render_scope_markdown(info, "CFDICT", "French")
+    # 1999/2000 rounds to 100.0% but scope remains: downgraded to 99.9+%.
+    assert "| CxDICT-French-Full | 1999 | 1999 (99.9+%) | 0 |" in markdown
+    # 1998/2000 is genuinely 99.9%: untouched.
+    assert "| CxDICT-French-Human | 1998 | 1998 (99.9%) | 0 |" in markdown
+
+
+def test_output_percentage_full_100_when_nothing_missing():
+    info = build_scope_info(
+        sources(
+            cc_cedict_ids={"A", "B"},
+            base_ids={"A"},
+            human_ids={"B"},
+            llm_generated_ids=set(),
+        ),
+        generated_at="T",
+    )
+    assert info["coverage"]["missing_scope_total"] == 0
+    markdown = render_scope_markdown(info, "CFDICT", "French")
+    assert "| CxDICT-French-Full | 2 | 2 (100.0%) | 0 |" in markdown
 
 
 def test_markdown_uses_base_label():
