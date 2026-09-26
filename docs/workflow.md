@@ -16,15 +16,17 @@ touches release-relevant inputs, and on manual dispatch:
 2. **Detect** (`changes` job) — map changed files to languages: a path
    under `dictionaries/<code>/` selects that language when the directory
    owns a `dict.toml`; any other path under `dictionaries/` (today: the
-   shared `dictionaries/cc-cedict/` snapshot) selects every language, so
+   shared `dictionaries/cc-cedict/` snapshot log) selects every language, so
    scope updates can never merge silently. Paths outside `dictionaries/`
    (engine, tooling) cut no release — they still run the test suite;
    re-release via the button. Manual dispatch with `language: all` (the
    default) selects everything discovered under `dictionaries/`.
 3. **Release matrix** (one job per detected language) — validate inputs
    (all §14 relationships gated before anything is produced; a failure
-   names the violated check), assemble both dictionaries (gitignored
-   build artifacts, never committed), validate outputs, render scope
+   names the violated check; `--scope latest` mismatches only warn),
+   assemble the Human dictionary plus both Full scopes (gitignored
+   build artifacts, never committed), validate each output against
+   scope-matched expectations, render scope
    notes (§12, §16), publish. Languages release independently
    (`fail-fast: false`).
 
@@ -32,14 +34,15 @@ touches release-relevant inputs, and on manual dispatch:
 
 One release object per language: tag `latest-<code>` (e.g. `latest-fr`),
 titled `CxDICT <Name> (latest YYYYMMDD)`, holding the stably-named
-assets `CxDICT-<Name>-Human.u8` and `CxDICT-<Name>-Full.u8` (`<Name>` is
+assets `CxDICT-<Name>-Human.u8`, `CxDICT-<Name>-SuperFull.u8` and
+`CxDICT-<Name>-LatestFull.u8` (`<Name>` is
 the language's `release_name` from `dict.toml`) with the scope notes as
 body. Every run refreshes it in place (`upload --clobber` + notes
 update), so these download URLs never move, Docker-`:latest`-style:
 
 ```
-gh release download latest-fr --pattern '*-Full.u8'
-https://github.com/<owner>/<repo>/releases/download/latest-fr/CxDICT-French-Full.u8
+gh release download latest-fr --pattern '*-SuperFull.u8'
+https://github.com/<owner>/<repo>/releases/download/latest-fr/CxDICT-French-SuperFull.u8
 ```
 
 (GitHub's own "Latest" badge is repo-wide and cannot mark one release
@@ -60,8 +63,9 @@ Overlaps (a higher-priority entry lingering in a lower-priority dataset)
 **fail** the workflow instead of being auto-fixed. Run
 `scripts/cleanup.py --language fr` locally, review the diff, and commit
 it — dataset deletions deserve a human-readable commit, not a silent
-workflow push. The validation output tells you exactly which identities
-overlap.
+workflow push. The same holds for `scripts/scope_sync.py --apply`
+(rule-3 pruning after a snapshot update): review the dry-run queue
+first, then commit the prune on its own. The validation output tells you exactly which identities overlap.
 
 ## Languages
 

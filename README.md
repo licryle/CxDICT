@@ -23,12 +23,17 @@ releases, created or refreshed on every release run — see `docs/workflow.md`.)
 Each language gets its own [releases](https://github.com/licryle/CFDICT-Next/releases),
 rebuilt only when its inputs change. Each language owns exactly one
 release object (`latest-<code>`, e.g. `latest-fr`), refreshed every run,
-publishing two dictionaries:
+publishing three dictionaries:
 
 | file | contains |
 |---|---|
-| `CxDICT-<Language>-Human.u8` | base + human-curated additions (conservative choice) |
-| `CxDICT-<Language>-Full.u8` | everything above + LLM-generated coverage (maximum coverage) |
+| `CxDICT-<Language>-Human.u8` | base + human-curated additions (conservative choice, scope-free) |
+| `CxDICT-<Language>-SuperFull.u8` | everything above + every LLM-generated record (maximum coverage, retired words included) |
+| `CxDICT-<Language>-LatestFull.u8` | everything above, but only LLM records valid against the newest upstream snapshot (tracks upstream) |
+
+Scope is the pair-level superset over all logged CC-CEDICT snapshots
+(newest rows win), so updates never silently drop words; the release
+notes detail every snapshot's contribution (see `docs/workflow.md`).
 
 The release commit is additionally tagged `CxDICT-<Language>-<YYYYMMDD>`
 per day as a source marker — two tags, one release (see `docs/workflow.md`).
@@ -120,7 +125,8 @@ LLM generation is configured through a gitignored `.env`
 builds or tests.
 
 Pipeline order — generate → cleanup → validate → assemble → validate →
-scope. One command runs it locally (`scripts/pipeline.py --language fr --dry-run`
+scope (snapshot updates arrive via `scripts/fetch_cc_cedict.py`, LLM
+pruning via `scripts/scope_sync.py` — see `docs/update_procedures.md`). One command runs it locally (`scripts/pipeline.py --language fr --dry-run`
 plans without calling any model; `--limit N` caps bulk runs, `--limit 0`
 unlocks full scope; `--skip-generate` re-runs downstream stages only).
 `--language` is always required (no default): `fr` for the French

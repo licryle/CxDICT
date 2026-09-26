@@ -5,19 +5,27 @@
 1. Run `python scripts/fetch_cc_cedict.py [--dry-run]` — downloads the
    current MDBG snapshot (URL in `dictionaries/README.md`) and, when its
    content changed, stores it decompressed as
-   `dictionaries/cc-cedict/YYYY-MM-DD.u8`, logs it in `snapshots.toml`,
-   and prints a pair-level change summary (new / retired / changed pairs).
+   `dictionaries/cc-cedict/YYYY-MM-DD.u8` and logs it in `snapshots.toml`.
    The pipeline itself never touches the network; it only reads committed
    files. No README edit is needed for the snapshot itself — the manifest
    is the log.
-2. Run `python scripts/validate.py --language fr` (and
-   `--language zh-CN-HSK03`) — records whose pinyin or gloss set no longer
-   matches fail the coverage checks; regenerate or correct the affected
-   records (rule-3 pruning of the LLM datasets lands with scope_sync).
-3. Run `python scripts/pipeline.py --language <code>` (the missing scope
-   picks up exactly the entries the datasets still lack) and refresh the
-   notes with `python scripts/scope_info.py --language <code>`; review the
-   git diff, then commit data + manifest.
+2. Run `python scripts/scope_sync.py` (dry run) and review the prune
+   queue: LLM records whose pinyin or gloss set no longer matches the
+   superset's canonical rows, plus HUMAN warnings (warn-only, never
+   deleted). Nothing to prune is the common case — the superset keeps
+   retired content valid. If pruning is needed, run with `--apply`
+   (`--force` is required past 3% of a file) and commit the prune on its
+   own so the deletion is reviewable.
+3. Run `python scripts/validate.py --language <code>` — superset scope,
+   fail loudly. `... --scope latest` is advisory (warnings only) and
+   shows what the newest snapshot alone would flag, including
+   base-scope divergences of the authoritative base.
+4. Run `python scripts/pipeline.py --language <code>` (the missing scope
+   picks up exactly the entries the datasets still lack, retired pairs
+   included) and refresh the notes with
+   `python scripts/scope_info.py --language <code>`; review the git diff,
+   then commit data + manifest. The release publishes three assets —
+   Human, SuperFull, LatestFull (see `docs/workflow.md`).
 
 ## CFDICT fork (`dictionaries/fr/data/cfdict.u8`)
 
@@ -46,7 +54,7 @@
 ## Release cycle and versioning
 
 Push to `main` → CI tests, validates, assembles, and publishes a
-timestamp-tagged release with both dictionaries + scope notes. Source
+timestamp-tagged release with all three dictionaries + scope notes. Source
 versions are content hashes (see `scope_info.py`), so any release is
 reproducible from its recorded inputs plus the tagged tooling. The Nix
 flake pins the toolchain; no system Python is ever involved.

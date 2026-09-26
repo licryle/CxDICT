@@ -18,14 +18,27 @@ cfdict.u8
 Whenever CFDICT contains an entry, that entry takes precedence over any corresponding LLM-generated entry.
 3. CC-CEDICT
 CC-CEDICT provides the Chinese lexical scope for the project.
-The assembly/generation process will consult or update against CC-CEDICT.
-Each release must be associated with the specific CC-CEDICT version/source used for that release so that its scope can be identified.
+Upstream snapshots are stored decompressed as `dictionaries/cc-cedict/YYYY-MM-DD.u8`
+(dated by the upstream `#! date` header), logged newest-first in
+`dictionaries/cc-cedict/snapshots.toml` (date, file, upstream and content
+SHA-256, entries, pairs). The fetch script downloads and logs new
+snapshots; the pipeline only ever reads committed files.
+The effective scope is the pair-level SUPERSET over all logged snapshots,
+newest wins: every row of the newest snapshot is kept, and each older
+snapshot contributes only (traditional, simplified) pairs absent from all
+newer ones. A pair present in the newest snapshot keeps exactly the newest
+rows — including when upstream drops a secondary reading of it.
+The assembly/generation process consults the superset (and the newest
+snapshot alone for the latest-scoped views, see §10–§12).
+Each release is associated with the exact snapshot log used, so its scope
+can be identified; the CC-CEDICT Reference section of the release notes
+lists every snapshot's contribution (spec §12).
 The relevant missing generation scope is:
-CC-CEDICT
+superscope(CC-CEDICT)
     − CFDICT
     − human.u8
     − llm_generated.json
-In other words, the LLM process should only generate material that is not already represented by authoritative CFDICT, human curation, or existing LLM output.
+In other words, the LLM process should only generate material that is not already represented by authoritative CFDICT, human curation, or existing LLM output — including retired words no longer present upstream.
 4. Human curation and LLM output
 Human-curated French material lives in data/human.u8 (raw .u8 format,
 free-form French, no gloss-count check). LLM-generated French material
@@ -82,7 +95,10 @@ Chinese simplified form;
 Pinyin;
 source CEDICT gloss;
 generated French definition;
-source CC-CEDICT version;
+source CC-CEDICT version (the newest-holder snapshot of the superset row,
+as `cc-cedict:YYYY-MM-DD:<12-hex-content-hash>` — the sole permitted shape,
+enforced by the record schema; pre-scheme stamps resolve through the
+`legacy_shas` map in `snapshots.toml`);
 LLM model/version;
 prompt version;
 generation information/date.
@@ -111,40 +127,65 @@ human.u8
     >
 llm_generated.json
 Higher-priority sources always win over lower-priority content.
-The assembly produces two output dictionaries.
+The assembly produces three output dictionaries.
 10.1 Human dictionary
 Contains:
 CFDICT
 +
 human.u8
 No llm_generated.json content is included.
-This is the conservative assembled dictionary.
-10.2 Full dictionary
-Contains:
+This is the conservative assembled dictionary. Base and human rows are
+never scope-filtered, so the Human dictionary is identical in every
+scope view and ships once.
+10.2 Full dictionaries
+SuperFull contains:
 CFDICT
 +
 human.u8
 +
 llm_generated.json
-This contains the complete coverage, including LLM-generated entries.
+This contains the complete coverage, including LLM-generated entries for
+retired words.
+LatestFull contains:
+CFDICT
++
+human.u8
++
+the LLM records valid against the newest snapshot alone (same full
+identity, same gloss set)
+This tracks upstream: anything retired or rewritten upstream is absent
+here while remaining in SuperFull.
 Both outputs are .u8 dictionaries.
 11. Output dictionaries
-Each release therefore contains two assembled dictionary outputs:
+Each release therefore contains three assembled dictionary outputs:
 CFDICT + human
 and:
-CFDICT + human + LLM
+CFDICT + human + LLM (superscope)
+and:
+CFDICT + human + LLM (newest snapshot only)
 The distinction allows consumers to choose between:
 a dictionary containing only authoritative CFDICT plus human-curated additions;
-a dictionary containing the complete coverage, including LLM-generated entries.
+a dictionary containing the complete coverage, including LLM-generated entries for retired words;
+a dictionary tracking the newest upstream snapshot exactly.
 12. Scope information
 Each release includes scope information.
-The scope information describes the source and resulting coverage, including the relevant CC-CEDICT scope and the contributions from:
+The scope information opens with the three scopes (SuperFull, LatestFull,
+Human), then describes the source and resulting coverage over the
+superset scope, including the relevant CC-CEDICT scope and the contributions from:
 authoritative CFDICT;
 human curation;
 LLM data;
 the resulting human dictionary;
-the resulting full dictionary.
-Scope information must correspond to the exact source versions used for the release, particularly the CC-CEDICT version.
+the resulting full dictionaries.
+A CC-CEDICT Reference section lists the total record count plus each
+snapshot's contributed rows, newest-first (rows sum to the total):
+Total CEDICT records: 125047
+CEDICT 2026-09-12: 123055
+CEDICT 2025-08-08: 1992
+Coverage is additionally shown against the newest snapshot alone
+(Super-CEDICT and Latest-CEDICT columns side by side), including the
+exact LatestFull output row.
+Scope information must correspond to the exact source versions used for the release, particularly the CC-CEDICT snapshot log.
 Scope information is included with the GitHub release.
 No separate scope.json release artifact is required.
 13. GitHub workflow
@@ -161,7 +202,8 @@ Reads human.u8.
 Reads llm_generated.json.
 Applies the precedence rules.
 Produces the human .u8 dictionary.
-Produces the full .u8 dictionary.
+Produces the superset full .u8 dictionary.
+Produces the latest-scoped full .u8 dictionary.
 Produces the corresponding scope information.
 Publishes a new GitHub release.
 The generated .u8 files are release outputs rather than manually maintained source files.
@@ -169,13 +211,21 @@ The generated .u8 files are release outputs rather than manually maintained sour
 The tooling should validate the source data and assembled results rather than silently producing an invalid release.
 Validation should cover the data relationships established by the project:
 valid .u8 input;
-valid JSON input;
+valid JSON input (LLM records conform to the single normative shape,
+including the `cc-cedict:YYYY-MM-DD:<12-hex>` version stamp);
 consistent dictionary entry identity;
 no inappropriate overlap between CFDICT, human.u8 and llm_generated.json;
+CC-CEDICT scope checks against the pair-level superset by default
+(gloss coverage for LLM records, hanzi/pinyin agreement for human
+entries — rule-3 invalidity fails);
+newest-scope checks available on request, demoted to advisory warnings
+that never fail the run (including base-scope divergences of the
+authoritative CFDICT, which always ships and therefore can only warn);
 human hanzi/pinyin agreement with CC-CEDICT (no gloss check for human);
 LLM gloss coverage against CC-CEDICT;
-consistent scope information;
-consistent assembled output.
+consistent scope information (reference rows sum to the scope total);
+consistent assembled output (each scope view against scope-matched
+expectations).
 The assembly should fail when source data violates the expected relationships rather than silently overriding or discarding data.
 15. Entry identity
 The project needs a deterministic way to identify the same lexical entry across CC-CEDICT, CFDICT, human.u8, and llm_generated.json.
@@ -190,7 +240,10 @@ Individual CEDICT glosses/senses are additionally tracked during LLM generation 
 16. Reproducibility
 Each release must be traceable to the source data used to produce it.
 The release should identify the relevant versions/revisions of:
-CC-CEDICT;
+CC-CEDICT (the snapshot log in `dictionaries/cc-cedict/snapshots.toml`;
+a snapshot's version is `cc-cedict:YYYY-MM-DD:<12-hex-content-hash>`,
+stable across storage formats; pre-scheme record stamps resolve through
+the log's `legacy_shas` map);
 CFDICT;
 CFDICT-LLM data;
 the LLM model/version used to generate the LLM data;
@@ -223,7 +276,7 @@ language: pushes touching a language's inputs rebuild only it (any other
 path under `data/`/`assets/` rebuilds all; tooling-only pushes cut no
 release). Each language owns exactly one release, tag `latest-<code>`
 (e.g. `latest-fr`), refreshed in place every run with stably-named
-assets `CxDICT-<Name>-{Human,Full}.u8` (`<Name>` from `release_name`) —
+assets `CxDICT-<Name>-{Human,SuperFull,LatestFull}.u8` (`<Name>` from `release_name`) —
 our own per-language `:latest`. The release commit is additionally
 tagged with an immutable `CxDICT-<Name>-YYYYMMDD` daily marker; no other
 release objects are created. Manual dispatch rebuilds all
