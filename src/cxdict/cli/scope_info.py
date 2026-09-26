@@ -23,19 +23,17 @@ from ..languages import get_language, resolve_paths
 from ..parser.json import load_llm_json
 from ..parser.u8 import parse_u8_file
 from ..scope_info import (
-    ReleaseSources,
+    build_release_sources,
     build_scope_info,
-    collect_llm_provenance,
     render_scope_markdown,
     sha256_file,
 )
 from ..snapshots import load_manifest, snapshot_version, version_for_snapshot_file
 from ..superset import attribute_contribution, build_superset, load_layers
-from ..scope import latest_valid_llm_ids
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(description=__doc__, allow_abbrev=False)
     parser.add_argument("--language", required=True,
                         help="target dictionary language code (see dictionaries/)")
     parser.add_argument("--base", default=None,
@@ -109,27 +107,32 @@ def main(argv: list[str] | None = None) -> int:
         print(f"scope info failed: {exc}", file=sys.stderr)
         return 1
 
-    latest_glosses: dict[str, set[str]] = {}
-    for entry in latest_entries:
-        latest_glosses.setdefault(entry.lexical_id(), set()).update(entry.definitions)
-    models, prompts = collect_llm_provenance(llm_generated)
-    sources = ReleaseSources(
-        cc_cedict_version=args.cc_cedict_version or latest_version,
-        cc_cedict_ids={e.lexical_id() for e in cc_entries},
-        base_version=args.base_version or (sha256_file(paths.base) if paths.base else "n/a"),
-        base_ids={e.lexical_id() for e in base_entries},
-        human_version=args.human_version or sha256_file(paths.human),
-        human_ids={e.lexical_id() for e in human_entries},
-        llm_generated_version=args.llm_generated_version
-        or sha256_file(paths.llm_generated),
-        llm_generated_ids=set(llm_generated),
-        llm_models=models,
-        prompt_versions=prompts,
-        latest_cc_cedict_version=latest_version,
-        latest_cc_cedict_ids={e.lexical_id() for e in latest_entries},
-        latest_llm_ids=latest_valid_llm_ids(llm_generated, latest_glosses),
-        reference=tuple(reference),
-    )
+    try:
+        base_version = args.base_version or (
+            sha256_file(paths.base) if paths.base else "n/a"
+        )
+        human_version = args.human_version or sha256_file(paths.human)
+        llm_generated_version = (
+            args.llm_generated_version or sha256_file(paths.llm_generated)
+        )
+        sources = build_release_sources(
+            cc_entries,
+            latest_entries,
+            base_entries,
+            human_entries,
+            llm_generated,
+            versions={
+                "cc": args.cc_cedict_version or latest_version,
+                "latest": latest_version,
+                "base": base_version,
+                "human": human_version,
+                "llm": llm_generated_version,
+            },
+            reference=reference,
+        )
+    except (ValueError, OSError) as exc:
+        print(f"scope info failed: {exc}", file=sys.stderr)
+        return 1
     markdown = render_scope_markdown(
         build_scope_info(sources), base_label, release_name
     )

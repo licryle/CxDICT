@@ -30,7 +30,7 @@ from ..snapshots import version_for_snapshot_file
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(description=__doc__, allow_abbrev=False)
     parser.add_argument("--env", default=".env")
     parser.add_argument("--language", required=True,
                         help="target dictionary language code (see dictionaries/)")
@@ -45,6 +45,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--llm-generated", default=None,
                         help="LLM dataset file (default: dictionaries/<language>/data/llm_generated.json)")
     parser.add_argument("--cc-version", default=None)
+    parser.add_argument("--scope", default="superscope",
+                        choices=("superscope", "latest"),
+                        help="generate superset scope or newest snapshot alone")
     parser.add_argument("--batch-size", type=int, default=None)
     parser.add_argument("--limit", type=int, default=20)
     parser.add_argument("--dry-run", action="store_true")
@@ -91,6 +94,7 @@ def main(argv: list[str] | None = None) -> int:
             # An explicit file is the single-file escape hatch; otherwise
             # scope and stamps come from the whole snapshot directory.
             cc_cedict_dir=None if args.cc_cedict else paths.cc_cedict_dir,
+            scope=args.scope,
         )
     except (ValueError, OSError, GenerationError) as exc:
         print(f"generate failed: {exc}", file=sys.stderr)

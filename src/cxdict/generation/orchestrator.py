@@ -273,6 +273,7 @@ def generate_files(
     *,
     language: str,
     cc_cedict_dir: str | Path | None = None,
+    scope: str = "superscope",
 ) -> GenerationReport:
     """Run generation against on-disk datasets; rewrite them unless dry_run.
 
@@ -281,21 +282,31 @@ def generate_files(
     languages without an authoritative base (no base identities then).
     With `cc_cedict_dir`, the missing scope is the pair-level superset over
     every logged snapshot (newest rows win) and each record is stamped with
-    its row's newest-holder snapshot version; otherwise scope and stamp
-    come from the single `cc_cedict_path` file plus `cc_cedict_version`.
+    its row's newest-holder snapshot version; `scope="latest"` restricts
+    generation to the newest snapshot alone (all records stamped with its
+    version). Otherwise scope and stamp come from the single
+    `cc_cedict_path` file plus `cc_cedict_version`.
     """
+    if scope not in ("superscope", "latest"):
+        raise ValueError(f"unknown scope {scope!r} (want 'superscope' or 'latest')")
     base_ids = base_identities(base_path)
     if cc_cedict_dir is not None:
         layers = load_layers(cc_cedict_dir)
-        superset = build_superset(layers)
-        cc_entries = superset.entries
+        if scope == "latest":
+            date, layer_entries = layers[0]
+            cc_entries = layer_entries
+            holder = {e.lexical_id(): date for e in layer_entries}
+        else:
+            superset = build_superset(layers)
+            cc_entries = superset.entries
+            holder = superset.holder
         date_versions = {
             snapshot.date: snapshot_version(snapshot)
             for snapshot in load_manifest(Path(cc_cedict_dir))
         }
         cc_versions: dict[str, str] | None = {
             key: date_versions.get(date, cc_cedict_version)
-            for key, date in superset.holder.items()
+            for key, date in holder.items()
         }
     else:
         cc_entries, errors = parse_u8_file(cc_cedict_path)

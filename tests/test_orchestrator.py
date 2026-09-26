@@ -654,6 +654,34 @@ def test_generate_files_dir_mode_dry_run_plans_superset_scope(tmp_path):
     assert report.plan.scoped == 2 and report.llm_new == 0
 
 
+def test_generate_files_latest_scope_covers_newest_only(tmp_path):
+    cc = snapshot_dir(tmp_path)
+    human_p = write(tmp_path / "human.u8", "")
+    llm_p = write(tmp_path / "llm_generated.json", json.dumps({}))
+    calls = []
+    report = generate_files(
+        None, cc / "2026-09-12.u8", human_p, llm_p, config(), "ignored",
+        limit=0, post=fake_post_factory(calls), generation_date="T",
+        language="fr", cc_cedict_dir=cc, scope="latest",
+    )
+    assert report.plan.scoped == 1  # only N; R lives in the older layer
+    assert report.llm_new == 1
+    records = json.loads(llm_p.read_text(encoding="utf-8"))
+    assert set(records) == {"N|N|NG"}
+    assert records["N|N|NG"]["cc_cedict_version"] == "cc-cedict:2026-09-12:abcdef123456"
+
+
+def test_generate_files_rejects_bad_scope(tmp_path):
+    cc = snapshot_dir(tmp_path)
+    human_p = write(tmp_path / "human.u8", "")
+    llm_p = write(tmp_path / "llm_generated.json", json.dumps({}))
+    with pytest.raises(ValueError):
+        generate_files(
+            None, cc / "2026-09-12.u8", human_p, llm_p, config(), "ignored",
+            language="fr", cc_cedict_dir=cc, scope="nonsense",
+        )
+
+
 def test_generate_all_per_key_versions_with_provenance_fallback():
     items = compute_missing_items(CC, set(), set())
     calls = []

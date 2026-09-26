@@ -186,7 +186,7 @@ def apply_plan(plan: FetchPlan, cc_dir: str | Path, raw: bytes) -> Snapshot:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(description=__doc__, allow_abbrev=False)
     parser.add_argument("--cc-cedict-dir", default="dictionaries/cc-cedict")
     parser.add_argument("--url", default=MDBG_URL)
     parser.add_argument("--source", default=None,

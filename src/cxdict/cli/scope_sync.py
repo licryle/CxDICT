@@ -60,7 +60,7 @@ def print_report(report: LanguageSyncReport) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(description=__doc__, allow_abbrev=False)
     parser.add_argument("--language", default=None,
                         help="single language code (default: all discovered)")
     parser.add_argument("--cc-cedict-dir", default=None,

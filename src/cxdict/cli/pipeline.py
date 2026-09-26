@@ -24,14 +24,16 @@ from ..generation.llm import GenerationError
 from ..generation.orchestrator import generate_files
 from ..generation.llm import post_chat_completions
 from ..languages import get_language, resolve_paths
+from ..parser.u8 import parse_u8_file
+from ..scope import latest_valid_llm_ids
 from ..scope_info import (
-    ReleaseSources,
+    build_release_sources,
     build_scope_info,
-    collect_llm_provenance,
     render_scope_markdown,
     sha256_file,
 )
-from ..snapshots import version_for_snapshot_file
+from ..snapshots import load_manifest, snapshot_version, version_for_snapshot_file
+from ..superset import attribute_contribution, build_superset, load_layers
 from ..validation import ValidationReport, check_outputs, validate_inputs
 
 
@@ -75,6 +77,7 @@ def run_pipeline(
     language: str,
     cc_version: str | None = None,
     cc_cedict_dir: str | Path | None = None,
+    scope: str = "superscope",
     limit: int = 0,
     dry_run: bool = False,
     skip_generate: bool = False,
@@ -99,6 +102,8 @@ def run_pipeline(
         if progress:
             print(text, flush=True)
 
+    if scope not in ("superscope", "latest"):
+        raise PipelineError("setup", f"unknown scope {scope!r}")
     try:
         cc_version = cc_version or version_for_snapshot_file(cc_cedict_path)
     except OSError as exc:
@@ -124,6 +129,7 @@ def run_pipeline(
                 progress=False,
                 language=language,
                 cc_cedict_dir=cc_cedict_dir,
+                scope=scope,
             )
         except (ValueError, OSError, GenerationError) as exc:
             raise PipelineError("generate", str(exc)) from exc
@@ -149,6 +155,7 @@ def run_pipeline(
                     progress=progress,
                     language=language,
                     cc_cedict_dir=cc_cedict_dir,
+                    scope=scope,
                 )
             except (ValueError, OSError, GenerationError) as exc:
                 raise PipelineError("generate", str(exc)) from exc
@@ -158,7 +165,7 @@ def run_pipeline(
         # Read-only assessment of the current datasets; nothing downstream.
         report, _ = validate_inputs(
             base_path, cc_cedict_path, human_path, llm_generated_path,
-            cc_cedict_dir=cc_cedict_dir,
+            cc_cedict_dir=cc_cedict_dir, scope=scope,
         )
         return PipelineReport(
             dry_run=True,
@@ -188,7 +195,7 @@ def run_pipeline(
     _announce("[validate-inputs] start")
     report, data = validate_inputs(
         base_path, cc_cedict_path, human_path, llm_generated_path,
-        cc_cedict_dir=cc_cedict_dir,
+        cc_cedict_dir=cc_cedict_dir, scope=scope,
     )
     if data is None or not report.passed:
         raise PipelineError("validate-inputs", _failures(report))
@@ -207,6 +214,8 @@ def run_pipeline(
             out_human_path,
             out_full_path,
             language,
+            scope=scope,
+            latest_cc_path=cc_cedict_path,
         )
     except (ValueError, OSError) as exc:
         raise PipelineError("assemble", str(exc)) from exc
@@ -214,12 +223,15 @@ def run_pipeline(
 
     _announce("[validate-outputs] start")
     out_report = ValidationReport()
+    llm_ids = set(data["llm_generated"])
+    if scope == "latest":
+        llm_ids = latest_valid_llm_ids(data["llm_generated"], data["cc_glosses"])
     check_outputs(
         out_human_path,
         out_full_path,
         data["base_ids"],
         data["human_ids"],
-        set(data["llm_generated"]),
+        llm_ids,
         out_report,
     )
     if not out_report.passed:
@@ -227,25 +239,58 @@ def run_pipeline(
     _announce("[validate-outputs] done: outputs consistent")
 
     _announce("[scope] start")
-    models, prompts = collect_llm_provenance(data["llm_generated"])
     try:
         base_version = sha256_file(base_path) if base_path is not None else "n/a"
         human_version = sha256_file(human_path)
         llm_generated_version = sha256_file(llm_generated_path)
-    except OSError as exc:
-        raise PipelineError("scope", f"cannot hash sources: {exc}") from exc
-    sources = ReleaseSources(
-        cc_cedict_version=cc_version,
-        cc_cedict_ids=set(data["cc_glosses"]),
-        base_version=base_version,
-        base_ids=data["base_ids"],
-        human_version=human_version,
-        human_ids=data["human_ids"],
-        llm_generated_version=llm_generated_version,
-        llm_generated_ids=set(data["llm_generated"]),
-        llm_models=models,
-        prompt_versions=prompts,
-    )
+        if cc_cedict_dir is not None:
+            layers = load_layers(cc_cedict_dir)
+            superset = build_superset(layers)
+            cc_entries = superset.entries
+            latest_entries = layers[0][1]
+            snapshots = {s.date: s for s in load_manifest(cc_cedict_dir)}
+            latest_version = snapshot_version(snapshots[layers[0][0]])
+            contribution = attribute_contribution(superset)
+            reference = [(d, contribution[d]["rows"]) for d in contribution]
+        else:
+            cc_entries, errors = parse_u8_file(cc_cedict_path)
+            if errors:
+                preview = "; ".join(f"line {n}: {msg}" for n, msg in errors[:5])
+                raise ValueError(
+                    f"CC-CEDICT has {len(errors)} malformed line(s): {preview}"
+                )
+            latest_entries = cc_entries
+            latest_version = cc_version
+            reference = [(cc_version, len(cc_entries))]
+        base_entries, errors = (
+            parse_u8_file(base_path) if base_path is not None else ([], [])
+        )
+        if errors:
+            preview = "; ".join(f"line {n}: {msg}" for n, msg in errors[:5])
+            raise ValueError(f"base dictionary has {len(errors)} malformed line(s): {preview}")
+        human_entries, human_errors = parse_u8_file(human_path)
+        if human_errors:
+            preview = "; ".join(f"line {n}: {msg}" for n, msg in human_errors[:5])
+            raise ValueError(
+                f"human.u8 has {len(human_errors)} malformed line(s): {preview}"
+            )
+        sources = build_release_sources(
+            cc_entries,
+            latest_entries,
+            base_entries,
+            human_entries,
+            data["llm_generated"],
+            versions={
+                "cc": cc_version,
+                "latest": latest_version,
+                "base": base_version,
+                "human": human_version,
+                "llm": llm_generated_version,
+            },
+            reference=reference,
+        )
+    except (ValueError, OSError) as exc:
+        raise PipelineError("scope", f"{exc}") from exc
     markdown = render_scope_markdown(
         build_scope_info(sources), base_label, release_name
     )
@@ -277,7 +322,7 @@ def main(argv: list[str] | None = None) -> int:
 
     from ..generation.config import load_config
 
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(description=__doc__, allow_abbrev=False)
     parser.add_argument("--env", default=".env")
     parser.add_argument("--language", required=True,
                         help="target dictionary language code (see dictionaries/)")
@@ -296,6 +341,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--out-full", default=None,
                         help="full dictionary output (default: output/<language>/…)")
     parser.add_argument("--cc-version", default=None)
+    parser.add_argument("--scope", default="superscope",
+                        choices=("superscope", "latest"),
+                        help="generate superset scope or newest snapshot alone")
     parser.add_argument("--batch-size", type=int, default=None)
     parser.add_argument("--limit", type=int, default=0)
     parser.add_argument("--dry-run", action="store_true")
@@ -341,6 +389,7 @@ def main(argv: list[str] | None = None) -> int:
             language=args.language,
             cc_version=args.cc_version,
             cc_cedict_dir=None if args.cc_cedict else paths.cc_cedict_dir,
+            scope=args.scope,
             limit=args.limit,
             dry_run=args.dry_run,
             skip_generate=args.skip_generate,

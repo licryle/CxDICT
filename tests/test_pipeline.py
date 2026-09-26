@@ -95,6 +95,78 @@ def test_cli_requires_language():
     assert cli_main(["--language", "xx-unknown", "--dry-run"]) == 1
 
 
+def test_abbreviated_flags_are_rejected():
+    # Regression: `--scope latest` once prefix-matched `--scope-out` and
+    # silently ran the wrong run. Prefixes must now fail loudly.
+    import pytest
+
+    from cxdict.cli.pipeline import main as cli_main
+
+    with pytest.raises(SystemExit) as exc:
+        cli_main(["--language", "fr", "--scope-ou", "x"])
+    assert exc.value.code == 2
+
+
+def snapshot_dir(tmp_path):
+    """Two-snapshot log: newest holds N + W, older adds retired R."""
+    cc = tmp_path / "cc-cedict"
+    cc.mkdir()
+    (cc / "2026-09-12.u8").write_text(
+        "N N [NG] /outtake/\nW W [P9] /shiny/\n", encoding="utf-8"
+    )
+    (cc / "2025-08-08.u8").write_text(
+        "N N [N G] /outtake/\nR R [P1] /gone/\n", encoding="utf-8"
+    )
+    (cc / "snapshots.toml").write_text(
+        "[[snapshot]]\n"
+        'date = "2026-09-12"\nfile = "2026-09-12.u8"\n'
+        'upstream_date = "2026-09-12T07:35:13Z"\nupstream_time = 1\n'
+        'upstream_sha256 = "aa"\ncontent_sha256 = "abcdef1234567890"\n'
+        "entries = 2\npairs = 2\n"
+        "[[snapshot]]\n"
+        'date = "2025-08-08"\nfile = "2025-08-08.u8"\n'
+        'upstream_date = "2025-08-08T05:26:26Z"\nupstream_time = 0\n'
+        'upstream_sha256 = "bb"\ncontent_sha256 = "1234567890abcdef"\n'
+        "entries = 2\npairs = 2\n",
+        encoding="utf-8",
+    )
+    return cc
+
+
+def test_pipeline_latest_scope_generates_newest_only(tmp_path):
+    cc = snapshot_dir(tmp_path)
+    human_p = write(tmp_path / "human.u8", "")
+    llm_p = write(tmp_path / "llm_generated.json", json.dumps({}))
+    report = run_pipeline(
+        base_path=None,
+        cc_cedict_path=cc / "2026-09-12.u8",
+        human_path=human_p,
+        llm_generated_path=llm_p,
+        out_human_path=tmp_path / "c.u8",
+        out_full_path=tmp_path / "f.u8",
+        config=config(),
+        language="fr",
+        cc_version="cc-cedict:2026-09-12:abcdef123456",
+        cc_cedict_dir=cc,
+        scope="latest",
+        limit=0,
+        post=fake_post,
+        generation_date="T",
+    )
+    assert report.llm_new == 2  # N + W only; retired R is out of scope
+    records = json.loads(llm_p.read_text(encoding="utf-8"))
+    assert set(records) == {"N|N|NG", "W|W|P9"}
+    assert all(
+        r["cc_cedict_version"] == "cc-cedict:2026-09-12:abcdef123456"
+        for r in records.values()
+    )
+    assert report.full_n == 2
+    assert "Total CEDICT records: 3" in report.scope_markdown
+    assert "CEDICT 2026-09-12: 2" in report.scope_markdown
+    assert "CEDICT 2025-08-08: 1" in report.scope_markdown
+    assert "CxDICT-French-LatestFull" in report.scope_markdown
+
+
 def test_full_run_end_to_end(tmp_path):
     paths = fixture(tmp_path)
     out_scope = tmp_path / "scope.md"
@@ -106,7 +178,7 @@ def test_full_run_end_to_end(tmp_path):
     assert report.human_n == 1 and report.full_n == 3
     assert (tmp_path / "c.u8").exists() and (tmp_path / "f.u8").exists()
     text = out_scope.read_text(encoding="utf-8")
-    assert "| CxDICT-French-Human | 1 | 1 (33.3%) | 0 |" in text
+    assert "| CxDICT-French-Human | 1 | 1 (33.3%) | 1 (33.3%) | 0 | 0 |" in text
     llm_generated = json.loads((tmp_path / "llm_generated.json").read_text(encoding="utf-8"))
     assert set(llm_generated) == {"美|美|Mei3", "行|行|Xing2"}
 

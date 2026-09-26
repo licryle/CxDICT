@@ -27,7 +27,7 @@ from ..validation import check_outputs, validate_inputs
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(description=__doc__, allow_abbrev=False)
     parser.add_argument("--language", required=True,
                         help="target dictionary language code (see dictionaries/)")
     parser.add_argument("--base", default=None,

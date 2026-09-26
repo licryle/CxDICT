@@ -21,7 +21,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from .scope import compute_scope_statistics
+from .scope import compute_scope_statistics, latest_valid_llm_ids
 
 
 @dataclass(frozen=True)
@@ -64,6 +64,46 @@ def collect_llm_provenance(
     models = sorted({r.get("llm_model", "") for r in records.values()} - {""})
     prompts = sorted({r.get("prompt_version", "") for r in records.values()} - {""})
     return tuple(models), tuple(prompts)
+
+
+def build_release_sources(
+    cc_entries: list[Any],
+    latest_entries: list[Any],
+    base_entries: list[Any],
+    human_entries: list[Any],
+    llm_generated: dict[str, dict[str, Any]],
+    versions: dict[str, str],
+    reference: list[tuple[str, int]],
+) -> ReleaseSources:
+    """Assemble release provenance from parsed inputs (single construction).
+
+    Shared by the scope-info CLI and the pipeline's scope stage so local
+    notes can never differ from released ones. `versions` carries the
+    display labels keyed "cc", "latest", "base", "human", "llm";
+    `reference` holds (label, rows) newest-first. Latest-valid LLM
+    identities (the exact LatestFull record set) derive here from the
+    newest rows.
+    """
+    latest_glosses: dict[str, set[str]] = {}
+    for entry in latest_entries:
+        latest_glosses.setdefault(entry.lexical_id(), set()).update(entry.definitions)
+    models, prompts = collect_llm_provenance(llm_generated)
+    return ReleaseSources(
+        cc_cedict_version=versions["cc"],
+        cc_cedict_ids={e.lexical_id() for e in cc_entries},
+        base_version=versions["base"],
+        base_ids={e.lexical_id() for e in base_entries},
+        human_version=versions["human"],
+        human_ids={e.lexical_id() for e in human_entries},
+        llm_generated_version=versions["llm"],
+        llm_generated_ids=set(llm_generated),
+        llm_models=models,
+        prompt_versions=prompts,
+        latest_cc_cedict_version=versions["latest"],
+        latest_cc_cedict_ids={e.lexical_id() for e in latest_entries},
+        latest_llm_ids=latest_valid_llm_ids(llm_generated, latest_glosses),
+        reference=tuple(reference),
+    )
 
 
 def build_scope_info(
