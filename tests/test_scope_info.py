@@ -173,7 +173,7 @@ def test_cli_on_real_data(tmp_path):
             "--base", "dictionaries/fr/data/cfdict.u8",
             "--human", str(tmp_path / "human.u8"),
             "--llm-generated", str(tmp_path / "llm.json"),
-            "--cc-cedict", "dictionaries/cc-cedict/cedict_1_0_ts_utf-8_mdbg.txt.gz",
+            "--cc-cedict", "dictionaries/cc-cedict/2026-09-12.u8",
             "--out", str(out),
         ]
     )

@@ -19,7 +19,7 @@ from pathlib import Path
 
 # CC-CEDICT is the shared Chinese lexical scope for every language —
 # a dict.toml-less directory under ``dictionaries/``.
-CC_CEDICT_REL = Path("dictionaries/cc-cedict/cedict_1_0_ts_utf-8_mdbg.txt.gz")
+CC_CEDICT_REL = Path("dictionaries/cc-cedict/2026-09-12.u8")
 
 #: Language units directory (CWD-relative).
 DICTIONARIES_DIR = Path("dictionaries")

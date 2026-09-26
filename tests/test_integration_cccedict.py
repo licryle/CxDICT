@@ -9,18 +9,18 @@ import pytest
 
 from cxdict.parser.u8 import parse_u8_file
 
-CEDICT_GZ = (
+CEDICT_SNAPSHOT = (
     Path(__file__).resolve().parent.parent
-    / "dictionaries" / "cc-cedict" / "cedict_1_0_ts_utf-8_mdbg.txt.gz"
+    / "dictionaries" / "cc-cedict" / "2026-09-12.u8"
 )
 
 pytestmark = pytest.mark.skipif(
-    not CEDICT_GZ.exists(), reason="CC-CEDICT snapshot not downloaded"
+    not CEDICT_SNAPSHOT.exists(), reason="CC-CEDICT snapshot not downloaded"
 )
 
 
 def test_full_cc_cedict_snapshot_parses_cleanly():
-    entries, errors = parse_u8_file(CEDICT_GZ)
+    entries, errors = parse_u8_file(CEDICT_SNAPSHOT)
     assert errors == [], f"malformed lines: {errors[:5]}"
     # Snapshot known to contain ~125k entries; guard against regressions.
     assert len(entries) >= 120_000

@@ -249,7 +249,6 @@ def test_none_base_passes_with_empty_identities(tmp_path):
 
 def _write_repo_layout(root):
     """Minimal dictionaries/<lang>/ layout plus shared CC-CEDICT."""
-    import gzip
     import shutil
 
     for code in ("fr", "zh-CN-HSK03"):
@@ -276,8 +275,8 @@ def _write_repo_layout(root):
     )
     cc_dir = root / "dictionaries" / "cc-cedict"
     cc_dir.mkdir(parents=True)
-    cc_dir.joinpath("cedict_1_0_ts_utf-8_mdbg.txt.gz").write_bytes(
-        gzip.compress(CC_SAMPLE.encode("utf-8"))
+    cc_dir.joinpath("2026-09-12.u8").write_text(
+        CC_SAMPLE, encoding="utf-8"
     )
 
 

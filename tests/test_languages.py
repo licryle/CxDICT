@@ -101,7 +101,7 @@ def test_resolve_paths_uses_data_lang_layout():
     assert paths.human == Path("dictionaries/fr/data/human.u8")
     assert paths.llm_generated == Path("dictionaries/fr/data/llm_generated.json")
     assert paths.cc_cedict == Path(
-        "dictionaries/cc-cedict/cedict_1_0_ts_utf-8_mdbg.txt.gz"
+        "dictionaries/cc-cedict/2026-09-12.u8"
     )
     assert paths.out_human == Path("output/fr/cfdict-next-human.u8")
     assert paths.out_full == Path("output/fr/cfdict-next-full.u8")
@@ -120,7 +120,7 @@ def test_resolve_paths_hsk3_layout():
     assert paths.out_full == Path("output/zh-CN-HSK03/hsk3-next-full.u8")
     # CC-CEDICT scope is shared across languages, not per-lang.
     assert paths.cc_cedict == Path(
-        "dictionaries/cc-cedict/cedict_1_0_ts_utf-8_mdbg.txt.gz"
+        "dictionaries/cc-cedict/2026-09-12.u8"
     )
 
 

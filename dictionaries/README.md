@@ -7,14 +7,22 @@ be traceable to exact source versions).
 
 ## CC-CEDICT (lexical scope)
 
-- File: `cc-cedict/cedict_1_0_ts_utf-8_mdbg.txt.gz` (stored verbatim as published)
+- Snapshots: `cc-cedict/YYYY-MM-DD.u8`, one file per upstream snapshot,
+  dated by the upstream `#! date` header (not the download date); full log
+  (date, file, SHA-256, entries, pairs) in `cc-cedict/snapshots.toml`.
 - Source URL: https://www.mdbg.net/chinese/export/cedict/cedict_1_0_ts_utf-8_mdbg.txt.gz
-- Downloaded (UTC): 2025-09-12
-- SHA-256: `b8c062da61ed1709c52a2a26370f18dfc0fcd4d4c487a9628fa73eb336e341e4`
-- Size: 125,076 lines (uncompressed)
+- Current snapshots:
+  - `2026-09-12.u8` — upstream 2026-09-12T07:35:13Z, SHA-256
+    `96cdce44faf7266a5705531c858f0a46402acbbf3a18be5bd62a19e36cb368b9`,
+    125,047 entries (decompressed verbatim from the published `.gz`, whose
+    SHA-256 was `b8c062da61ed1709c52a2a26370f18dfc0fcd4d4c487a9628fa73eb336e341e4`;
+    see `legacy_shas` in `snapshots.toml`).
+  - `2025-08-08.u8` (base version) — upstream 2025-08-08T05:26:26Z, SHA-256
+    `d58dd23ad4ee8d0a50c2522daa693f2e0c6041bc101ca7b84da493ba2daeaad5`,
+    123,596 entries.
 - Format: CEDICT — `traditional simplified [pinyin] /gloss1/gloss2/.../`,
   `#` lines are metadata/comments.
-- Quirk: this snapshot uses CRLF (`\r\n`) line endings on every line;
+- Quirk: upstream snapshots use CRLF (`\r\n`) line endings on every line;
   parsers must normalize before matching (verified: all 125,046 entry
   lines are canonical after stripping `\r`).
 - Note: MDBG serves a daily snapshot without an explicit version identifier;

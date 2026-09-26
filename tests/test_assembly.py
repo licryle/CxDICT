@@ -27,8 +27,8 @@ from cxdict.parser.u8 import DictionaryEntry, iter_u8_lines, parse_u8_line, pars
 
 REPO = Path(__file__).resolve().parent.parent
 BASE = REPO / "dictionaries" / "fr" / "data" / "cfdict.u8"
-CEDICT_GZ = (
-    REPO / "dictionaries" / "cc-cedict" / "cedict_1_0_ts_utf-8_mdbg.txt.gz"
+CEDICT_SNAPSHOT = (
+    REPO / "dictionaries" / "cc-cedict" / "2026-09-12.u8"
 )
 
 
@@ -132,7 +132,7 @@ def test_real_files_round_trip_without_loss():
     #     (the writer loses no information), and
     #  2. format(parse(line)) is byte-exact for every clean line —
     #     including the U+3000 headword the writer must restore.
-    for path in (BASE, CEDICT_GZ):
+    for path in (BASE, CEDICT_SNAPSHOT):
         seen: set[str] = set()
         dup_ids: set[str] = set()
         checked = exact = quirks = 0

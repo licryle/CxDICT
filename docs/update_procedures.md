@@ -2,9 +2,11 @@
 
 ## CC-CEDICT snapshot
 
-1. Download the current snapshot to
-   `dictionaries/cc-cedict/cedict_1_0_ts_utf-8_mdbg.txt.gz` (same URL as
-   recorded in `dictionaries/README.md`).
+1. Download the current snapshot from the URL recorded in
+   `dictionaries/README.md` and store it decompressed as
+   `dictionaries/cc-cedict/YYYY-MM-DD.u8` (dated by the upstream `#! date`
+   header, not the download date); log it in
+   `dictionaries/cc-cedict/snapshots.toml`.
 2. Record the download date and new SHA-256 in `dictionaries/README.md`.
 3. Run `python scripts/validate.py --language fr` (and
    `--language zh-CN-HSK03`) — gloss changes surface as coverage
