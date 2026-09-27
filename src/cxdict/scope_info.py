@@ -38,6 +38,39 @@ def scope_base_version(entries: list[Any]) -> str:
     return "scope:" + canonical_hash_of_rows(rows)[:12]
 
 
+def render_release_notes(
+    cc_entries: list[Any],
+    latest_entries: list[Any],
+    base_entries: list[Any],
+    human_entries: list[Any],
+    llm_generated: dict[str, dict[str, Any]],
+    versions: dict[str, str],
+    reference: list[tuple[str, int]],
+    base_label: str,
+    release_name: str | None,
+    generation_enabled: bool = True,
+    latest_base_ids: set[str] | None = None,
+) -> str:
+    """Render release notes from parsed inputs (single construction).
+
+    Shared by the scope-info CLI and the pipeline's scope stage so local
+    notes can never differ from released ones. `versions` carries display
+    labels keyed "cc", "latest", "base", "human", "llm".
+    """
+    sources = build_release_sources(
+        cc_entries,
+        latest_entries,
+        base_entries,
+        human_entries,
+        llm_generated,
+        versions=versions,
+        reference=reference,
+        generation_enabled=generation_enabled,
+        latest_base_ids=latest_base_ids,
+    )
+    return render_scope_markdown(build_scope_info(sources), base_label, release_name)
+
+
 @dataclass(frozen=True)
 class ReleaseSources:
     """Everything a release is traceable to."""

@@ -29,9 +29,7 @@ from ..parser.u8 import parse_u8_file
 from ..parser.u8 import parse_u8_file
 from ..scope import latest_valid_llm_ids
 from ..scope_info import (
-    build_release_sources,
-    build_scope_info,
-    render_scope_markdown,
+    render_release_notes,
     scope_base_version,
     sha256_file,
 )
@@ -309,7 +307,7 @@ def run_pipeline(
             raise ValueError(
                 f"human.u8 has {len(human_errors)} malformed line(s): {preview}"
             )
-        sources = build_release_sources(
+        markdown = render_release_notes(
             cc_entries,
             latest_entries,
             base_entries,
@@ -323,6 +321,8 @@ def run_pipeline(
                 "llm": llm_generated_version,
             },
             reference=reference,
+            base_label=base_label,
+            release_name=release_name,
             generation_enabled=cfg.generate,
             latest_base_ids=(
                 {e.lexical_id() for e in latest_entries}
@@ -332,9 +332,6 @@ def run_pipeline(
         )
     except (ValueError, OSError) as exc:
         raise PipelineError("scope", f"{exc}") from exc
-    markdown = render_scope_markdown(
-        build_scope_info(sources), base_label, release_name
-    )
     if scope_out is not None:
         try:
             Path(scope_out).write_text(markdown, encoding="utf-8")

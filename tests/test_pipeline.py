@@ -309,6 +309,30 @@ def test_full_run_end_to_end(tmp_path):
     assert set(llm_generated) == {"美|美|Mei3", "行|行|Xing2"}
 
 
+def test_pipeline_notes_match_cli_notes_byte_identical(tmp_path):
+    from cxdict.cli.scope_info import main as scope_main
+
+    paths = fixture(tmp_path)
+    base, cc, human_p, llm_p = paths
+    version = "cc-cedict:2026-09-12:abcdef123456"
+    cli_out = tmp_path / "cli.md"
+    assert scope_main([
+        "--language", "fr",
+        "--base", str(base),
+        "--cc-cedict", str(cc),
+        "--cc-cedict-version", version,
+        "--human", str(human_p),
+        "--llm-generated", str(llm_p),
+        "--out", str(cli_out),
+    ]) == 0
+    report = run_pipeline(**base_kwargs(
+        paths, scope_out=tmp_path / "pipe.md", skip_generate=True,
+        cc_version=version,
+    ))
+    assert (tmp_path / "pipe.md").read_bytes() == cli_out.read_bytes()
+    assert report.scope_markdown == cli_out.read_text(encoding="utf-8")
+
+
 def test_dry_run_calls_nothing_and_writes_nothing(tmp_path):
     paths = fixture(tmp_path)
     before = (

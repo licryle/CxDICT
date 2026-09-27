@@ -23,9 +23,7 @@ from ..languages import get_language, resolve_paths
 from ..parser.json import load_llm_json
 from ..parser.u8 import parse_u8_file
 from ..scope_info import (
-    build_release_sources,
-    build_scope_info,
-    render_scope_markdown,
+    render_release_notes,
     scope_base_version,
     sha256_file,
 )
@@ -118,7 +116,7 @@ def main(argv: list[str] | None = None) -> int:
         llm_generated_version = (
             args.llm_generated_version or sha256_file(paths.llm_generated)
         )
-        sources = build_release_sources(
+        markdown = render_release_notes(
             cc_entries,
             latest_entries,
             base_entries,
@@ -132,6 +130,8 @@ def main(argv: list[str] | None = None) -> int:
                 "llm": llm_generated_version,
             },
             reference=reference,
+            base_label=base_label,
+            release_name=release_name,
             generation_enabled=cfg.generate,
             latest_base_ids=(
                 {e.lexical_id() for e in latest_entries}
@@ -142,9 +142,6 @@ def main(argv: list[str] | None = None) -> int:
     except (ValueError, OSError) as exc:
         print(f"scope info failed: {exc}", file=sys.stderr)
         return 1
-    markdown = render_scope_markdown(
-        build_scope_info(sources), base_label, release_name
-    )
     if args.out:
         Path(args.out).write_text(markdown, encoding="utf-8")
     else:
