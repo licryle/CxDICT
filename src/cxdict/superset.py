@@ -18,6 +18,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from .parser.u8 import DictionaryEntry, parse_u8_file
+from .scope import check_scope
 from .snapshots import MANIFEST_FILENAME, load_manifest, snapshot_version, version_for_snapshot_file
 
 from .languages import resolve_cc_cedict
@@ -101,8 +102,7 @@ def load_scope_base(
     newest layer alone for scope="latest" (follows the run scope so
     latest-filtered assemblies validate). Fails loudly on bad input.
     """
-    if scope not in ("superscope", "latest"):
-        raise ValueError(f"unknown scope {scope!r} (want 'superscope' or 'latest')")
+    check_scope(scope)
     if explicit is not None:
         entries, errors = parse_u8_file(explicit)
         if errors:
@@ -114,6 +114,8 @@ def load_scope_base(
     if cc_dir is None:
         raise ValueError("scope-built base needs a snapshot directory or file")
     layers = load_layers(cc_dir)
+    if not layers:
+        raise ValueError(f"snapshot log is empty: {cc_dir}")
     if scope == "latest":
         return layers[0][1]
     return build_superset(layers).entries
@@ -148,8 +150,7 @@ def resolve_scope(cc_dir: str | Path, scope: str = "superscope") -> Scope:
     the newest file is the whole scope. Fails loudly on bad scope or
     malformed rows (callers convert to their own check conventions).
     """
-    if scope not in ("superscope", "latest"):
-        raise ValueError(f"unknown scope {scope!r} (want 'superscope' or 'latest')")
+    check_scope(scope)
     cc_dir = Path(cc_dir)
     if not (cc_dir / MANIFEST_FILENAME).is_file():
         resolved = resolve_cc_cedict(cc_dir)
@@ -170,6 +171,8 @@ def resolve_scope(cc_dir: str | Path, scope: str = "superscope") -> Scope:
             detail=f"{len(entries)} entries",
         )
     layers = load_layers(cc_dir)
+    if not layers:
+        raise ValueError(f"snapshot log is empty: {cc_dir}")
     snapshots = {s.date: s for s in load_manifest(cc_dir)}
     date_versions = {
         date: snapshot_version(snapshots[date]) for date, _ in layers

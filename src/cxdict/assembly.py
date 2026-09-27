@@ -32,7 +32,8 @@ from typing import Any
 
 from .languages import get_language
 from .parser.json import load_llm_json, record_glosses
-from .parser.u8 import DictionaryEntry, iter_u8_lines, parse_u8_file
+from .parser.u8 import DictionaryEntry, parse_u8_file
+from .scope import check_scope
 
 
 def format_u8_entry(entry: DictionaryEntry) -> str:
@@ -170,8 +171,7 @@ def assemble_files(
     mode a scope-built base requires `skip_human`: the Human asset always
     carries the full superset scope, never a filtered one.
     """
-    if scope not in ("superscope", "latest"):
-        raise ValueError(f"unknown scope {scope!r} (want 'superscope' or 'latest')")
+    check_scope(scope)
     if scope_base_entries is not None:
         if base_path is not None:
             raise ValueError("scope-built base conflicts with an explicit base file")
@@ -234,8 +234,3 @@ def assemble_files(
     )
     human_n = len(base) + len(human_extra)
     return human_n, human_n + len(llm_extra)
-
-
-def iter_output_lines(path: str | Path):
-    """Yield entry lines of an assembled file (used by validation, Phase 9)."""
-    yield from iter_u8_lines(path)

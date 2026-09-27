@@ -183,5 +183,25 @@ def test_resolve_scope_logless_fallback_and_bad_scope(tmp_path):
         resolve_scope(cc, "nonsense")
 
 
+def test_resolve_scope_empty_manifest_and_malformed_rows(tmp_path):
+    from cxdict.superset import resolve_scope
+
+    cc = tmp_path / "cc"
+    cc.mkdir()
+    (cc / "snapshots.toml").write_text("", encoding="utf-8")
+    with pytest.raises(ValueError, match="empty"):
+        resolve_scope(cc)
+    (cc / "2026-09-12.u8").write_text("not an entry\n", encoding="utf-8")
+    (cc / "snapshots.toml").write_text(
+        "[[snapshot]]\n"
+        'date = "2026-09-12"\nfile = "2026-09-12.u8"\n'
+        'upstream_date = "x"\nupstream_time = 0\n'
+        'upstream_sha256 = ""\ncontent_sha256 = "y"\nentries = 0\npairs = 0\n',
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="malformed"):
+        resolve_scope(cc)
+
+
 def ids_list(entries):
     return [e.lexical_id() for e in entries]

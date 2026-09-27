@@ -69,15 +69,15 @@ class LanguageConfig:
     generate: bool = True  # False refuses all generation for this language
 
 
-def _lang_toml_path(code: str) -> Path:
-    return DICTIONARIES_DIR / code / "dict.toml"
+def get_language(code: str, repo_root: str | Path = ".") -> LanguageConfig:
+    """Load and validate one language definition; fail loud on any problem.
 
-
-def get_language(code: str) -> LanguageConfig:
-    """Load and validate one language definition; fail loud on any problem."""
+    `repo_root` anchors the lookup (tests pass `tmp_path` for fixture
+    languages); the default CWD tree is what every CLI uses.
+    """
     if not code or "/" in code or "\\" in code or code in (".", ".."):
         raise ValueError(f"invalid language code {code!r}")
-    toml_path = _lang_toml_path(code)
+    toml_path = Path(repo_root) / DICTIONARIES_DIR / code / "dict.toml"
     try:
         with open(toml_path, "rb") as f:
             raw = tomllib.load(f)

@@ -17,6 +17,7 @@ import argparse
 import sys
 from pathlib import Path
 
+from . import ensure_utf8_output
 from ..languages import get_language, resolve_paths
 from ..superset import build_superset, load_layers
 from ..scope_sync import LanguageSyncReport, compare_pair_scopes, sync_language_files
@@ -60,6 +61,7 @@ def print_report(report: LanguageSyncReport) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
+    ensure_utf8_output()
     parser = argparse.ArgumentParser(description=__doc__, allow_abbrev=False)
     parser.add_argument("--language", default=None,
                         help="single language code (default: all discovered)")

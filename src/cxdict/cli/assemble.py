@@ -21,12 +21,14 @@ import sys
 from pathlib import Path
 
 
+from . import ensure_utf8_output
 from ..assembly import assemble_files
 from ..languages import get_language, resolve_paths
 from ..superset import load_scope_base
 
 
 def main(argv: list[str] | None = None) -> int:
+    ensure_utf8_output()
     parser = argparse.ArgumentParser(description=__doc__, allow_abbrev=False)
     parser.add_argument("--language", required=True,
                         help="target dictionary language code (see dictionaries/)")

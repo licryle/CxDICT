@@ -22,6 +22,7 @@ import sys
 from pathlib import Path
 
 
+from . import ensure_utf8_output
 from ..generation.config import load_config
 from ..generation.llm import GenerationError
 from ..generation.orchestrator import generate_files
@@ -30,6 +31,7 @@ from ..snapshots import version_for_snapshot_file
 
 
 def main(argv: list[str] | None = None) -> int:
+    ensure_utf8_output()
     parser = argparse.ArgumentParser(description=__doc__, allow_abbrev=False)
     parser.add_argument("--env", default=".env")
     parser.add_argument("--language", required=True,

@@ -17,6 +17,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable
 
+from . import ensure_utf8_output
 from ..assembly import assemble_files
 from ..cleanup import CleanupReport, cleanup_files
 from .fetch import main as fetch_main
@@ -26,8 +27,7 @@ from ..generation.orchestrator import generate_files
 from ..generation.llm import post_chat_completions
 from ..languages import CC_CEDICT_DIR_REL, get_language, resolve_paths
 from ..parser.u8 import parse_u8_file
-from ..parser.u8 import parse_u8_file
-from ..scope import latest_valid_llm_ids
+from ..scope import SCOPES, latest_valid_llm_ids
 from ..scope_info import (
     render_release_notes,
     scope_base_version,
@@ -104,7 +104,7 @@ def run_pipeline(
         if progress:
             print(text, flush=True)
 
-    if scope not in ("superscope", "latest"):
+    if scope not in SCOPES:
         raise PipelineError("setup", f"unknown scope {scope!r}")
     if cfg.scope_as_base and base_path is not None:
         raise PipelineError(
@@ -360,6 +360,7 @@ def main(argv: list[str] | None = None) -> int:
 
     from ..generation.config import load_config
 
+    ensure_utf8_output()
     parser = argparse.ArgumentParser(description=__doc__, allow_abbrev=False)
     parser.add_argument("--env", default=".env")
     parser.add_argument("--language", required=True,

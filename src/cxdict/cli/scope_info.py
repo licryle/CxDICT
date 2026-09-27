@@ -19,6 +19,7 @@ import sys
 from pathlib import Path
 
 
+from . import ensure_utf8_output
 from ..languages import get_language, resolve_paths
 from ..parser.json import load_llm_json
 from ..parser.u8 import parse_u8_file
@@ -32,6 +33,7 @@ from ..superset import resolve_scope
 
 
 def main(argv: list[str] | None = None) -> int:
+    ensure_utf8_output()
     parser = argparse.ArgumentParser(description=__doc__, allow_abbrev=False)
     parser.add_argument("--language", required=True,
                         help="target dictionary language code (see dictionaries/)")

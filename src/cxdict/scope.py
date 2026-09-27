@@ -16,6 +16,16 @@ from typing import Any
 
 from .parser.json import record_glosses
 
+#: Valid scope flags (superset scope vs newest snapshot alone).
+SCOPES = ("superscope", "latest")
+
+
+def check_scope(scope: str) -> str:
+    """Validate a scope flag; return it unchanged or raise ValueError."""
+    if scope not in SCOPES:
+        raise ValueError(f"unknown scope {scope!r} (want 'superscope' or 'latest')")
+    return scope
+
 
 def latest_valid_llm_ids(
     llm_generated: dict[str, dict[str, Any]],

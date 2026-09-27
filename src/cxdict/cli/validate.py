@@ -21,12 +21,14 @@ import sys
 from pathlib import Path
 
 
+from . import ensure_utf8_output
 from ..languages import get_language, resolve_paths
 from ..parser.json import record_glosses
 from ..validation import check_outputs, validate_inputs
 
 
 def main(argv: list[str] | None = None) -> int:
+    ensure_utf8_output()
     parser = argparse.ArgumentParser(description=__doc__, allow_abbrev=False)
     parser.add_argument("--language", required=True,
                         help="target dictionary language code (see dictionaries/)")

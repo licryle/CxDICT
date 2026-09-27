@@ -25,6 +25,7 @@ import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 
+from . import ensure_utf8_output
 from ..parser.u8 import DictionaryEntry, parse_u8_line
 from ..snapshots import (
     Snapshot,
@@ -186,6 +187,7 @@ def apply_plan(plan: FetchPlan, cc_dir: str | Path, raw: bytes) -> Snapshot:
 
 
 def main(argv: list[str] | None = None) -> int:
+    ensure_utf8_output()
     parser = argparse.ArgumentParser(description=__doc__, allow_abbrev=False)
     parser.add_argument("--cc-cedict-dir", default="dictionaries/cc-cedict")
     parser.add_argument("--url", default=MDBG_URL)

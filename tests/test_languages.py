@@ -221,3 +221,46 @@ def test_english_scope_unit_loads_without_prompt_machinery():
     assert paths.base is None
     assert paths.out_human.name == "english-next-human.u8"
     assert paths.out_full.name == "english-next-full.u8"
+
+
+def write_lang_toml(tmp_path, code, **fields):
+    base = {
+        "code": code,
+        "base_label": "X",
+        "target_language_name": "X",
+        "output_slug": "x",
+        "release_name": "X",
+        "description": "X",
+        "prompt_template": "p.txt",
+        "few_shot": "f.json",
+        "prompt_version": "v1",
+        "prompt_user_intro": "hi",
+    }
+    base.update(fields)
+    if base.get("generate") is False:
+        for key in ("prompt_template", "few_shot", "prompt_version",
+                    "prompt_user_intro"):
+            base.pop(key, None)
+    lang_dir = tmp_path / "dictionaries" / code
+    lang_dir.mkdir(parents=True)
+    lines = []
+    for key, value in base.items():
+        if isinstance(value, bool):
+            lines.append(f"{key} = {'true' if value else 'false'}")
+        else:
+            lines.append(f'{key} = "{value}"')
+    (lang_dir / "dict.toml").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return lang_dir
+
+
+def test_get_language_fixture_tree_rejects_bad_flags(tmp_path):
+    write_lang_toml(tmp_path, "xx", generate="yes")
+    with pytest.raises(ValueError):
+        get_language("xx", repo_root=tmp_path)
+    write_lang_toml(tmp_path, "yy", base_filename="b.u8", scope_as_base=True)
+    with pytest.raises(ValueError):
+        get_language("yy", repo_root=tmp_path)
+    write_lang_toml(tmp_path, "zz", generate=False, scope_as_base=True)
+    zz = get_language("zz", repo_root=tmp_path)
+    assert zz.generate is False and zz.scope_as_base is True
+    assert zz.prompt_template is None

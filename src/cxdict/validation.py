@@ -33,6 +33,7 @@ from typing import Any
 
 from .parser.json import LLMDataError, assert_gloss_coverage, load_llm_json
 from .parser.u8 import parse_u8_file, parse_u8_line
+from .scope import check_scope
 from .scope_info import ReleaseSources, build_scope_info
 from .superset import resolve_scope
 
@@ -361,8 +362,7 @@ def validate_inputs(
     report.warnings (advisory — report.passed stays True). With an
     explicit file, scope selects severity only.
     """
-    if scope not in ("superscope", "latest"):
-        raise ValueError(f"unknown scope {scope!r} (want 'superscope' or 'latest')")
+    check_scope(scope)
     if scope_as_base and base_path is not None:
         raise ValueError("scope-built base conflicts with an explicit base file")
     report = ValidationReport()

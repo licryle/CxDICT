@@ -34,6 +34,7 @@ from ..cleanup import base_identities
 from ..languages import get_language
 from ..parser.json import load_llm_json
 from ..parser.u8 import DictionaryEntry, parse_u8_file
+from ..scope import check_scope
 from ..superset import resolve_scope
 from .config import LLMConfig
 from .llm import (
@@ -287,8 +288,7 @@ def generate_files(
     version). Otherwise scope and stamp come from the single
     `cc_cedict_path` file plus `cc_cedict_version`.
     """
-    if scope not in ("superscope", "latest"):
-        raise ValueError(f"unknown scope {scope!r} (want 'superscope' or 'latest')")
+    check_scope(scope)
     if not allow_generate:
         if dry_run:
             return GenerationReport(
