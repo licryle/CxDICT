@@ -34,8 +34,7 @@ from ..cleanup import base_identities
 from ..languages import get_language
 from ..parser.json import load_llm_json
 from ..parser.u8 import DictionaryEntry, parse_u8_file
-from ..snapshots import load_manifest, snapshot_version
-from ..superset import build_superset, load_layers
+from ..superset import resolve_scope
 from .config import LLMConfig
 from .llm import (
     GenerationError,
@@ -300,22 +299,11 @@ def generate_files(
         raise ValueError(f"generation is disabled for language {language!r}")
     base_ids = base_identities(base_path)
     if cc_cedict_dir is not None:
-        layers = load_layers(cc_cedict_dir)
-        if scope == "latest":
-            date, layer_entries = layers[0]
-            cc_entries = layer_entries
-            holder = {e.lexical_id(): date for e in layer_entries}
-        else:
-            superset = build_superset(layers)
-            cc_entries = superset.entries
-            holder = superset.holder
-        date_versions = {
-            snapshot.date: snapshot_version(snapshot)
-            for snapshot in load_manifest(Path(cc_cedict_dir))
-        }
+        resolved = resolve_scope(cc_cedict_dir, scope)
+        cc_entries = resolved.entries
         cc_versions: dict[str, str] | None = {
-            key: date_versions.get(date, cc_cedict_version)
-            for key, date in holder.items()
+            key: resolved.date_versions.get(date, cc_cedict_version)
+            for key, date in resolved.holder.items()
         }
     else:
         cc_entries, errors = parse_u8_file(cc_cedict_path)

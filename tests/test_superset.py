@@ -123,3 +123,65 @@ def test_load_layers_fails_on_malformed_rows(tmp_path):
     )
     with pytest.raises(ValueError):
         load_layers(cc)
+
+
+def write_manifest(cc):
+    (cc / "2026-09-12.u8").write_text(
+        "N N [NG] /outtake/\nW W [P9] /shiny/\n", encoding="utf-8"
+    )
+    (cc / "2025-08-08.u8").write_text(
+        "N N [N G] /outtake/\nR R [P1] /gone/\n", encoding="utf-8"
+    )
+    (cc / "snapshots.toml").write_text(
+        "[[snapshot]]\n"
+        'date = "2026-09-12"\nfile = "2026-09-12.u8"\n'
+        'upstream_date = "2026-09-12T07:35:13Z"\nupstream_time = 1\n'
+        'upstream_sha256 = "aa"\ncontent_sha256 = "abcdef1234567890"\n'
+        "entries = 2\npairs = 2\n"
+        "[[snapshot]]\n"
+        'date = "2025-08-08"\nfile = "2025-08-08.u8"\n'
+        'upstream_date = "2025-08-08T05:26:26Z"\nupstream_time = 0\n'
+        'upstream_sha256 = "bb"\ncontent_sha256 = "1234567890abcdef"\n'
+        "entries = 2\npairs = 2\n",
+        encoding="utf-8",
+    )
+
+
+def test_resolve_scope_superscope_and_latest(tmp_path):
+    from cxdict.superset import resolve_scope
+
+    cc = tmp_path / "cc"
+    cc.mkdir()
+    write_manifest(cc)
+    scope = resolve_scope(cc)
+    assert ids_list(scope.entries) == ["N|N|NG", "W|W|P9", "R|R|P1"]
+    assert ids_list(scope.latest_entries) == ["N|N|NG", "W|W|P9"]
+    assert scope.holder["R|R|P1"] == "2025-08-08"
+    assert scope.holder["N|N|NG"] == "2026-09-12"
+    assert scope.labels["latest"] == "cc-cedict:2026-09-12:abcdef123456"
+    assert scope.labels["cc"] == scope.labels["latest"]
+    assert scope.reference == [("2026-09-12", 2), ("2025-08-08", 1)]
+    assert scope.detail == "superset: 3 entries from 2 snapshot(s)"
+    latest = resolve_scope(cc, "latest")
+    assert ids_list(latest.entries) == ["N|N|NG", "W|W|P9"]
+    assert latest.latest_entries == latest.entries
+    assert latest.detail == "latest snapshot 2026-09-12: 2 entries"
+    assert latest.reference == scope.reference
+
+
+def test_resolve_scope_logless_fallback_and_bad_scope(tmp_path):
+    from cxdict.superset import resolve_scope
+
+    cc = tmp_path / "cc"
+    cc.mkdir()
+    (cc / "2025-08-08.u8").write_text("R R [P1] /gone/\n", encoding="utf-8")
+    scope = resolve_scope(cc)
+    assert ids_list(scope.entries) == ["R|R|P1"]
+    assert scope.holder == {}
+    assert scope.detail == "1 entries"
+    with pytest.raises(ValueError):
+        resolve_scope(cc, "nonsense")
+
+
+def ids_list(entries):
+    return [e.lexical_id() for e in entries]

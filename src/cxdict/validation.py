@@ -31,12 +31,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from .languages import resolve_cc_cedict
 from .parser.json import LLMDataError, assert_gloss_coverage, load_llm_json
 from .parser.u8 import parse_u8_file, parse_u8_line
 from .scope_info import ReleaseSources, build_scope_info
-from .snapshots import MANIFEST_FILENAME
-from .superset import build_superset, load_layers
+from .superset import resolve_scope
 
 
 @dataclass
@@ -369,30 +367,13 @@ def validate_inputs(
     else:
         base_entries = _parse_or_fail(base_path, "base", report)
     if cc_cedict_dir is not None:
-        cc_dir = Path(cc_cedict_dir)
-        if (cc_dir / MANIFEST_FILENAME).is_file():
-            try:
-                layers = load_layers(cc_dir)
-            except ValueError as exc:
-                report.checks.append(Check("CC-CEDICT parses", False, str(exc)))
-                return report, None
-            if scope == "superscope":
-                cc_entries = build_superset(layers).entries
-                scope_detail = (
-                    f"superset: {len(cc_entries)} entries "
-                    f"from {len(layers)} snapshot(s)"
-                )
-            else:
-                cc_entries = layers[0][1]
-                scope_detail = (
-                    f"latest snapshot {layers[0][0]}: {len(cc_entries)} entries"
-                )
-            report.checks.append(Check("CC-CEDICT parses", True, scope_detail))
-        else:
-            # Log-less directory (fixtures): newest file is the whole scope.
-            cc_entries = _parse_or_fail(
-                resolve_cc_cedict(cc_dir), "CC-CEDICT", report
-            )
+        try:
+            resolved = resolve_scope(cc_cedict_dir, scope)
+        except ValueError as exc:
+            report.checks.append(Check("CC-CEDICT parses", False, str(exc)))
+            return report, None
+        cc_entries = resolved.entries
+        report.checks.append(Check("CC-CEDICT parses", True, resolved.detail))
     else:
         cc_entries = _parse_or_fail(cc_cedict_path, "CC-CEDICT", report)
     human_entries = _parse_or_fail(human_path, "human.u8", report)

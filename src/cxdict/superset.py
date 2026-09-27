@@ -18,7 +18,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from .parser.u8 import DictionaryEntry, parse_u8_file
-from .snapshots import load_manifest
+from .snapshots import MANIFEST_FILENAME, load_manifest, snapshot_version, version_for_snapshot_file
+
+from .languages import resolve_cc_cedict
 
 
 @dataclass(frozen=True)
@@ -115,3 +117,84 @@ def load_scope_base(
     if scope == "latest":
         return layers[0][1]
     return build_superset(layers).entries
+
+
+@dataclass(frozen=True)
+class Scope:
+    """Resolved CC-CEDICT scope for one run (directory mode).
+
+    One construction owns what four call sites used to re-derive: the
+    active rows (pair-level superset, or newest layer for scope="latest"),
+    the newest rows, per-row holder dates plus per-date version labels
+    (for generation stamps), display labels, per-version contribution
+    rows, and the check detail line. Explicit-file mode stays a one-liner
+    per caller and never touches this object.
+    """
+
+    entries: list[DictionaryEntry]
+    latest_entries: list[DictionaryEntry]
+    holder: dict[str, str]
+    date_versions: dict[str, str]
+    labels: dict[str, str]
+    reference: list[tuple[str, int]]
+    detail: str
+
+
+def resolve_scope(cc_dir: str | Path, scope: str = "superscope") -> Scope:
+    """Resolve a snapshot directory to the scope for one run.
+
+    Manifest log present: pair-level superset (newest rows win) by
+    default, newest layer alone for scope="latest". Log-less directory:
+    the newest file is the whole scope. Fails loudly on bad scope or
+    malformed rows (callers convert to their own check conventions).
+    """
+    if scope not in ("superscope", "latest"):
+        raise ValueError(f"unknown scope {scope!r} (want 'superscope' or 'latest')")
+    cc_dir = Path(cc_dir)
+    if not (cc_dir / MANIFEST_FILENAME).is_file():
+        resolved = resolve_cc_cedict(cc_dir)
+        entries, errors = parse_u8_file(resolved)
+        if errors:
+            preview = "; ".join(f"line {n}: {msg}" for n, msg in errors[:5])
+            raise ValueError(
+                f"CC-CEDICT has {len(errors)} malformed line(s): {preview}"
+            )
+        label = version_for_snapshot_file(resolved, cc_dir)
+        return Scope(
+            entries=entries,
+            latest_entries=entries,
+            holder={},
+            date_versions={},
+            labels={"cc": label, "latest": label},
+            reference=[(label, len(entries))],
+            detail=f"{len(entries)} entries",
+        )
+    layers = load_layers(cc_dir)
+    snapshots = {s.date: s for s in load_manifest(cc_dir)}
+    date_versions = {
+        date: snapshot_version(snapshots[date]) for date, _ in layers
+    }
+    latest_date, latest_rows = layers[0]
+    superset = build_superset(layers)
+    if scope == "latest":
+        entries: list[DictionaryEntry] = latest_rows
+        holder: dict[str, str] = {e.lexical_id(): latest_date for e in latest_rows}
+        detail = f"latest snapshot {latest_date}: {len(entries)} entries"
+    else:
+        entries = superset.entries
+        holder = superset.holder
+        detail = (
+            f"superset: {len(entries)} entries from {len(layers)} snapshot(s)"
+        )
+    contribution = attribute_contribution(superset)
+    reference = [(date, contribution[date]["rows"]) for date in contribution]
+    latest_label = date_versions[latest_date]
+    return Scope(
+        entries=entries,
+        latest_entries=latest_rows,
+        holder=holder,
+        date_versions=date_versions,
+        labels={"cc": latest_label, "latest": latest_label},
+        reference=reference,
+        detail=detail,
+    )

@@ -29,13 +29,8 @@ from ..scope_info import (
     scope_base_version,
     sha256_file,
 )
-from ..snapshots import load_manifest, snapshot_version, version_for_snapshot_file
-from ..superset import (
-    attribute_contribution,
-    build_superset,
-    load_layers,
-    load_scope_base,
-)
+from ..snapshots import version_for_snapshot_file
+from ..superset import load_scope_base, resolve_scope
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -96,18 +91,11 @@ def main(argv: list[str] | None = None) -> int:
             )
             reference: list[tuple[str, int]] = [(latest_version, len(cc_entries))]
         else:
-            layers = load_layers(paths.cc_cedict_dir)
-            superset = build_superset(layers)
-            cc_entries = superset.entries
-            latest_entries = layers[0][1]
-            latest_version = snapshot_version(
-                next(s for s in load_manifest(paths.cc_cedict_dir)
-                     if s.date == layers[0][0])
-            )
-            contribution = attribute_contribution(superset)
-            reference = [
-                (date, contribution[date]["rows"]) for date in contribution
-            ]
+            resolved = resolve_scope(paths.cc_cedict_dir)
+            cc_entries = resolved.entries
+            latest_entries = resolved.latest_entries
+            latest_version = resolved.labels["latest"]
+            reference = resolved.reference
         human_entries, human_errors = parse_u8_file(paths.human)
         if human_errors:
             preview = "; ".join(f"line {n}: {msg}" for n, msg in human_errors[:5])

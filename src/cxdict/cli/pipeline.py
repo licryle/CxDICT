@@ -35,13 +35,8 @@ from ..scope_info import (
     scope_base_version,
     sha256_file,
 )
-from ..snapshots import load_manifest, snapshot_version, version_for_snapshot_file
-from ..superset import (
-    attribute_contribution,
-    build_superset,
-    load_layers,
-    load_scope_base,
-)
+from ..snapshots import version_for_snapshot_file
+from ..superset import load_scope_base, resolve_scope
 from ..validation import ValidationReport, check_outputs, validate_inputs
 
 
@@ -278,14 +273,11 @@ def run_pipeline(
         human_version = sha256_file(human_path)
         llm_generated_version = sha256_file(llm_generated_path)
         if cc_cedict_dir is not None:
-            layers = load_layers(cc_cedict_dir)
-            superset = build_superset(layers)
-            cc_entries = superset.entries
-            latest_entries = layers[0][1]
-            snapshots = {s.date: s for s in load_manifest(cc_cedict_dir)}
-            latest_version = snapshot_version(snapshots[layers[0][0]])
-            contribution = attribute_contribution(superset)
-            reference = [(d, contribution[d]["rows"]) for d in contribution]
+            resolved = resolve_scope(cc_cedict_dir)
+            cc_entries = resolved.entries
+            latest_entries = resolved.latest_entries
+            latest_version = resolved.labels["latest"]
+            reference = resolved.reference
         else:
             cc_entries, errors = parse_u8_file(cc_cedict_path)
             if errors:
