@@ -192,7 +192,7 @@ def run_pipeline(
         report, _ = validate_inputs(
             base_path, cc_cedict_path, human_path, llm_generated_path,
             cc_cedict_dir=cc_cedict_dir, scope=scope,
-            scope_base_entries=scope_base,
+            scope_as_base=cfg.scope_as_base,
         )
         return PipelineReport(
             dry_run=True,
@@ -223,7 +223,7 @@ def run_pipeline(
     report, data = validate_inputs(
         base_path, cc_cedict_path, human_path, llm_generated_path,
         cc_cedict_dir=cc_cedict_dir, scope=scope,
-        scope_base_entries=scope_base,
+        scope_as_base=cfg.scope_as_base,
     )
     if data is None or not report.passed:
         raise PipelineError("validate-inputs", _failures(report))
@@ -295,15 +295,10 @@ def run_pipeline(
             preview = "; ".join(f"line {n}: {msg}" for n, msg in errors[:5])
             raise ValueError(f"base dictionary has {len(errors)} malformed line(s): {preview}")
         if cfg.scope_as_base:
-            # Notes always describe the full scope: the union, however the
-            # run itself was scoped.
-            notes_base = load_scope_base(
-                cc_cedict_path if cc_cedict_dir is None else None,
-                cc_cedict_dir,
-                "superscope",
-            )
-            base_entries = notes_base
-            base_version = scope_base_version(notes_base)
+            # Notes always describe the full scope: reuse the resolved
+            # scope entries (union in directory mode, file rows otherwise).
+            base_entries = cc_entries
+            base_version = scope_base_version(base_entries)
         elif base_path is None:
             base_version = "n/a"
         else:

@@ -189,19 +189,28 @@ def test_clean_base_produces_no_base_warnings(tmp_path):
 
 
 def test_scope_built_base_validates_as_base(tmp_path):
-    from cxdict.parser.u8 import DictionaryEntry
-
-    base = [
-        DictionaryEntry("N", "N", "NG", ("outtake",)),
-        DictionaryEntry("R", "R", "P1", ("gone",)),
-    ]
+    cc = tmp_path / "cc-cedict"
+    cc.mkdir()
+    (cc / "2026-09-12.u8").write_text("N N [NG] /outtake/\n", encoding="utf-8")
+    (cc / "2025-08-08.u8").write_text("R R [P1] /gone/\n", encoding="utf-8")
+    (cc / "snapshots.toml").write_text(
+        "[[snapshot]]\n"
+        'date = "2026-09-12"\nfile = "2026-09-12.u8"\n'
+        'upstream_date = "2026-09-12T07:35:13Z"\nupstream_time = 1\n'
+        'upstream_sha256 = "aa"\ncontent_sha256 = "bb"\nentries = 1\npairs = 1\n'
+        "[[snapshot]]\n"
+        'date = "2025-08-08"\nfile = "2025-08-08.u8"\n'
+        'upstream_date = "2025-08-08T05:26:26Z"\nupstream_time = 0\n'
+        'upstream_sha256 = "cc"\ncontent_sha256 = "dd"\nentries = 1\npairs = 1\n',
+        encoding="utf-8",
+    )
     human_p = write(tmp_path / "human.u8", "")
     llm_p = write(
         tmp_path / "llm_generated.json", json.dumps({}, ensure_ascii=False)
     )
-    cc_p = write(tmp_path / "cc.u8", "N N [NG] /outtake/\n")
     report, data = validate_inputs(
-        None, cc_p, human_p, llm_p, scope_base_entries=base
+        None, cc / "2026-09-12.u8", human_p, llm_p,
+        cc_cedict_dir=cc, scope_as_base=True,
     )
     assert report.passed, [(c.name, c.detail) for c in report.failures()]
     assert any(

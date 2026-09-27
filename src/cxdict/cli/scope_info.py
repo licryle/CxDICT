@@ -30,7 +30,7 @@ from ..scope_info import (
     sha256_file,
 )
 from ..snapshots import version_for_snapshot_file
-from ..superset import load_scope_base, resolve_scope
+from ..superset import resolve_scope
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -69,17 +69,6 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     try:
-        if cfg.scope_as_base:
-            base_entries = load_scope_base(
-                args.cc_cedict, paths.cc_cedict_dir, "superscope"
-            )
-        elif paths.base is None:
-            base_entries = []
-        else:
-            base_entries, errors = parse_u8_file(paths.base)
-            if errors:
-                preview = "; ".join(f"line {n}: {msg}" for n, msg in errors[:5])
-                raise ValueError(f"base dictionary has {len(errors)} malformed line(s): {preview}")
         if args.cc_cedict:
             cc_entries, errors = parse_u8_file(paths.cc_cedict)
             if errors:
@@ -103,6 +92,17 @@ def main(argv: list[str] | None = None) -> int:
                 f"human.u8 has {len(human_errors)} malformed line(s): {preview}"
             )
         llm_generated = load_llm_json(paths.llm_generated)
+        if cfg.scope_as_base:
+            # Notes always describe the full scope: the union rows, which
+            # this CLI resolves as its scope entries in every mode.
+            base_entries = cc_entries
+        elif paths.base is None:
+            base_entries = []
+        else:
+            base_entries, errors = parse_u8_file(paths.base)
+            if errors:
+                preview = "; ".join(f"line {n}: {msg}" for n, msg in errors[:5])
+                raise ValueError(f"base dictionary has {len(errors)} malformed line(s): {preview}")
     except (ValueError, OSError) as exc:
         print(f"scope info failed: {exc}", file=sys.stderr)
         return 1

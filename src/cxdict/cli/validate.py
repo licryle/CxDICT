@@ -23,7 +23,6 @@ from pathlib import Path
 
 from ..languages import get_language, resolve_paths
 from ..parser.json import record_glosses
-from ..superset import load_scope_base
 from ..validation import check_outputs, validate_inputs
 
 
@@ -61,16 +60,11 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     try:
-        scope_base = (
-            load_scope_base(args.cc_cedict, paths.cc_cedict_dir, args.scope)
-            if cfg.scope_as_base
-            else None
-        )
         report, data = validate_inputs(
             paths.base, paths.cc_cedict, paths.human, paths.llm_generated,
             cc_cedict_dir=None if args.cc_cedict else paths.cc_cedict_dir,
             scope=args.scope,
-            scope_base_entries=scope_base,
+            scope_as_base=cfg.scope_as_base,
         )
     except ValueError as exc:
         print(f"validation failed: {exc}", file=sys.stderr)

@@ -337,7 +337,7 @@ def validate_inputs(
     llm_generated_path: str | Path,
     cc_cedict_dir: str | Path | None = None,
     scope: str = "superscope",
-    scope_base_entries: list | None = None,
+    scope_as_base: bool = False,
 ) -> tuple[ValidationReport, dict[str, Any] | None]:
     """Validate all release inputs; return (report, loaded data or None).
 
@@ -352,20 +352,9 @@ def validate_inputs(
     """
     if scope not in ("superscope", "latest"):
         raise ValueError(f"unknown scope {scope!r} (want 'superscope' or 'latest')")
-    if scope_base_entries is not None and base_path is not None:
+    if scope_as_base and base_path is not None:
         raise ValueError("scope-built base conflicts with an explicit base file")
     report = ValidationReport()
-    if scope_base_entries is not None:
-        base_entries = scope_base_entries
-        report.checks.append(
-            Check("base parses", True, f"{len(base_entries)} scope-built entries")
-        )
-    elif base_path is None:
-        # Languages without an authoritative base: vacuous pass, zero entries.
-        report.checks.append(Check("base parses", True, "no base dictionary"))
-        base_entries: list = []
-    else:
-        base_entries = _parse_or_fail(base_path, "base", report)
     if cc_cedict_dir is not None:
         try:
             resolved = resolve_scope(cc_cedict_dir, scope)
@@ -376,6 +365,20 @@ def validate_inputs(
         report.checks.append(Check("CC-CEDICT parses", True, resolved.detail))
     else:
         cc_entries = _parse_or_fail(cc_cedict_path, "CC-CEDICT", report)
+    if scope_as_base:
+        # The base IS the active scope rows: no second resolution, and the
+        # explicit-file corner reuses the scope file itself.
+        base_entries = cc_entries
+        if base_entries is not None:
+            report.checks.append(
+                Check("base parses", True, f"{len(base_entries)} scope-built entries")
+            )
+    elif base_path is None:
+        # Languages without an authoritative base: vacuous pass, zero entries.
+        report.checks.append(Check("base parses", True, "no base dictionary"))
+        base_entries: list = []
+    else:
+        base_entries = _parse_or_fail(base_path, "base", report)
     human_entries = _parse_or_fail(human_path, "human.u8", report)
     llm_generated = _load_or_fail(llm_generated_path, "llm_generated.json", report)
     if None in (base_entries, cc_entries, human_entries, llm_generated):
