@@ -47,11 +47,24 @@ class Check:
 
 
 @dataclass
+class Advisory:
+    """One advisory finding: informative, never gating.
+
+    Unlike Check it carries no outcome — advisories cannot pass or fail
+    a run, so report.passed ignores them by construction instead of by
+    convention.
+    """
+
+    name: str
+    detail: str = ""
+
+
+@dataclass
 class ValidationReport:
     """Outcome of a validation run."""
 
     checks: list[Check] = field(default_factory=list)
-    warnings: list[Check] = field(default_factory=list)
+    warnings: list[Advisory] = field(default_factory=list)
 
     @property
     def passed(self) -> bool:
@@ -144,7 +157,7 @@ def base_scope_warnings(
     cc_pair_pinyins: dict[tuple[str, str], set[str]],
     cc_trad_to_simp: dict[str, set[str]],
     cc_simp_to_trad: dict[str, set[str]],
-) -> list[Check]:
+) -> list[Advisory]:
     """Advisory divergences between the authoritative base and CC scope.
 
     The base is human-curated and always ships, so contradictions can only
@@ -163,13 +176,12 @@ def base_scope_warnings(
                 pinyin_mismatch.append(entry.lexical_id())
         elif pair[0] in cc_trad_to_simp or pair[1] in cc_simp_to_trad:
             mixed_pair.append(entry.lexical_id())
-    warnings = []
+    warnings: list[Advisory] = []
     if pinyin_mismatch:
         sample = ", ".join(repr(k) for k in sorted(pinyin_mismatch)[:3])
         warnings.append(
-            Check(
+            Advisory(
                 "base scope divergence",
-                False,
                 f"{len(pinyin_mismatch)} base row(s) read differently from "
                 f"CC-CEDICT, e.g. {sample}",
             )
@@ -177,9 +189,8 @@ def base_scope_warnings(
     if mixed_pair:
         sample = ", ".join(repr(k) for k in sorted(mixed_pair)[:3])
         warnings.append(
-            Check(
+            Advisory(
                 "base scope divergence",
-                False,
                 f"{len(mixed_pair)} base row(s) mix hanzi pairs unseen "
                 f"together in CC-CEDICT, e.g. {sample}",
             )
@@ -420,7 +431,10 @@ def validate_inputs(
             scope_report,
         )
         # Advisory only: mismatches warn, never fail the run.
-        report.warnings.extend(scope_report.failures())
+        report.warnings.extend(
+            Advisory(check.name, check.detail)
+            for check in scope_report.failures()
+        )
     else:
         check_gloss_coverage(cc_glosses, llm_generated, report)
         check_human_hanzi_pinyin(
