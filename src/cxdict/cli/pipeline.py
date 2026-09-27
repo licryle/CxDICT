@@ -32,10 +32,16 @@ from ..scope_info import (
     build_release_sources,
     build_scope_info,
     render_scope_markdown,
+    scope_base_version,
     sha256_file,
 )
 from ..snapshots import load_manifest, snapshot_version, version_for_snapshot_file
-from ..superset import attribute_contribution, build_superset, load_layers
+from ..superset import (
+    attribute_contribution,
+    build_superset,
+    load_layers,
+    load_scope_base,
+)
 from ..validation import ValidationReport, check_outputs, validate_inputs
 
 
@@ -80,6 +86,7 @@ def run_pipeline(
     cc_version: str | None = None,
     cc_cedict_dir: str | Path | None = None,
     scope: str = "superscope",
+    skip_human: bool = False,
     limit: int = 0,
     dry_run: bool = False,
     skip_generate: bool = False,
@@ -106,10 +113,30 @@ def run_pipeline(
 
     if scope not in ("superscope", "latest"):
         raise PipelineError("setup", f"unknown scope {scope!r}")
+    if cfg.scope_as_base and base_path is not None:
+        raise PipelineError(
+            "setup", "scope-built base conflicts with an explicit base file"
+        )
     try:
         cc_version = cc_version or version_for_snapshot_file(cc_cedict_path)
     except OSError as exc:
         raise PipelineError("setup", f"cannot hash CC-CEDICT: {exc}") from exc
+    # Scope-built base tracks the run scope (union for superset runs,
+    # newest layer for latest runs); the notes stage rebuilds the union
+    # separately so notes always describe the full scope. An explicit CC
+    # file pins the scope content (dir mode uses the snapshot log).
+    try:
+        scope_base = (
+            load_scope_base(
+                cc_cedict_path if cc_cedict_dir is None else None,
+                cc_cedict_dir,
+                scope,
+            )
+            if cfg.scope_as_base
+            else None
+        )
+    except (ValueError, OSError) as exc:
+        raise PipelineError("setup", f"{exc}") from exc
 
     if skip_generate:
         gen_report = None
@@ -132,6 +159,7 @@ def run_pipeline(
                 language=language,
                 cc_cedict_dir=cc_cedict_dir,
                 scope=scope,
+                allow_generate=cfg.generate,
             )
         except (ValueError, OSError, GenerationError) as exc:
             raise PipelineError("generate", str(exc)) from exc
@@ -158,6 +186,7 @@ def run_pipeline(
                     language=language,
                     cc_cedict_dir=cc_cedict_dir,
                     scope=scope,
+                    allow_generate=cfg.generate,
                 )
             except (ValueError, OSError, GenerationError) as exc:
                 raise PipelineError("generate", str(exc)) from exc
@@ -168,6 +197,7 @@ def run_pipeline(
         report, _ = validate_inputs(
             base_path, cc_cedict_path, human_path, llm_generated_path,
             cc_cedict_dir=cc_cedict_dir, scope=scope,
+            scope_base_entries=scope_base,
         )
         return PipelineReport(
             dry_run=True,
@@ -198,6 +228,7 @@ def run_pipeline(
     report, data = validate_inputs(
         base_path, cc_cedict_path, human_path, llm_generated_path,
         cc_cedict_dir=cc_cedict_dir, scope=scope,
+        scope_base_entries=scope_base,
     )
     if data is None or not report.passed:
         raise PipelineError("validate-inputs", _failures(report))
@@ -218,6 +249,8 @@ def run_pipeline(
             language,
             scope=scope,
             latest_cc_path=cc_cedict_path,
+            skip_human=skip_human,
+            scope_base_entries=scope_base,
         )
     except (ValueError, OSError) as exc:
         raise PipelineError("assemble", str(exc)) from exc
@@ -229,7 +262,7 @@ def run_pipeline(
     if scope == "latest":
         llm_ids = latest_valid_llm_ids(data["llm_generated"], data["cc_glosses"])
     check_outputs(
-        out_human_path,
+        None if skip_human else out_human_path,
         out_full_path,
         data["base_ids"],
         data["human_ids"],
@@ -242,7 +275,6 @@ def run_pipeline(
 
     _announce("[scope] start")
     try:
-        base_version = sha256_file(base_path) if base_path is not None else "n/a"
         human_version = sha256_file(human_path)
         llm_generated_version = sha256_file(llm_generated_path)
         if cc_cedict_dir is not None:
@@ -270,6 +302,20 @@ def run_pipeline(
         if errors:
             preview = "; ".join(f"line {n}: {msg}" for n, msg in errors[:5])
             raise ValueError(f"base dictionary has {len(errors)} malformed line(s): {preview}")
+        if cfg.scope_as_base:
+            # Notes always describe the full scope: the union, however the
+            # run itself was scoped.
+            notes_base = load_scope_base(
+                cc_cedict_path if cc_cedict_dir is None else None,
+                cc_cedict_dir,
+                "superscope",
+            )
+            base_entries = notes_base
+            base_version = scope_base_version(notes_base)
+        elif base_path is None:
+            base_version = "n/a"
+        else:
+            base_version = sha256_file(base_path)
         human_entries, human_errors = parse_u8_file(human_path)
         if human_errors:
             preview = "; ".join(f"line {n}: {msg}" for n, msg in human_errors[:5])
@@ -290,6 +336,12 @@ def run_pipeline(
                 "llm": llm_generated_version,
             },
             reference=reference,
+            generation_enabled=cfg.generate,
+            latest_base_ids=(
+                {e.lexical_id() for e in latest_entries}
+                if cfg.scope_as_base
+                else None
+            ),
         )
     except (ValueError, OSError) as exc:
         raise PipelineError("scope", f"{exc}") from exc
@@ -342,6 +394,8 @@ def main(argv: list[str] | None = None) -> int:
                         help="human dictionary output (default: output/<language>/…)")
     parser.add_argument("--out-full", default=None,
                         help="full dictionary output (default: output/<language>/…)")
+    parser.add_argument("--skip-human", action="store_true",
+                        help="omit the Human write (scope-free bytes; only needed once)")
     parser.add_argument("--cc-version", default=None)
     parser.add_argument("--scope", default="superscope",
                         choices=("superscope", "latest"),
@@ -406,6 +460,7 @@ def main(argv: list[str] | None = None) -> int:
             cc_version=args.cc_version,
             cc_cedict_dir=None if args.cc_cedict else paths.cc_cedict_dir,
             scope=args.scope,
+            skip_human=args.skip_human,
             limit=args.limit,
             dry_run=args.dry_run,
             skip_generate=args.skip_generate,

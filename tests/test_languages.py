@@ -206,3 +206,18 @@ def test_explicit_cc_cedict_dir_and_file_win(tmp_path):
         cc_cedict=tmp_path / "snap" / "one.u8",
     )
     assert paths.cc_cedict == tmp_path / "snap" / "one.u8"
+
+
+def test_english_scope_unit_loads_without_prompt_machinery():
+    en = get_language("en")
+    assert en.code == "en"
+    assert en.base_filename is None
+    assert en.scope_as_base is True
+    assert en.generate is False
+    assert en.prompt_template is None and en.few_shot is None
+    assert en.release_name == "English"
+    # Base resolves to none (built from scope at run time); outputs do not.
+    paths = resolve_paths("en", repo_root=REPO)
+    assert paths.base is None
+    assert paths.out_human.name == "english-next-human.u8"
+    assert paths.out_full.name == "english-next-full.u8"

@@ -110,6 +110,52 @@ def test_latest_scope_adds_dual_columns_and_exact_latestfull_row():
     assert "## CC-CEDICT Reference" not in plain
 
 
+def test_disabled_generation_zeroes_missing_with_note():
+    info = build_scope_info(
+        sources(generation_enabled=False), generated_at="T"
+    )
+    assert info["coverage"]["missing_scope_total"] == 0
+    assert info["generation_enabled"] is False
+    markdown = render_scope_markdown(info, "CFDICT", "French")
+    assert "| Missing scope (still to generate; generation disabled) | 0 |" in markdown
+    # Enabled (default) keeps the plain label and the true count.
+    plain = render_scope_markdown(build_scope_info(sources(), generated_at="T"),
+                                  "CFDICT", "French")
+    assert "| Missing scope (still to generate) | 1 |" in plain
+
+
+def test_latest_base_ids_scope_latestfull_row():
+    base = {"A", "B", "C", "D", "R"}  # scope-built base: the whole superset
+    latest = {"A", "B", "C", "D"}
+    info = build_scope_info(
+        sources(
+            cc_cedict_ids=set(base),
+            base_ids=set(base),
+            latest_cc_cedict_ids=set(latest),
+            latest_base_ids=set(latest),
+            reference=(("2026-09-12", 4), ("2025-08-08", 1)),
+        ),
+        generated_at="T",
+    )
+    markdown = render_scope_markdown(info, "CC", "En")
+    # LatestFull tracks the newest scope, not the scope-built base.
+    assert "| CxDICT-En-LatestFull | 4 | 4 (80.0%) | 4 (100.0%) | 0 | 0 |" in markdown
+    # Without it the base ships unfiltered, as other languages do.
+    full = render_scope_markdown(
+        build_scope_info(
+            sources(
+                cc_cedict_ids=set(base),
+                base_ids=set(base),
+                latest_cc_cedict_ids=set(latest),
+                reference=(("2026-09-12", 4), ("2025-08-08", 1)),
+            ),
+            generated_at="T",
+        ),
+        "CC", "En",
+    )
+    assert "| CxDICT-En-LatestFull | 5 | 5 (100.0%) | 4 (100.0%) | 0 | 1 |" in full
+
+
 def test_markdown_contains_figures_and_versions():
     markdown = render_scope_markdown(
         build_scope_info(sources(), generated_at="T"), "CFDICT", "French"

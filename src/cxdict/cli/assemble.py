@@ -22,7 +22,8 @@ from pathlib import Path
 
 
 from ..assembly import assemble_files
-from ..languages import resolve_paths
+from ..languages import get_language, resolve_paths
+from ..superset import load_scope_base
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -50,22 +51,31 @@ def main(argv: list[str] | None = None) -> int:
                         help="omit the Human write (scope-free bytes; only needed once)")
     args = parser.parse_args(argv)
     try:
+        cfg = get_language(args.language)
         paths = resolve_paths(
             args.language, base=args.base, human=args.human,
             llm_generated=args.llm_generated, cc_cedict=args.cc_cedict,
             cc_cedict_dir=args.cc_cedict_dir, out_human=args.out_human,
             out_full=args.out_full,
         )
+        if cfg.scope_as_base and args.base:
+            raise ValueError("scope-built base conflicts with --base")
     except (ValueError, OSError) as exc:
         print(f"assembly failed: {exc}", file=sys.stderr)
         return 1
 
     try:
+        scope_base = (
+            load_scope_base(args.cc_cedict, paths.cc_cedict_dir, args.scope)
+            if cfg.scope_as_base
+            else None
+        )
         human_n, full_n = assemble_files(
             paths.base, paths.human, paths.llm_generated,
             paths.out_human, paths.out_full, args.language,
             scope=args.scope, latest_cc_path=paths.cc_cedict,
             skip_human=args.skip_human,
+            scope_base_entries=scope_base,
         )
     except (ValueError, OSError) as exc:
         print(f"assembly failed: {exc}", file=sys.stderr)

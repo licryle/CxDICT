@@ -339,6 +339,7 @@ def validate_inputs(
     llm_generated_path: str | Path,
     cc_cedict_dir: str | Path | None = None,
     scope: str = "superscope",
+    scope_base_entries: list | None = None,
 ) -> tuple[ValidationReport, dict[str, Any] | None]:
     """Validate all release inputs; return (report, loaded data or None).
 
@@ -353,8 +354,15 @@ def validate_inputs(
     """
     if scope not in ("superscope", "latest"):
         raise ValueError(f"unknown scope {scope!r} (want 'superscope' or 'latest')")
+    if scope_base_entries is not None and base_path is not None:
+        raise ValueError("scope-built base conflicts with an explicit base file")
     report = ValidationReport()
-    if base_path is None:
+    if scope_base_entries is not None:
+        base_entries = scope_base_entries
+        report.checks.append(
+            Check("base parses", True, f"{len(base_entries)} scope-built entries")
+        )
+    elif base_path is None:
         # Languages without an authoritative base: vacuous pass, zero entries.
         report.checks.append(Check("base parses", True, "no base dictionary"))
         base_entries: list = []

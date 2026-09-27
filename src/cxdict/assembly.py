@@ -149,6 +149,7 @@ def assemble_files(
     scope: str = "superscope",
     latest_cc_path: str | Path | None = None,
     skip_human: bool = False,
+    scope_base_entries: list[DictionaryEntry] | None = None,
 ) -> tuple[int, int]:
     """Full assembly from on-disk sources; return (human_n, full_n).
 
@@ -163,10 +164,24 @@ def assemble_files(
     `skip_human` omits the Human write (counts still returned) for runs
     that only need the Full output — the Human bytes are scope-free, so
     rewriting them per scope is pure waste.
+    `scope_base_entries` supplies a scope-built base (scope-as-base
+    languages, whose content IS the snapshot scope) instead of parsing a
+    base file; combining it with an explicit `base_path` fails. In latest
+    mode a scope-built base requires `skip_human`: the Human asset always
+    carries the full superset scope, never a filtered one.
     """
     if scope not in ("superscope", "latest"):
         raise ValueError(f"unknown scope {scope!r} (want 'superscope' or 'latest')")
-    if base_path is None:
+    if scope_base_entries is not None:
+        if base_path is not None:
+            raise ValueError("scope-built base conflicts with an explicit base file")
+        if scope == "latest" and not skip_human:
+            raise ValueError(
+                "scope-built base in latest mode requires skip_human "
+                "(the Human asset stays superset-scoped)"
+            )
+        entries, errors = scope_base_entries, []
+    elif base_path is None:
         entries, errors = [], []
     else:
         entries, errors = parse_u8_file(base_path)

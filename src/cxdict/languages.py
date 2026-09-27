@@ -56,8 +56,8 @@ class LanguageConfig:
     base_filename: str | None  # authoritative base filename in dictionaries/<code>/data/ (None = no base)
     base_label: str  # human label rendered in scope info / section headers
     base_url: str | None  # provenance URL for the base (None when there is no upstream)
-    prompt_template: Path  # absolute path of the versioned prompt template
-    few_shot: Path  # absolute path of the curated few-shot examples
+    prompt_template: Path | None  # absolute path of the versioned prompt template (None when generation is off)
+    few_shot: Path | None  # absolute path of the curated few-shot examples (None when generation is off)
     prompt_version: str  # stamped on every generated record
     prompt_user_intro: str  # user-message prefix for generation batches
     target_language_name: str  # used when rendering prompts ("French", ...)
@@ -65,6 +65,8 @@ class LanguageConfig:
     release_name: str  # short display name used in release assets (no slashes)
     description: str  # one-line description of the target dictionary
     config_dir: Path = field(compare=False)  # directory holding dict.toml
+    scope_as_base: bool = False  # build the base in memory from the snapshot log (the scope IS the content)
+    generate: bool = True  # False refuses all generation for this language
 
 
 def _lang_toml_path(code: str) -> Path:
@@ -88,16 +90,28 @@ def get_language(code: str) -> LanguageConfig:
         raise ValueError(f"{toml_path}: cannot load language definition: {exc}") from exc
     if not isinstance(raw, dict):
         raise ValueError(f"{toml_path}: top level must be a TOML table")
-    unknown = sorted(set(raw) - set(_REQUIRED_FIELDS) - {"base_filename", "base_url"})
+    unknown = sorted(set(raw) - set(_REQUIRED_FIELDS) - {"base_filename", "base_url", "scope_as_base", "generate"})
     if unknown:
         raise ValueError(f"{toml_path}: unknown field(s): {', '.join(unknown)}")
-    missing = [name for name in _REQUIRED_FIELDS if name not in raw]
-    if missing:
-        raise ValueError(f"{toml_path}: missing field(s): {', '.join(missing)}")
     for name in (*_REQUIRED_FIELDS, "base_filename", "base_url"):
         value = raw.get(name)
         if value is not None and not isinstance(value, str):
             raise ValueError(f"{toml_path}: {name!r} must be a string")
+    generate = raw.get("generate", True)
+    if not isinstance(generate, bool):
+        raise ValueError(f"{toml_path}: 'generate' must be a boolean")
+    scope_as_base = raw.get("scope_as_base", False)
+    if not isinstance(scope_as_base, bool):
+        raise ValueError(f"{toml_path}: 'scope_as_base' must be a boolean")
+    if scope_as_base and raw.get("base_filename") is not None:
+        raise ValueError(f"{toml_path}: 'scope_as_base' conflicts with 'base_filename'")
+    required = set(_REQUIRED_FIELDS)
+    if not generate:
+        # A non-generating language needs no prompt machinery at all.
+        required -= {"prompt_template", "few_shot", "prompt_version", "prompt_user_intro"}
+    missing = [name for name in _REQUIRED_FIELDS if name in required and name not in raw]
+    if missing:
+        raise ValueError(f"{toml_path}: missing field(s): {', '.join(missing)}")
     if raw["code"] != code:
         raise ValueError(
             f"{toml_path}: code is {raw['code']!r} but {code!r} was requested"
@@ -108,10 +122,10 @@ def get_language(code: str) -> LanguageConfig:
             f"{toml_path}: 'release_name' must be a bare filename-safe name"
         )
     config_dir = toml_path.parent.absolute()
-    template = config_dir / raw["prompt_template"]
-    few_shot = config_dir / raw["few_shot"]
+    template = config_dir / raw["prompt_template"] if "prompt_template" in raw else None
+    few_shot = config_dir / raw["few_shot"] if "few_shot" in raw else None
     for label, path in (("prompt_template", template), ("few_shot", few_shot)):
-        if not path.is_file():
+        if path is not None and not path.is_file():
             raise ValueError(f"{toml_path}: {label} not found: {path}")
     return LanguageConfig(
         code=raw["code"],
@@ -120,12 +134,14 @@ def get_language(code: str) -> LanguageConfig:
         base_label=raw["base_label"],
         prompt_template=template,
         few_shot=few_shot,
-        prompt_version=raw["prompt_version"],
-        prompt_user_intro=raw["prompt_user_intro"],
+        prompt_version=raw.get("prompt_version", ""),
+        prompt_user_intro=raw.get("prompt_user_intro", ""),
         target_language_name=raw["target_language_name"],
         output_slug=raw["output_slug"],
         release_name=release_name,
         description=raw["description"],
+        scope_as_base=scope_as_base,
+        generate=generate,
         config_dir=config_dir,
     )
 

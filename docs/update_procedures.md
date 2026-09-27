@@ -29,6 +29,16 @@
    then commit data + manifest. The release publishes three assets —
    Human, SuperFull, LatestFull (see `docs/workflow.md`).
 
+## Scope-built languages (`en`)
+
+Nothing to do, ever, by hand: the English unit builds its base from the
+snapshot log at run time (`scope_as_base`), generates nothing
+(`generate = false`), and keeps empty human/LLM datasets. Snapshot
+updates flow through automatically on the next validate/assemble run;
+`pipeline.py` without `--skip-generate` refuses for `en` (there is
+nothing to generate). Run its pipeline stages with `--skip-generate`,
+and its latest assembly with `--skip-human`.
+
 ## CFDICT fork (`dictionaries/fr/data/cfdict.u8`)
 
 1. Pull the upstream fix into `dictionaries/fr/data/cfdict.u8` (source

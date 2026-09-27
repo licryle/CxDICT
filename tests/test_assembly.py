@@ -401,6 +401,61 @@ def test_cli_latest_scope_assembles_filtered_full(tmp_path, capsys):
     ]
 
 
+def scope_base_entries():
+    from cxdict.parser.u8 import DictionaryEntry
+
+    return [
+        DictionaryEntry("N", "N", "NG", ("outtake",)),
+        DictionaryEntry("R", "R", "P1", ("gone",)),
+    ]
+
+
+def test_assemble_scope_built_base_ships_scope_as_human(tmp_path):
+    out_c, out_f = tmp_path / "c.u8", tmp_path / "f.u8"
+    (tmp_path / "h.u8").write_text("", encoding="utf-8")
+    (tmp_path / "l.json").write_text("{}", encoding="utf-8")
+    human_n, full_n = assemble_files(
+        None, tmp_path / "h.u8", tmp_path / "l.json", out_c, out_f, "en",
+        scope_base_entries=scope_base_entries(),
+    )
+    # Human == SuperFull == scope content; no LLM, no curation.
+    assert (human_n, full_n) == (2, 2)
+    assert out_c.read_bytes() == out_f.read_bytes()
+    out_entries, errors = parse_u8_file(out_f)
+    assert errors == []
+    assert [e.lexical_id() for e in out_entries] == ["N|N|NG", "R|R|P1"]
+
+
+def test_assemble_scope_built_base_latest_needs_skip_human(tmp_path):
+    out_c, out_f = tmp_path / "c.u8", tmp_path / "f.u8"
+    (tmp_path / "h.u8").write_text("", encoding="utf-8")
+    (tmp_path / "l.json").write_text("{}", encoding="utf-8")
+    with pytest.raises(ValueError):
+        assemble_files(
+            None, tmp_path / "h.u8", tmp_path / "l.json", out_c, out_f, "en",
+            scope="latest", latest_cc_path=tmp_path / "h.u8",
+            scope_base_entries=scope_base_entries()[:1],
+        )
+    human_n, full_n = assemble_files(
+        None, tmp_path / "h.u8", tmp_path / "l.json", out_c, out_f, "en",
+        scope="latest", latest_cc_path=tmp_path / "h.u8",
+        skip_human=True, scope_base_entries=scope_base_entries()[:1],
+    )
+    assert (human_n, full_n) == (1, 1)
+    assert not out_c.exists()
+
+
+def test_assemble_scope_base_conflicts_with_base_file(tmp_path):
+    out_c, out_f = tmp_path / "c.u8", tmp_path / "f.u8"
+    (tmp_path / "h.u8").write_text("", encoding="utf-8")
+    (tmp_path / "l.json").write_text("{}", encoding="utf-8")
+    with pytest.raises(ValueError):
+        assemble_files(
+            tmp_path / "cfdict.u8", tmp_path / "h.u8", tmp_path / "l.json",
+            out_c, out_f, "en", scope_base_entries=scope_base_entries(),
+        )
+
+
 def test_sections_match_assemble_splits():
     base = [entry()]
     human = [entry("美", "美", "Mei3", ("beau",))]

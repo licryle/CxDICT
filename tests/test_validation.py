@@ -188,6 +188,29 @@ def test_clean_base_produces_no_base_warnings(tmp_path):
     assert [w for w in report.warnings if w.name == "base scope divergence"] == []
 
 
+def test_scope_built_base_validates_as_base(tmp_path):
+    from cxdict.parser.u8 import DictionaryEntry
+
+    base = [
+        DictionaryEntry("N", "N", "NG", ("outtake",)),
+        DictionaryEntry("R", "R", "P1", ("gone",)),
+    ]
+    human_p = write(tmp_path / "human.u8", "")
+    llm_p = write(
+        tmp_path / "llm_generated.json", json.dumps({}, ensure_ascii=False)
+    )
+    cc_p = write(tmp_path / "cc.u8", "N N [NG] /outtake/\n")
+    report, data = validate_inputs(
+        None, cc_p, human_p, llm_p, scope_base_entries=base
+    )
+    assert report.passed, [(c.name, c.detail) for c in report.failures()]
+    assert any(
+        c.name == "base parses" and "scope-built" in c.detail
+        for c in report.checks
+    )
+    assert set(data["base_ids"]) == {"N|N|NG", "R|R|P1"}
+
+
 def test_logless_dir_falls_back_to_newest_file(tmp_path):
     cc = tmp_path / "cc-cedict"
     cc.mkdir()

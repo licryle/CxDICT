@@ -274,6 +274,7 @@ def generate_files(
     language: str,
     cc_cedict_dir: str | Path | None = None,
     scope: str = "superscope",
+    allow_generate: bool = True,
 ) -> GenerationReport:
     """Run generation against on-disk datasets; rewrite them unless dry_run.
 
@@ -289,6 +290,14 @@ def generate_files(
     """
     if scope not in ("superscope", "latest"):
         raise ValueError(f"unknown scope {scope!r} (want 'superscope' or 'latest')")
+    if not allow_generate:
+        if dry_run:
+            return GenerationReport(
+                plan=GenerationPlan(scoped=0, limited_to=0, batches=0),
+                llm_new=0,
+                dry_run=True,
+            )
+        raise ValueError(f"generation is disabled for language {language!r}")
     base_ids = base_identities(base_path)
     if cc_cedict_dir is not None:
         layers = load_layers(cc_cedict_dir)

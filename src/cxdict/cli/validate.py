@@ -21,8 +21,9 @@ import sys
 from pathlib import Path
 
 
-from ..languages import resolve_paths
+from ..languages import get_language, resolve_paths
 from ..parser.json import record_glosses
+from ..superset import load_scope_base
 from ..validation import check_outputs, validate_inputs
 
 
@@ -47,20 +48,29 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--out-full", default=None)
     args = parser.parse_args(argv)
     try:
+        cfg = get_language(args.language)
         paths = resolve_paths(
             args.language, base=args.base, cc_cedict=args.cc_cedict,
             cc_cedict_dir=args.cc_cedict_dir,
             human=args.human, llm_generated=args.llm_generated,
         )
+        if cfg.scope_as_base and args.base:
+            raise ValueError("scope-built base conflicts with --base")
     except (ValueError, OSError) as exc:
         print(f"validation failed: {exc}", file=sys.stderr)
         return 1
 
     try:
+        scope_base = (
+            load_scope_base(args.cc_cedict, paths.cc_cedict_dir, args.scope)
+            if cfg.scope_as_base
+            else None
+        )
         report, data = validate_inputs(
             paths.base, paths.cc_cedict, paths.human, paths.llm_generated,
             cc_cedict_dir=None if args.cc_cedict else paths.cc_cedict_dir,
             scope=args.scope,
+            scope_base_entries=scope_base,
         )
     except ValueError as exc:
         print(f"validation failed: {exc}", file=sys.stderr)

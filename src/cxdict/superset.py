@@ -85,3 +85,33 @@ def load_layers(cc_dir: str | Path) -> list[tuple[str, list[DictionaryEntry]]]:
             )
         layers.append((snapshot.date, entries))
     return layers
+
+
+def load_scope_base(
+    explicit: str | Path | None = None,
+    cc_dir: str | Path | None = None,
+    scope: str = "superscope",
+) -> list[DictionaryEntry]:
+    """Scope-built base rows for scope-as-base languages (content IS scope).
+
+    An explicit file pins the scope content (escape hatch); otherwise the
+    rows come from the snapshot log — the pair-level superset, or the
+    newest layer alone for scope="latest" (follows the run scope so
+    latest-filtered assemblies validate). Fails loudly on bad input.
+    """
+    if scope not in ("superscope", "latest"):
+        raise ValueError(f"unknown scope {scope!r} (want 'superscope' or 'latest')")
+    if explicit is not None:
+        entries, errors = parse_u8_file(explicit)
+        if errors:
+            preview = "; ".join(f"line {n}: {msg}" for n, msg in errors[:5])
+            raise ValueError(
+                f"scope base {explicit} has {len(errors)} malformed line(s): {preview}"
+            )
+        return entries
+    if cc_dir is None:
+        raise ValueError("scope-built base needs a snapshot directory or file")
+    layers = load_layers(cc_dir)
+    if scope == "latest":
+        return layers[0][1]
+    return build_superset(layers).entries

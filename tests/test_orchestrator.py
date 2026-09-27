@@ -682,6 +682,44 @@ def test_generate_files_rejects_bad_scope(tmp_path):
         )
 
 
+def test_generate_files_refuses_disabled_language(tmp_path):
+    base, cc, human_p, llm_p = dataset_files(tmp_path)
+    report = generate_files(
+        base, cc, human_p, llm_p, config(), "v", dry_run=True,
+        language="fr", allow_generate=False,
+    )
+    assert report.plan.scoped == 0 and report.llm_new == 0
+    with pytest.raises(ValueError, match="generation is disabled"):
+        generate_files(
+            base, cc, human_p, llm_p, config(), "v",
+            language="fr", allow_generate=False,
+        )
+
+
+def test_cli_generate_refuses_disabled_language(tmp_path, capsys):
+    from cxdict.cli.generate import main as cli_main
+
+    base, cc, human_p, llm_p = dataset_files(tmp_path)
+    env = tmp_path / ".env"
+    env.write_text(
+        "LLM_API_ENDPOINT=http://x:1/y\nLLM_MODEL_NAME=m\n", encoding="utf-8"
+    )
+    rc = cli_main(
+        ["--env", str(env), "--language", "en", "--base", str(base),
+         "--cc-cedict", str(cc), "--human", str(human_p),
+         "--llm-generated", str(llm_p)]
+    )
+    assert rc == 1
+    assert "generation is disabled" in capsys.readouterr().err
+    rc = cli_main(
+        ["--env", str(env), "--language", "en", "--base", str(base),
+         "--cc-cedict", str(cc), "--human", str(human_p),
+         "--llm-generated", str(llm_p), "--dry-run"]
+    )
+    assert rc == 0
+    assert "(generation disabled)" in capsys.readouterr().out
+
+
 def test_generate_all_per_key_versions_with_provenance_fallback():
     items = compute_missing_items(CC, set(), set())
     calls = []

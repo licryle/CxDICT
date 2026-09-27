@@ -26,10 +26,16 @@ from ..scope_info import (
     build_release_sources,
     build_scope_info,
     render_scope_markdown,
+    scope_base_version,
     sha256_file,
 )
 from ..snapshots import load_manifest, snapshot_version, version_for_snapshot_file
-from ..superset import attribute_contribution, build_superset, load_layers
+from ..superset import (
+    attribute_contribution,
+    build_superset,
+    load_layers,
+    load_scope_base,
+)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -61,12 +67,18 @@ def main(argv: list[str] | None = None) -> int:
             llm_generated=args.llm_generated, cc_cedict=args.cc_cedict,
             cc_cedict_dir=args.cc_cedict_dir,
         )
+        if cfg.scope_as_base and args.base:
+            raise ValueError("scope-built base conflicts with --base")
     except (ValueError, OSError) as exc:
         print(f"scope info failed: {exc}", file=sys.stderr)
         return 1
 
     try:
-        if paths.base is None:
+        if cfg.scope_as_base:
+            base_entries = load_scope_base(
+                args.cc_cedict, paths.cc_cedict_dir, "superscope"
+            )
+        elif paths.base is None:
             base_entries = []
         else:
             base_entries, errors = parse_u8_file(paths.base)
@@ -108,9 +120,12 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     try:
-        base_version = args.base_version or (
-            sha256_file(paths.base) if paths.base else "n/a"
-        )
+        if cfg.scope_as_base:
+            base_version = args.base_version or scope_base_version(base_entries)
+        else:
+            base_version = args.base_version or (
+                sha256_file(paths.base) if paths.base else "n/a"
+            )
         human_version = args.human_version or sha256_file(paths.human)
         llm_generated_version = (
             args.llm_generated_version or sha256_file(paths.llm_generated)
@@ -129,6 +144,12 @@ def main(argv: list[str] | None = None) -> int:
                 "llm": llm_generated_version,
             },
             reference=reference,
+            generation_enabled=cfg.generate,
+            latest_base_ids=(
+                {e.lexical_id() for e in latest_entries}
+                if cfg.scope_as_base
+                else None
+            ),
         )
     except (ValueError, OSError) as exc:
         print(f"scope info failed: {exc}", file=sys.stderr)

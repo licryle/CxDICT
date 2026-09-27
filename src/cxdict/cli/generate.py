@@ -25,7 +25,7 @@ from pathlib import Path
 from ..generation.config import load_config
 from ..generation.llm import GenerationError
 from ..generation.orchestrator import generate_files
-from ..languages import resolve_paths
+from ..languages import get_language, resolve_paths
 from ..snapshots import version_for_snapshot_file
 
 
@@ -70,6 +70,7 @@ def main(argv: list[str] | None = None) -> int:
 
         config = dataclasses.replace(config, batch_size=args.batch_size)
     try:
+        cfg = get_language(args.language)
         paths = resolve_paths(
             args.language, base=args.base, cc_cedict=args.cc_cedict,
             cc_cedict_dir=args.cc_cedict_dir,
@@ -95,6 +96,7 @@ def main(argv: list[str] | None = None) -> int:
             # scope and stamps come from the whole snapshot directory.
             cc_cedict_dir=None if args.cc_cedict else paths.cc_cedict_dir,
             scope=args.scope,
+            allow_generate=cfg.generate,
         )
     except (ValueError, OSError, GenerationError) as exc:
         print(f"generate failed: {exc}", file=sys.stderr)
@@ -105,6 +107,7 @@ def main(argv: list[str] | None = None) -> int:
             f"dry run — no endpoint calls, no files written: "
             f"{plan.scoped} entries in missing scope, "
             f"{plan.limited_to} planned in {plan.batches} batch(es)"
+            + ("" if cfg.generate else " (generation disabled)")
         )
     else:
         print(

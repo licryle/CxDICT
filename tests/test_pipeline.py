@@ -171,6 +171,68 @@ def test_fetch_failure_aborts_before_pipeline(tmp_path, monkeypatch, capsys):
     assert "[fetch]" in capsys.readouterr().out
 
 
+def test_pipeline_english_scope_is_human(tmp_path):
+    """en: scope-built base flows through validate, assemble and notes."""
+    cc = snapshot_dir(tmp_path)
+    human_p = write(tmp_path / "human.u8", "")
+    llm_p = write(tmp_path / "llm_generated.json", json.dumps({}))
+    report = run_pipeline(
+        base_path=None,
+        cc_cedict_path=cc / "2026-09-12.u8",
+        human_path=human_p,
+        llm_generated_path=llm_p,
+        out_human_path=tmp_path / "c.u8",
+        out_full_path=tmp_path / "f.u8",
+        config=config(),
+        language="en",
+        cc_version="cc-cedict:2026-09-12:abcdef123456",
+        cc_cedict_dir=cc,
+        skip_generate=True,
+    )
+    # Human == SuperFull == full superset scope, retired row included.
+    assert (report.human_n, report.full_n) == (3, 3)
+    assert "generation disabled" in report.scope_markdown
+    assert "Total CEDICT records: 3" in report.scope_markdown
+    assert "CEDICT 2026-09-12: 2" in report.scope_markdown
+    assert "CEDICT 2025-08-08: 1" in report.scope_markdown
+    assert "| Missing scope (still to generate; generation disabled) | 0 |" \
+        in report.scope_markdown
+    from cxdict.parser.u8 import parse_u8_file
+
+    out_entries, errors = parse_u8_file(tmp_path / "c.u8")
+    assert errors == []
+    assert [e.lexical_id() for e in out_entries] == ["N|N|NG", "W|W|P9", "R|R|P1"]
+
+
+def test_pipeline_english_latest_needs_skip_human(tmp_path):
+    cc = snapshot_dir(tmp_path)
+    human_p = write(tmp_path / "human.u8", "")
+    llm_p = write(tmp_path / "llm_generated.json", json.dumps({}))
+    kwargs = dict(
+        base_path=None,
+        cc_cedict_path=cc / "2026-09-12.u8",
+        human_path=human_p,
+        llm_generated_path=llm_p,
+        out_human_path=tmp_path / "c.u8",
+        out_full_path=tmp_path / "f.u8",
+        config=config(),
+        language="en",
+        cc_version="cc-cedict:2026-09-12:abcdef123456",
+        cc_cedict_dir=cc,
+        scope="latest",
+        skip_generate=True,
+    )
+    with pytest.raises(PipelineError, match="skip_human"):
+        run_pipeline(**kwargs)
+    report = run_pipeline(**{**kwargs, "skip_human": True})
+    assert (report.human_n, report.full_n) == (2, 2)
+    from cxdict.parser.u8 import parse_u8_file
+
+    out_entries, errors = parse_u8_file(tmp_path / "f.u8")
+    assert errors == []
+    assert [e.lexical_id() for e in out_entries] == ["N|N|NG", "W|W|P9"]
+
+
 def snapshot_dir(tmp_path):
     """Two-snapshot log: newest holds N + W, older adds retired R."""
     cc = tmp_path / "cc-cedict"

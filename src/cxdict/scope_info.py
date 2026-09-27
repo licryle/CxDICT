@@ -22,6 +22,20 @@ from pathlib import Path
 from typing import Any
 
 from .scope import compute_scope_statistics, latest_valid_llm_ids
+from .snapshots import canonical_hash_of_rows
+
+
+def scope_base_version(entries: list[Any]) -> str:
+    """Version label for a scope-built base: content hash of its rows.
+
+    Deterministic across storage formats (same normalization as snapshot
+    content hashes): identical scope content always yields the same label.
+    """
+    rows = (
+        f"{e.traditional} {e.simplified} [{e.pinyin}] /{'/'.join(e.definitions)}/"
+        for e in entries
+    )
+    return "scope:" + canonical_hash_of_rows(rows)[:12]
 
 
 @dataclass(frozen=True)
@@ -46,6 +60,11 @@ class ReleaseSources:
     latest_cc_cedict_ids: set[str] | None = None
     latest_llm_ids: set[str] | None = None
     reference: tuple[tuple[str, int], ...] = ()
+    generation_enabled: bool = True
+    # Scope-as-base languages filter their base by scope too, so the
+    # LatestFull row needs scope-matched base identities; other languages
+    # ship their base unfiltered (None = reuse base_ids).
+    latest_base_ids: set[str] | None = None
 
 
 def sha256_file(path: str | Path) -> str:
@@ -74,6 +93,8 @@ def build_release_sources(
     llm_generated: dict[str, dict[str, Any]],
     versions: dict[str, str],
     reference: list[tuple[str, int]],
+    generation_enabled: bool = True,
+    latest_base_ids: set[str] | None = None,
 ) -> ReleaseSources:
     """Assemble release provenance from parsed inputs (single construction).
 
@@ -103,6 +124,8 @@ def build_release_sources(
         latest_cc_cedict_ids={e.lexical_id() for e in latest_entries},
         latest_llm_ids=latest_valid_llm_ids(llm_generated, latest_glosses),
         reference=tuple(reference),
+        generation_enabled=generation_enabled,
+        latest_base_ids=latest_base_ids,
     )
 
 
@@ -118,6 +141,10 @@ def build_scope_info(
         sources.human_ids,
         sources.llm_generated_ids,
     )
+    if not sources.generation_enabled:
+        # Policy, not coverage: a non-generating language has nothing
+        # left to generate, however large the raw gap.
+        statistics["missing_scope_total"] = 0
     if sources.reference:
         contributed = sum(rows for _, rows in sources.reference)
         if contributed != statistics["cc_cedict_total"]:
@@ -129,6 +156,11 @@ def build_scope_info(
     scope_detail: dict[str, int] = {}
     if sources.latest_cc_cedict_ids is not None:
         latest_ids = sources.latest_cc_cedict_ids
+        latest_base = (
+            sources.latest_base_ids
+            if sources.latest_base_ids is not None
+            else sources.base_ids
+        )
         latest_llm = (
             sources.latest_llm_ids
             if sources.latest_llm_ids is not None
@@ -136,12 +168,12 @@ def build_scope_info(
         )
         latest_statistics = compute_scope_statistics(
             latest_ids,
-            sources.base_ids,
+            latest_base,
             sources.human_ids,
             latest_llm,
         )
         full_ids = sources.base_ids | sources.human_ids | sources.llm_generated_ids
-        latest_full_ids = sources.base_ids | sources.human_ids | latest_llm
+        latest_full_ids = latest_base | sources.human_ids | latest_llm
         scope_detail = {
             # Cross-scope cells neither stats object has alone (all exact):
             "llm_covers_latest": len(sources.llm_generated_ids & latest_ids),
@@ -178,12 +210,15 @@ def build_scope_info(
         ],
     }
     if latest_statistics is not None:
+        if not sources.generation_enabled:
+            latest_statistics["missing_scope_total"] = 0
         info["sources"]["latest_cc_cedict"] = {
             "version": sources.latest_cc_cedict_version,
             "entries": latest_statistics["cc_cedict_total"],
         }
         info["latest_coverage"] = latest_statistics
         info["scope_detail"] = scope_detail
+    info["generation_enabled"] = sources.generation_enabled
     return info
 
 
@@ -229,6 +264,9 @@ def render_scope_markdown(
     name = release_name or base_label
     ref_total = coverage["cc_cedict_total"]
     missing = coverage["missing_scope_total"]
+    missing_label = "Missing scope (still to generate)"
+    if not info.get("generation_enabled", True):
+        missing_label = "Missing scope (still to generate; generation disabled)"
 
     def _row(label: str, total: int, in_cc: int) -> str:
         return f"| {label} | {total} | {_in_cell(in_cc, ref_total)} | {total - in_cc} |"
@@ -275,7 +313,7 @@ def render_scope_markdown(
                 coverage["llm_generated_total"],
                 coverage["llm_covers_cc_cedict"],
             ),
-            f"| Missing scope (still to generate) | {missing} | "
+            f"| {missing_label} | {missing} | "
             f"{_in_cell(missing, ref_total)} | N/A |",
             "",
         ]
@@ -325,7 +363,7 @@ def render_scope_markdown(
                 detail.get("llm_covers_latest", 0),
             ),
             _dual(
-                "Missing scope (still to generate)",
+                missing_label,
                 missing, missing, latest_missing, out_na=True,
             ),
             "",

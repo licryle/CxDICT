@@ -271,7 +271,13 @@ content). Every command takes a required
 `--language` (no default). The single sense field is `definition` for
 all languages; per-language prompt versions are stamped on each record.
 A language without an authoritative base (e.g. `zh-CN-HSK03`) runs the
-same precedence pipeline with an empty base set. Releases are per
+same precedence pipeline with an empty base set. A scope-built language
+(e.g. `en`) builds its base from the snapshot log at run time
+(`scope_as_base` in `dict.toml`, conflicting with `base_filename`) and
+disables generation (`generate = false`, refusing all generation runs);
+its prompt assets are optional, its missing scope renders as zero, and
+its LatestFull filters the scope-built base by scope while other
+languages ship theirs unfiltered. Releases are per
 language: pushes touching a language's inputs rebuild only it (any other
 path under `data/`/`assets/` rebuilds all; tooling-only pushes cut no
 release). Each language owns exactly one release, tag `latest-<code>`

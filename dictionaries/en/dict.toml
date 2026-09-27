@@ -1,0 +1,17 @@
+# Language definition: English (CC-CEDICT scope as content).
+# Paths below are relative to this file's directory.
+#
+# This unit publishes the CC-CEDICT superset itself: the base is built in
+# memory from the snapshot log (scope_as_base), so there is no base file,
+# no prompt machinery, and no generation (generate = false). Human and LLM
+# datasets stay empty; the Human asset is the scope.
+
+code = "en"
+base_label = "CC-CEDICT (Under license CC BY-SA 4.0)"
+base_url = "https://www.mdbg.net/chinese/dictionary?page=cc-cedict"
+scope_as_base = true
+generate = false
+target_language_name = "English"
+output_slug = "english"
+release_name = "English"
+description = "English definitions (CC-CEDICT scope as content; no generation)."
