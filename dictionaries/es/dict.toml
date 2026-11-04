@@ -1,0 +1,17 @@
+# Language definition: Spanish (CESDict target).
+# Paths below are relative to this file's directory.
+
+code = "es"
+base_filename = "hispacedic.u8"
+base_label = "HISPACEDICT (Under license GPLv2)"
+base_url = "hhttps://sourceforge.net/projects/hispacedic/"
+prompt_template = "assets/generate_es_v1.txt"
+few_shot = "assets/few_shot_examples.json"
+prompt_version = "v1"
+prompt_user_intro = """Translate the meanings of the Chinese entries below into Spanish.
+Entries to translate:
+"""
+target_language_name = "Spanish"
+output_slug = "cesdict"
+release_name = "Spanish"
+description = "Spanish definitions (HISPACEDIC authoritative base + LLM coverage)."
