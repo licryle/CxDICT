@@ -191,7 +191,7 @@ def test_post_omits_auth_header_without_key(monkeypatch):
 
 
 def test_generate_batch_forwards_api_key():
-    def fake_post(endpoint, model, system, user, timeout_s, api_key=None):
+    def fake_post(endpoint, model, system, user, timeout_s, api_key=None, temperature=0.0):
         assert api_key == "sk-test"
         return chat_body(
             [
@@ -250,7 +250,7 @@ def test_few_shot_examples_pass_the_real_validator():
     # response pairs — otherwise we teach the model our own mistakes.
     example_items, example_outputs = load_few_shot_for("fr")
 
-    def fake_post(endpoint, model, system, user, timeout_s, api_key=None):
+    def fake_post(endpoint, model, system, user, timeout_s, api_key=None, temperature=0.0):
         for item, output in zip(example_items, example_outputs):
             assert f"[{output['id']}] {item.simplified}" in user
         return chat_body(example_outputs)
@@ -389,7 +389,7 @@ def test_unknown_language_fails_loudly():
 
 
 def test_generate_batch_maps_entries_to_sense_lists():
-    def fake_post(endpoint, model, system, user, timeout_s, api_key=None):
+    def fake_post(endpoint, model, system, user, timeout_s, api_key=None, temperature=0.0):
         assert "chat/completions" in endpoint
         return chat_body(
             [
@@ -423,7 +423,7 @@ def test_generate_batch_maps_entries_to_sense_lists():
 def test_generate_batch_accepts_string_ids():
     # Regression: qwen3.5-9b-mtp returns string ids ("0", "1") while the
     # few-shot examples show JSON numbers — both spell the same index.
-    def fake_post(endpoint, model, system, user, timeout_s, api_key=None):
+    def fake_post(endpoint, model, system, user, timeout_s, api_key=None, temperature=0.0):
         return chat_body(
             [
                 {
@@ -448,7 +448,7 @@ def test_generate_batch_accepts_string_ids():
 
 
 def test_generate_batch_accepts_mixed_int_and_string_ids():
-    def fake_post(*args):
+    def fake_post(*args, temperature=0.0):
         return chat_body(
             [
                 {
@@ -474,7 +474,7 @@ def test_generate_batch_accepts_mixed_int_and_string_ids():
 
 def test_string_id_duplicate_is_rejected():
     # 0 and "0" are the same index: a response carrying both repeats it.
-    def fake_post(*args):
+    def fake_post(*args, temperature=0.0):
         return chat_body(
             [
                 {
@@ -498,7 +498,7 @@ def test_string_id_duplicate_is_rejected():
 
 
 def test_non_numeric_string_id_is_rejected():
-    def fake_post(*args):
+    def fake_post(*args, temperature=0.0):
         return chat_body(
             [
                 {
@@ -523,7 +523,7 @@ def test_non_numeric_string_id_is_rejected():
 
 def test_bool_id_is_rejected_not_mapped_to_entry_one():
     # True == 1 in Python: a bool id must not silently map onto entry 1.
-    def fake_post(*args):
+    def fake_post(*args, temperature=0.0):
         return chat_body(
             [
                 {
@@ -547,7 +547,7 @@ def test_bool_id_is_rejected_not_mapped_to_entry_one():
 
 
 def test_generate_batch_renders_hsk3_prompt():
-    def fake_post(endpoint, model, system, user, timeout_s, api_key=None):
+    def fake_post(endpoint, model, system, user, timeout_s, api_key=None, temperature=0.0):
         assert "HSK 3" in system
         assert "Explain the meanings" in user
         return chat_body(
@@ -585,7 +585,7 @@ def test_generate_batch_rejects_unknown_language():
 
 
 def test_dropped_sense_fails_the_batch():
-    def fake_post(*args):
+    def fake_post(*args, temperature=0.0):
         return chat_body(
             [
                 {
@@ -601,7 +601,7 @@ def test_dropped_sense_fails_the_batch():
 
 
 def test_invented_sense_fails_the_batch():
-    def fake_post(*args):
+    def fake_post(*args, temperature=0.0):
         return chat_body(
             [
                 {
@@ -621,7 +621,7 @@ def test_invented_sense_fails_the_batch():
 
 
 def test_extra_confidence_field_is_ignored():
-    def fake_post(*args):
+    def fake_post(*args, temperature=0.0):
         return chat_body(
             [
                 {
@@ -645,7 +645,7 @@ def test_extra_confidence_field_is_ignored():
 def test_missing_id_retries_then_raises():
     calls = []
 
-    def fake_post(*args):
+    def fake_post(*args, temperature=0.0):
         calls.append(1)
         return chat_body(
             [
@@ -668,7 +668,7 @@ def test_missing_id_retries_then_raises():
 
 
 def test_word_mismatch_is_rejected():
-    def fake_post(*args):
+    def fake_post(*args, temperature=0.0):
         return chat_body(
             [
                 {
@@ -684,7 +684,7 @@ def test_word_mismatch_is_rejected():
 
 
 def test_non_array_response_is_rejected():
-    def fake_post(*args):
+    def fake_post(*args, temperature=0.0):
         return {"choices": [{"message": {"content": '{"id": 0}'}}]}
 
     with pytest.raises(GenerationError, match="JSON array"):
@@ -722,7 +722,7 @@ def test_generate_batch_accepts_fenced_content():
         + "\n```"
     )
 
-    def fake_post(*args):
+    def fake_post(*args, temperature=0.0):
         return {"choices": [{"message": {"content": fenced}}]}
 
     outcome = generate_batch(make_items()[:1], make_config(), language="fr", post=fake_post)
@@ -736,7 +736,7 @@ def test_partial_salvage_returns_good_and_defers_bad():
     # endpoint call, good entry returned, bad one deferred with its cause.
     calls = []
 
-    def fake_post(*args):
+    def fake_post(*args, temperature=0.0):
         calls.append(1)
         return chat_body(
             [
@@ -766,7 +766,7 @@ def test_partial_salvage_returns_good_and_defers_bad():
 def test_envelope_failure_retries_whole_batch_then_raises():
     calls = []
 
-    def fake_post(*args):
+    def fake_post(*args, temperature=0.0):
         calls.append(1)
         return {"choices": [{"message": {"content": '{"id": 0}'}}]}
 
@@ -790,7 +790,7 @@ def test_single_transient_failure_recovers_on_retry():
         ]
     )
 
-    def fake_post(*args):
+    def fake_post(*args, temperature=0.0):
         calls.append(1)
         if len(calls) == 1:
             return chat_body(

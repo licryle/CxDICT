@@ -70,7 +70,7 @@ def test_plan_counts_batches():
 
 
 def fake_post_factory(calls):
-    def fake_post(endpoint, model, system, user, timeout_s, api_key=None):
+    def fake_post(endpoint, model, system, user, timeout_s, api_key=None, temperature=0.0):
         calls.append(user)
         import json as _json
         import re
@@ -184,7 +184,7 @@ def test_dry_run_calls_no_batches_and_writes_nothing(tmp_path):
 def test_total_failure_writes_nothing_and_raises(tmp_path):
     base, cc, human_p, llm_p = dataset_files(tmp_path)
 
-    def bad_post(*args):
+    def bad_post(*args, temperature=0.0):
         raise GenerationError("boom")
 
     with pytest.raises(GenerationError, match="2 entries failed after retry") as exc_info:
@@ -202,7 +202,7 @@ def test_poison_entry_isolated_rest_written_and_reported(tmp_path):
     base, cc, human_p, llm_p = dataset_files(tmp_path)
     good_post = fake_post_factory([])
 
-    def flaky_post(endpoint, model, system, user, timeout_s, api_key=None):
+    def flaky_post(endpoint, model, system, user, timeout_s, api_key=None, temperature=0.0):
         if "国" in user:  # simplified form of 國, poison in every attempt
             raise GenerationError("poison")
         return good_post(endpoint, model, system, user, timeout_s)
@@ -230,7 +230,7 @@ def test_transient_failure_recovers_in_retry_pass(tmp_path):
     good_post = fake_post_factory(calls)
     state = {"failed_once": False}
 
-    def transient_post(*args):
+    def transient_post(*args, temperature=0.0):
         if not state["failed_once"]:
             state["failed_once"] = True
             raise GenerationError("blip")
@@ -309,7 +309,7 @@ def test_progress_marks_failed_batches_and_retries():
 
     good_post = fake_post_factory([])
 
-    def poison_post(endpoint, model, system, user, timeout_s, api_key=None):
+    def poison_post(endpoint, model, system, user, timeout_s, api_key=None, temperature=0.0):
         if re.search(r"^\[\d+\] 行 \(", user, re.M):
             raise GenerationError("poison")
         return good_post(endpoint, model, system, user, timeout_s)
@@ -352,7 +352,7 @@ def test_retry_success_moves_entry_from_errors_to_done():
 
     good_post = fake_post_factory([])
 
-    def batch_only_post(endpoint, model, system, user, timeout_s, api_key=None):
+    def batch_only_post(endpoint, model, system, user, timeout_s, api_key=None, temperature=0.0):
         import re
 
         ids = re.findall(r"^\[\d+\]", user, re.M)
@@ -398,7 +398,7 @@ def test_failed_lines_carry_truncated_single_line_cause():
 
     long_msg = "first line\nsecond line " + "x" * 500
 
-    def bad_post(*args):
+    def bad_post(*args, temperature=0.0):
         raise GenerationError(long_msg)
 
     stream = io.StringIO()
@@ -431,7 +431,7 @@ def test_partial_batch_writes_good_and_defers_bad(tmp_path):
 
     base, cc, human_p, llm_p = dataset_files(tmp_path)
 
-    def partial_post(endpoint, model, system, user, timeout_s, api_key=None):
+    def partial_post(endpoint, model, system, user, timeout_s, api_key=None, temperature=0.0):
         import json as _json
         import re
 

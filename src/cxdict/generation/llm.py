@@ -51,6 +51,7 @@ def post_chat_completions(
     user: str,
     timeout_s: float,
     api_key: str | None = None,
+    temperature: float = 0.0,
 ) -> Any:
     """POST one chat-completions request; return the decoded JSON body.
 
@@ -65,6 +66,7 @@ def post_chat_completions(
                 {"role": "system", "content": system},
                 {"role": "user", "content": user},
             ],
+            "temperature": temperature,
         }
     ).encode("utf-8")
     headers = {"Content-Type": "application/json"}
@@ -336,6 +338,7 @@ caller. A single-entry batch retries per-entry failures too, then raises.
             response = post(
                 config.endpoint, config.model, system, user, config.timeout_s,
                 config.api_key,
+                temperature=config.temperature,
             )
             content = _extract_content(response)
             raw = _parse_content(content)

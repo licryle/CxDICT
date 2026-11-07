@@ -28,18 +28,20 @@ REQUIRED_VARS = ("LLM_API_ENDPOINT", "LLM_MODEL_NAME")
 DEFAULT_BATCH_SIZE = 10
 DEFAULT_MAX_RETRIES = 2
 DEFAULT_TIMEOUT_S = 120.0
+DEFAULT_TEMPERATURE = 0.0
 
 
 @dataclass(frozen=True)
 class LLMConfig:
     """Validated provider configuration."""
 
-    endpoint: str       # Full chat-completions URL (OpenAI-compatible API)
-    model: str          # Model name as served by the endpoint
+    endpoint: str               # Full chat-completions URL (OpenAI-compatible API)
+    model: str                  # Model name as served by the endpoint
     batch_size: int = DEFAULT_BATCH_SIZE   # entries per request
     max_retries: int = DEFAULT_MAX_RETRIES  # retries per batch on failure
     timeout_s: float = DEFAULT_TIMEOUT_S    # HTTP timeout per request
     api_key: str | None = None  # optional bearer token (Authorization header)
+    temperature: float = DEFAULT_TEMPERATURE  # sampling temperature (0 = deterministic)
 
 
 def parse_dotenv(text: str) -> dict[str, str]:
@@ -67,7 +69,7 @@ def _get_int(values: Mapping[str, str], name: str, default: int) -> int:
     try:
         number = int(raw)
     except ValueError:
-        raise ConfigError(f"{name} must be an integer, got {raw!r}") from None
+        raise ConfigError(f"{name} must be an integer, got {raw!r}")
     if number <= 0:
         raise ConfigError(f"{name} must be positive, got {raw!r}")
     return number
@@ -80,7 +82,7 @@ def _get_float(values: Mapping[str, str], name: str, default: float) -> float:
     try:
         number = float(raw)
     except ValueError:
-        raise ConfigError(f"{name} must be a number, got {raw!r}") from None
+        raise ConfigError(f"{name} must be a number, got {raw!r}")
     if number <= 0:
         raise ConfigError(f"{name} must be positive, got {raw!r}")
     return number
@@ -116,6 +118,9 @@ def load_config(
         raise ConfigError(
             f"LLM_API_ENDPOINT must be an http(s) URL, got {endpoint!r}"
         )
+    temperature = _get_float(values, "LLM_TEMPERATURE", DEFAULT_TEMPERATURE)
+    if temperature < 0:
+        raise ConfigError(f"LLM_TEMPERATURE must be non-negative, got {temperature!r}")
     return LLMConfig(
         endpoint=endpoint,
         model=values["LLM_MODEL_NAME"].strip(),
@@ -123,4 +128,5 @@ def load_config(
         max_retries=_get_int(values, "LLM_MAX_RETRIES", DEFAULT_MAX_RETRIES),
         timeout_s=_get_float(values, "LLM_TIMEOUT_S", DEFAULT_TIMEOUT_S),
         api_key=(values.get("LLM_API_KEY") or "").strip() or None,
+        temperature=temperature,
     )

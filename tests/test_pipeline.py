@@ -49,7 +49,7 @@ def fixture(tmp_path, human="", llm_generated=None):
     return base, cc, human_p, llm_p
 
 
-def fake_post(endpoint, model, system, user, timeout_s, api_key=None):
+def fake_post(endpoint, model, system, user, timeout_s, api_key=None, temperature=0.0):
     import json as _json
     import re
 
